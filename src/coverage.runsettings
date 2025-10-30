@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <DataCollectionRunSettings>
+        <DataCollectors>
+            <DataCollector friendlyName="XPlat Code Coverage">
+                <Configuration>
+                    <Include>
+                        [DKNet*]*
+                        [SlimBus*]*
+                    </Include>
+                    <Exclude>
+                        [*.Tests]*
+                        [*Tests]*
+                        [*.TestObjects]*
+                        [*TestDataLayer]*
+                    </Exclude>
+                    <ExcludeByFile>
+                        **/bin/**
+                        **/obj/**
+                        **/*Tests.cs
+                        **/*Test.cs
+                        **/TestObjects/**
+                        **/GlobalUsings.cs
+                    </ExcludeByFile>
+                </Configuration>
+            </DataCollector>
+        </DataCollectors>
+    </DataCollectionRunSettings>
+</RunSettings>

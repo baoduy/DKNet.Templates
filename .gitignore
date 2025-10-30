@@ -1,0 +1,24 @@
+**/.idea
+**/obj
+**/bin
+**/.DS_Store
+*.zip
+
+.fake
+*.bkp
+
+# Test Results and Coverage Reports
+TestResults/
+**/TestResults/
+coverage-report/
+core-coverage-report/
+new-core-coverage-report/
+final-core-coverage-report/
+CoverageReports
+*.cobertura.xml
+*.trx
+*.coverage
+*.coveragexml
+*.testlog
+**/nupkgs
+src/Directory.Build.targets.bak.*
