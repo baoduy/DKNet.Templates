@@ -46,6 +46,21 @@
         <PackageVersion Include="Azure.Storage.Blobs" Version="12.26.0"/>
         <PackageVersion Include="Bogus" Version="35.6.5"/>
         <PackageVersion Include="coverlet.collector" Version="6.0.4"/>
+        <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.AspCore.SlimBus" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.Abstractions" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.Events" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.Extensions" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.Relational.Helpers" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.Repos" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.Repos.Abstractions" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.EfCore.Specifications" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.Fw.Extensions" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.RandomCreator" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.SlimBus.Extensions" Version="9.5.27"/>
+        <PackageVersion Include="DKNet.Svc.Encryption" Version="9.5.27"/>
         <PackageVersion Include="FluentResults" Version="4.0.0"/>
         <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0"/>
         <PackageVersion Include="ForEvolve.FluentValidation.AspNetCore.Http" Version="1.0.26"/>

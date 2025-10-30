@@ -5,15 +5,6 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-        <!-- Disable code analysis for test entities -->
-        <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
-        <EnableNETAnalyzers>false</EnableNETAnalyzers>
-        <AnalysisMode>None</AnalysisMode>
-        <RunAnalyzers>false</RunAnalyzers>
-        <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
-        <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
-        <GenerateDocumentationFile>false</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);CS1591;SA1600</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -36,6 +27,7 @@
         <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
         <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore"/>
         <PackageReference Include="OpenTelemetry.Instrumentation.Http"/>
+        <PackageReference Include="DKNet.AspCore.SlimBus"/>
         <PackageReference Include="Scalar.AspNetCore"/>
         <PackageReference Update="Meziantou.Analyzer">
             <PrivateAssets>all</PrivateAssets>
@@ -44,7 +36,6 @@
         <PackageReference Include="SharpGrip.FluentValidation.AutoValidation.Endpoints"/>
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\..\..\SlimBus\DKNet.AspCore.SlimBus\DKNet.AspCore.SlimBus.csproj"/>
         <ProjectReference Include="..\SlimBus.AppServices\SlimBus.AppServices.csproj"/>
         <ProjectReference Include="..\SlimBus.Infra\SlimBus.Infra.csproj"/>
     </ItemGroup>
