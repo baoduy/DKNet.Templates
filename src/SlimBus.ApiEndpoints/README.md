@@ -12,6 +12,25 @@ robust error handling and configurability. It is built using .NET 9.0, ensuring 
 
 ---
 
+## 📚 GitHub Copilot Skills
+
+For comprehensive guidance on developing with this template, see the **[Skills folder](../../Skills/README.md)** which contains detailed documentation for:
+
+- **Project Structure & Architecture** - Understanding layer organization and dependencies
+- **Domain Entity Development** - Creating rich domain entities with EF Core
+- **EF Core Configuration** - Configuring entity mappings and relationships
+- **Command Development** - Implementing CQRS commands with validation
+- **Query Development** - Building optimized read operations
+- **API Endpoint Configuration** - Setting up versioned minimal APIs
+- **Repository Pattern** - Implementing data access patterns
+- **Validation & Mapping** - Using FluentValidation and Mapster
+
+These skills help GitHub Copilot provide better code suggestions and assist your team in following best practices.
+
+[**→ View All Skills**](../../Skills/README.md) | [**→ Quick Reference**](../../Skills/QUICK-REFERENCE.md)
+
+---
+
 ## Project Structure
 
 ### 1. **SlimBus.Api**
