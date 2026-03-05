@@ -118,6 +118,11 @@ versioning, documentation, error handling, and more. This modularity enables eas
 
 - JWT handling for Microsoft Graph and other providers.
 - Authorization policy configuration.
+- **`SampleClaimsTransformation`** – sample `IClaimsTransformation` implementation that shows how to enrich or
+  normalise the user principal after authentication (e.g., add roles from a database).
+- **`SampleAuthorizationRequirement` / `HasScopeHandler`** – sample `IAuthorizationRequirement` and its
+  `IAuthorizationHandler` that demonstrate how to build custom authorization policies (e.g., require a specific JWT
+  scope).
 
 ### API Documentation
 
@@ -181,6 +186,29 @@ versioning, documentation, error handling, and more. This modularity enables eas
 ---
 
 ## Implementation Examples
+
+**Custom Authorization Requirement (Scope-Based)**
+
+```csharp
+// Apply the sample scope policy to a specific endpoint or route group:
+group.MapGet("/secure", handler).RequireAuthorization(HasScopeRequirement.PolicyName);
+
+// To define your own requirement, follow the pattern in SampleAuthorizationRequirement.cs:
+//   1. Create a class that implements IAuthorizationRequirement.
+//   2. Create a corresponding class that extends AuthorizationHandler<TRequirement>.
+//   3. Register both in AuthConfig.AddAuthConfig() (or AddAuthorization()).
+```
+
+**Claims Transformation**
+
+```csharp
+// IClaimsTransformation is automatically invoked by ASP.NET Core after each authentication event.
+// To customise the principal, follow the pattern in SampleClaimsTransformation.cs:
+//   1. Implement IClaimsTransformation.TransformAsync() to add/modify/normalise claims.
+//   2. Inject any required services (e.g., IUserRepository) via the constructor.
+//   3. Register the implementation:
+services.AddScoped<IClaimsTransformation, YourClaimsTransformation>();
+```
 
 **Antiforgery Setup**
 
