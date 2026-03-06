@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+
 namespace SlimBus.Api.Configs.Auth;
 
 /// <summary>
@@ -40,7 +43,23 @@ internal static class AuthConfig
                     c.TokenHandlers.Add(new MsGraphJwtTokenHandler());
                 }
             });
-        services.AddAuthorization();
+
+        services.AddAuthorization(options =>
+        {
+            // TODO: Replace "sample-scope" with the actual scope value from your identity provider,
+            //       then apply the policy to an endpoint with .RequireAuthorization(HasScopeRequirement.PolicyName).
+            options.AddPolicy(
+                HasScopeRequirement.PolicyName,
+                policy => policy.Requirements.Add(new HasScopeRequirement("sample-scope")));
+        });
+
+        // Sample IClaimsTransformation: enriches the user principal after authentication.
+        // TODO: Replace SampleClaimsTransformation with your real implementation or remove if not needed.
+        services.AddScoped<IClaimsTransformation, SampleClaimsTransformation>();
+
+        // Sample IAuthorizationHandler: evaluates HasScopeRequirement.
+        // TODO: Replace HasScopeHandler with your real handler(s) or remove if not needed.
+        services.AddScoped<IAuthorizationHandler, HasScopeHandler>();
 
         return services;
     }
