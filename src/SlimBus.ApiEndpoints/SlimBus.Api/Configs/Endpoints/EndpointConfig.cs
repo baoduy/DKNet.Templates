@@ -10,64 +10,61 @@ namespace Microsoft.AspNetCore.Builder;
 [ExcludeFromCodeCoverage]
 internal static class EndpointConfig
 {
-    #region Methods
-
-    private static RouteGroupBuilder CreateGroup(
-        this WebApplication app,
-        ApiVersionSet versionSet,
-        IEndpointConfig config)
+    extension(WebApplication app)
     {
-        var path = $"/v{{version:apiVersion}}{config.GroupEndpoint}";
-        var displayName = $"/v{config.Version}{config.GroupEndpoint}";
-
-        var group = app.MapGroup(path)
-            .AddEndpointFilter<SetUserIdPropertyFilter>()
-            .WithApiVersionSet(versionSet)
-            .HasApiVersion(config.Version)
-            .MapToApiVersion(config.Version)
-
-            //Swagger config
-            .WithDisplayName(displayName)
-            .WithGroupName($"v{config.Version}")
-            .WithTags(config.GroupEndpoint.Replace("/", string.Empty, StringComparison.OrdinalIgnoreCase));
-
-        if (FluentValidationConfig.ConfigAdded)
+        private ApiVersionSet CreateVersionSet(IEnumerable<int> versions)
         {
-            group.AddFluentValidationAutoValidation();
+            return app.NewApiVersionSet()
+                .HasApiVersions(versions.Distinct().Select(v => new ApiVersion(v)))
+                .ReportApiVersions()
+                .Build();
         }
 
-        if (AuthConfig.IsAuthConfigAdded)
+        private RouteGroupBuilder CreateGroup(ApiVersionSet versionSet,
+            IEndpointConfig config)
         {
-            group.RequireAuthorization();
+            var path = $"/v{{version:apiVersion}}{config.GroupEndpoint}";
+            var displayName = $"/v{config.Version}{config.GroupEndpoint}";
+
+            var group = app.MapGroup(path)
+                .AddEndpointFilter<SetUserIdPropertyFilter>()
+                .WithApiVersionSet(versionSet)
+                .HasApiVersion(config.Version)
+                .MapToApiVersion(config.Version)
+                //Swagger config
+                .WithDisplayName(displayName)
+                .WithGroupName($"v{config.Version}")
+                .WithTags(string.IsNullOrEmpty(config.Tag) ? "Root" : config.Tag);
+
+            if (FluentValidationConfig.ConfigAdded)
+                group.AddFluentValidationAutoValidation();
+
+            if (AuthConfig.IsAuthConfigAdded)
+            {
+                if (!string.IsNullOrEmpty(config.AuthPolicy))
+                    group.RequireAuthorization(config.AuthPolicy);
+                else group.RequireAuthorization();
+            }
+
+            return group;
         }
 
-        return group;
-    }
-
-    private static ApiVersionSet CreateVersionSet(this WebApplication app, IEnumerable<int> versions)
-    {
-        return app.NewApiVersionSet()
-            .HasApiVersions(versions.Distinct().Select(v => new ApiVersion(v)))
-            .ReportApiVersions()
-            .Build();
-    }
-
-    public static List<RouteGroupBuilder> UseEndpointConfigs(this WebApplication app)
-    {
-        var groupList = new List<RouteGroupBuilder>();
-        var configs = typeof(EndpointConfig).Assembly.Extract().Classes().IsInstanceOf<IEndpointConfig>();
-        var configInstances = configs.Select(c => (IEndpointConfig)Activator.CreateInstance(c)!).ToList();
-        var vSets = app.CreateVersionSet(configInstances.Select(c => c.Version));
-
-        foreach (var instance in configInstances)
+        public List<RouteGroupBuilder> UseEndpointConfigs()
         {
-            var group = app.CreateGroup(vSets, instance);
-            instance.Map(group);
-            groupList.Add(group);
+            var groupList = new List<RouteGroupBuilder>();
+            var configs = typeof(EndpointConfig).Assembly.Extract().NotGeneric().NotAbstract().Classes()
+                .IsInstanceOf<IEndpointConfig>();
+            var configInstances = configs.Select(c => (IEndpointConfig)Activator.CreateInstance(c)!).ToList();
+            var vSets = app.CreateVersionSet(configInstances.Select(c => c.Version));
+
+            foreach (var instance in configInstances)
+            {
+                var group = app.CreateGroup(vSets, instance);
+                instance.Map(group);
+                groupList.Add(group);
+            }
+
+            return groupList;
         }
-
-        return groupList;
     }
-
-    #endregion
 }

@@ -1,3 +1,7 @@
+using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Extensions;
+using SlimBus.AppServices.Profiles.V1.Specs;
+
 namespace SlimBus.AppServices.Profiles.V1.Actions;
 
 public record DeleteProfileCommand : BaseCommand, Fluents.Requests.INoResponse
@@ -9,7 +13,7 @@ public record DeleteProfileCommand : BaseCommand, Fluents.Requests.INoResponse
     #endregion
 }
 
-internal sealed class DeleteProfileCommandHandler(ICustomerProfileRepo repository)
+internal sealed class DeleteProfileCommandHandler(IRepositorySpec repository)
     : Fluents.Requests.IHandler<DeleteProfileCommand>
 {
     #region Methods
@@ -22,7 +26,7 @@ internal sealed class DeleteProfileCommandHandler(ICustomerProfileRepo repositor
                 .WithError(new Error("The Id is in valid.") { Metadata = { ["field"] = nameof(request.Id) } });
         }
 
-        var profile = await repository.FindAsync(request.Id, cancellationToken);
+        var profile = await repository.FirstOrDefaultAsync(new SpecGetCustomerProfile(request.Id), cancellationToken);
 
         if (profile == null)
         {

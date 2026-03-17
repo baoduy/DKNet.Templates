@@ -2,19 +2,12 @@
 
 namespace Microsoft.AspNetCore.Builder;
 
-public interface IEndpointConfig
+internal interface IEndpointConfig
 {
-    #region Properties
-
+    string? AuthPolicy => null;
+    string GroupEndpoint { get; }
+    string Tag => GroupEndpoint.Replace("/", "-", StringComparison.OrdinalIgnoreCase).TrimStart('-');
     int Version { get; }
 
-    string GroupEndpoint { get; }
-
-    #endregion
-
-    #region Methods
-
     void Map(RouteGroupBuilder group);
-
-    #endregion
 }

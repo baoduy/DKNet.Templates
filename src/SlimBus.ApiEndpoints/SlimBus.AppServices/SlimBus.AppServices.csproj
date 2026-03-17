@@ -5,9 +5,40 @@
         <ImplicitUsings>true</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <!-- This is required for DKNet.EfCore.DtoGenerator to emit generated files -->
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+        <!-- Force analyzer to reload on every build to avoid caching issues -->
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     </PropertyGroup>
 
+    <!-- Custom target to copy generated DTOs to project/GeneratedDtos folder, flattening structure and preserving names/extensions -->
+    <Target Name="CopyGeneratedDtosToOutputFolder" AfterTargets="CoreCompile" Condition="Exists('$(CompilerGeneratedFilesOutputPath)')">
+        <ItemGroup>
+            <GeneratedDtoFiles Include="$(CompilerGeneratedFilesOutputPath)\**\*.g.cs"/>
+        </ItemGroup>
+        <MakeDir Directories="$(ProjectDir)GeneratedDtos" Condition="'@(GeneratedDtoFiles)' != ''"/>
+        <Copy SourceFiles="@(GeneratedDtoFiles)" DestinationFiles="$(ProjectDir)GeneratedDtos\%(Filename)%(Extension)" SkipUnchangedFiles="false" OverwriteReadOnlyFiles="true" Condition="'@(GeneratedDtoFiles)' != ''"/>
+        <Message Text="Copied %(Filename)%(Extension) to $(ProjectDir)GeneratedDtos" Importance="high" Condition="'@(GeneratedDtoFiles)' != ''"/>
+    </Target>
+
+    <!-- Exclude generated DTOs from compilation, but keep them visible in Solution Explorer -->
     <ItemGroup>
+        <Compile Remove="GeneratedDtos\**\*.cs"/>
+        <None Include="GeneratedDtos\**\*.cs"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="DKNet.EfCore.DtoGenerator" OutputItemType="Analyzer" ReferenceOutputAssembly="true">
+        </PackageReference>
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="DKNet.EfCore.DtoGenerator">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="DKNet.EfCore.Specifications" />
+        <PackageReference Include="FluentValidation" />
         <PackageReference Include="ForEvolve.FluentValidation.AspNetCore.Http"/>
         <PackageReference Include="Mapster.DependencyInjection"/>
         <PackageReference Include="SlimMessageBus"/>
@@ -43,5 +74,9 @@
         <Compile Update="Features\Profiles\V1\Events\ProfileCreatedEvent.cs">
             <DependentUpon>ProfileCreatedEventHandlers.cs</DependentUpon>
         </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Profiles\V1\Queries\" />
     </ItemGroup>
 </Project>

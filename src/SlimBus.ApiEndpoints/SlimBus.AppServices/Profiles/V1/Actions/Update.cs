@@ -1,16 +1,40 @@
-﻿namespace SlimBus.AppServices.Profiles.V1.Actions;
+﻿using System.ComponentModel;
+using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Extensions;
+using SlimBus.AppServices.Profiles.V1.Specs;
 
+namespace SlimBus.AppServices.Profiles.V1.Actions;
+
+/// <summary>
+/// Command that updates editable fields for an existing customer profile.
+/// </summary>
 [MapsTo(typeof(CustomerProfile))]
-public record UpdateProfileCommand : BaseCommand, Fluents.Requests.IWitResponse<ProfileResult>
+public record UpdateProfileCommand : BaseCommand, Fluents.Requests.IWitResponse<CustomerProfileDto>
 {
     #region Properties
 
+    /// <summary>
+    /// Gets the unique identifier of the profile to update.
+    /// </summary>
+    [Description("The unique identifier of the profile to update.")]
     public required Guid Id { get; init; }
 
+    /// <summary>
+    /// Gets the email value to update. When <see langword="null"/>, the current value is preserved.
+    /// </summary>
+    [Description("The email value to update. Leave null to keep the current value.")]
     public string? Email { get; init; }
 
+    /// <summary>
+    /// Gets the display name to update. When <see langword="null"/>, the current value is preserved.
+    /// </summary>
+    [Description("The display name to update. Leave null to keep the current value.")]
     public string? Name { get; init; }
 
+    /// <summary>
+    /// Gets the phone value to update. When <see langword="null"/>, the current value is preserved.
+    /// </summary>
+    [Description("The phone value to update. Leave null to keep the current value.")]
     public string? Phone { get; init; }
 
     #endregion
@@ -18,24 +42,24 @@ public record UpdateProfileCommand : BaseCommand, Fluents.Requests.IWitResponse<
 
 internal sealed class UpdateProfileCommandHandler(
     IMapper mapper,
-    ICustomerProfileRepo repo) : Fluents.Requests.IHandler<UpdateProfileCommand, ProfileResult>
+    IRepositorySpec repo) : Fluents.Requests.IHandler<UpdateProfileCommand, CustomerProfileDto>
 {
     #region Methods
 
-    public async Task<IResult<ProfileResult>> OnHandle(
+    public async Task<IResult<CustomerProfileDto>> OnHandle(
         UpdateProfileCommand request,
         CancellationToken cancellationToken)
     {
         if (request.Id == Guid.Empty)
         {
-            return Result.Fail<ProfileResult>("The Id is in valid.");
+            return Result.Fail<CustomerProfileDto>("The Id is in valid.");
         }
 
-        var profile = await repo.FindAsync(request.Id, cancellationToken);
+        var profile = await repo.FirstOrDefaultAsync(new SpecGetCustomerProfile(request.Id), cancellationToken);
 
         if (profile == null)
         {
-            return Result.Fail<ProfileResult>($"The Profile {request.Id} is not found.");
+            return Result.Fail<CustomerProfileDto>($"The Profile {request.Id} is not found.");
         }
 
         //Update Here
@@ -44,7 +68,7 @@ internal sealed class UpdateProfileCommandHandler(
         //Add Event
 
         //Return result
-        return Result.Ok(mapper.Map<ProfileResult>(profile));
+        return Result.Ok(mapper.Map<CustomerProfileDto>(profile));
     }
 
     #endregion

@@ -1,12 +1,15 @@
 ﻿using System.ComponentModel;
 using System.Data;
+using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Extensions;
+using SlimBus.AppServices.Profiles.V1.Specs;
 
 // ReSharper disable UnusedType.Global
 
 namespace SlimBus.AppServices.Profiles.V1.Actions;
 
 [MapsTo(typeof(CustomerProfile))]
-public sealed record CreateProfileCommand : BaseCommand, Fluents.Requests.IWitResponse<ProfileResult>
+public sealed record CreateProfileCommand : BaseCommand, Fluents.Requests.IWitResponse<CustomerProfileDto>
 {
     #region Properties
 
@@ -39,14 +42,14 @@ internal sealed class CreateProfileCommandValidator : AbstractValidator<CreatePr
 }
 
 internal sealed class CreateProfileCommandHandler(
-    ICustomerProfileRepo repository,
+    IRepositorySpec repository,
     IMembershipService membershipProvider,
     IMapper mapper)
-    : Fluents.Requests.IHandler<CreateProfileCommand, ProfileResult>
+    : Fluents.Requests.IHandler<CreateProfileCommand, CustomerProfileDto>
 {
     #region Methods
 
-    public async Task<IResult<ProfileResult>> OnHandle(
+    public async Task<IResult<CustomerProfileDto>> OnHandle(
         CreateProfileCommand request,
         CancellationToken cancellationToken)
     {
@@ -56,9 +59,9 @@ internal sealed class CreateProfileCommandHandler(
         }
 
         //Check duplicate
-        if (await repository.IsEmailExistAsync(request.Email))
+        if (await repository.AnyAsync(new SpecGetCustomerProfile(byEmail: request.Email), cancellationToken: cancellationToken))
         {
-            return Result.Fail<ProfileResult>($"Email {request.Email} is already existed.");
+            return Result.Fail<CustomerProfileDto>($"Email {request.Email} is already existed.");
         }
 
         var profile = mapper.Map<CustomerProfile>(request);
@@ -75,7 +78,7 @@ internal sealed class CreateProfileCommandHandler(
         profile.AddEvent(new ProfileCreatedEvent(profile.Id, profile.Name));
 
         //NOTE this will return a lazy mapping result and only map profile to ProfileBasicView after SaveChanges is called.
-        return mapper.ResultOf<ProfileResult>(profile);
+        return mapper.ResultOf<CustomerProfileDto>(profile);
     }
 
     #endregion

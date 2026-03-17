@@ -7,6 +7,10 @@ using SlimBus.Infra.Services;
 
 namespace SlimBus.Infra.Extensions;
 
+/// <summary>
+/// Registers infrastructure-layer services, repository/service implementations,
+/// and database context configuration for the application.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public static class InfraSetup
 {
@@ -27,10 +31,15 @@ public static class InfraSetup
         return services;
     }
 
+    /// <summary>
+    /// Adds infrastructure dependencies, including scanned implementations,
+    /// domain event publishing, and the EF Core <see cref="CoreDbContext"/> setup.
+    /// </summary>
+    /// <param name="service">The service collection used to register dependencies.</param>
+    /// <returns>The same <see cref="IServiceCollection"/> instance for chaining.</returns>
     public static IServiceCollection AddInfraServices(this IServiceCollection service)
     {
         service
-            .AddGenericRepositories<CoreDbContext>()
             .AddImplementations()
             .AddEventPublisher<CoreDbContext, EventPublisher>()
             .AddDbContextWithHook<CoreDbContext>((sp, builder) =>
@@ -46,6 +55,13 @@ public static class InfraSetup
         return service;
     }
 
+    /// <summary>
+    /// Configures SQL Server options, migration metadata, query behavior, and retry settings
+    /// for the current <see cref="DbContextOptionsBuilder"/>.
+    /// </summary>
+    /// <param name="builder">The options builder to configure.</param>
+    /// <param name="connectionString">The SQL Server connection string.</param>
+    /// <returns>The configured <see cref="DbContextOptionsBuilder"/>.</returns>
     internal static DbContextOptionsBuilder UseSqlWithMigration(
         this DbContextOptionsBuilder builder,
         string connectionString)

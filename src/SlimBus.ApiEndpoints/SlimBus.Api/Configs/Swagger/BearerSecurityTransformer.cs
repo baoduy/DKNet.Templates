@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace SlimBus.Api.Configs.Swagger;
 
@@ -11,16 +11,12 @@ internal sealed class BearerSecurityTransformer(IAuthenticationSchemeProvider au
 {
     #region Methods
 
-    public async Task TransformAsync(
-        OpenApiDocument document,
-        OpenApiDocumentTransformerContext context,
+    public async Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context,
         CancellationToken cancellationToken)
     {
-        var authenticationSchemes = await authenticationSchemeProvider.GetAllSchemesAsync();
-        if (authenticationSchemes.Any(authScheme => string.Equals(
-                authScheme.Name,
-                JwtBearerDefaults.AuthenticationScheme,
-                StringComparison.OrdinalIgnoreCase)))
+        var authenticationSchemes = await authenticationSchemeProvider.GetAllSchemesAsync().ConfigureAwait(false);
+        if (authenticationSchemes.Any(authScheme => string.Equals(authScheme.Name,
+                JwtBearerDefaults.AuthenticationScheme, StringComparison.OrdinalIgnoreCase)))
         {
             var securityScheme = new OpenApiSecurityScheme
             {
@@ -32,15 +28,23 @@ internal sealed class BearerSecurityTransformer(IAuthenticationSchemeProvider au
             };
 
             document.Components ??= new OpenApiComponents();
+            document.Components.SecuritySchemes ??=
+                new Dictionary<string, IOpenApiSecurityScheme>(StringComparer.OrdinalIgnoreCase);
             document.Components.SecuritySchemes[JwtBearerDefaults.AuthenticationScheme] = securityScheme;
 
             var securityRequirement = new OpenApiSecurityRequirement
             {
-                { securityScheme, [] }
+                {
+                    new OpenApiSecuritySchemeReference(JwtBearerDefaults.AuthenticationScheme, document),
+                    []
+                }
             };
 
-            foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations.Values))
+            foreach (var operation in document.Paths.Values
+                         .SelectMany(path => path.Operations ?? [])
+                         .Select(pair => pair.Value))
             {
+                operation.Security ??= [];
                 operation.Security.Add(securityRequirement);
             }
         }
