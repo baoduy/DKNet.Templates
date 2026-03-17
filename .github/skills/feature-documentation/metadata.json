@@ -1,5 +1,5 @@
 {
-    "id": "feature-documentation",
+    "id": "dknet-feature-documentation",
     "version": "1.0.0",
     "title": "Feature Documentation with Diagrams",
     "category": "Documentation & Knowledge Management",
@@ -37,9 +37,9 @@
     },
     "outputs_saved_to": "docs/features/<feature-name>/",
     "related_skills": [
-        "domain-modeling",
-        "crud-operations",
-        "api-endpoints"
+        "dknet-domain-modeling",
+        "dknet-crud-operations",
+        "dknet-api-endpoints"
     ],
     "tags": [
         "documentation",

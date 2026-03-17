@@ -95,8 +95,8 @@ PARALLEL EXECUTION OPPORTUNITIES:
 
 #### Task Setup & Folder Structure
 
-- [ ] **T001** Create `.github/copilot/skills/` folder structure and base files
-  - **File Path**: `.github/copilot/skills/`
+- [ ] **T001** Create `.github/skills/` folder structure and base files
+  - **File Path**: `.github/skills/`
   - **Description**: Create root directory with `_templates/`, `domain-modeling/`, `crud-operations/`, `api-endpoints/` subfolders. Each skill folder shall contain `templates/`, `examples/`, and reserved slots for `skill.md`, `metadata.json`, `checklist.md`.
   - **Acceptance Criteria**:
     - [✓] Folder structure matches project plan exactly
@@ -106,7 +106,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
   - **Dependencies**: None
 
 - [ ] **T002** Create `CONVENTIONS.md` — skill development standards and maintenance rules
-  - **File Path**: `.github/copilot/skills/CONVENTIONS.md`
+  - **File Path**: `.github/skills/CONVENTIONS.md`
   - **Description**: Document naming conventions, folder structure rules, metadata schema requirements, mandatory file checklist, and the skill lifecycle (draft → validation → published → deprecated). Include examples of correct vs. incorrect skill structure.
   - **Content Sections**:
     - Folder naming convention (kebab-case, e.g., `domain-modeling`)
@@ -123,7 +123,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
   - **Dependencies**: T001
 
 - [ ] **T003** Create `skill-schema.json` validation schema (JSON Schema draft-07)
-  - **File Path**: `.github/copilot/skills/_templates/skill-schema.json`
+  - **File Path**: `.github/skills/_templates/skill-schema.json`
   - **Description**: Define JSON Schema that validates the structure of `metadata.json` for any skill. Schema shall enforce: required fields (id, title, category, prerequisites, inputs, outputs, successCriteria, nonGoals, examples path, testPath), type constraints, and relationships.
   - **Schema Properties**:
     - `id` (string, kebab-case): Unique identifier
@@ -800,7 +800,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
   - **Metadata Content** (per skill; example for domain-modeling):
     ```json
     {
-      "id": "domain-modeling",
+      "id": "dknet-domain-modeling",
       "title": "EFCore Mapping Configuration Skill",
       "category": "Persistence & Entities",
       "difficulty": "Intermediate",

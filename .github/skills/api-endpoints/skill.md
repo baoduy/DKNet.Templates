@@ -1,3 +1,8 @@
+---
+name: dknet-api-endpoints
+description: Expose CRUD operations via REST endpoints with OpenAPI documentation using the fluent endpoint mapper pattern. Use this when creating HTTP API endpoints.
+---
+
 # Skill: REST API Endpoints with Fluent Mapper Pattern
 
 **Duration**: 30–40 minutes | **Difficulty**: Intermediate | **Category**: REST API & Orchestration

@@ -1,3 +1,8 @@
+---
+name: dknet-domain-modeling
+description: Create domain entities with EF Core mappers and proper validation. Use this when adding new database entities to the application.
+---
+
 # Skill: Domain Modeling with EFCore Mapping Configuration
 
 **Duration**: 20–30 minutes | **Difficulty**: Intermediate | **Category**: Persistence & Entities

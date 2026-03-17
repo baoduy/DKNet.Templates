@@ -1,3 +1,8 @@
+---
+name: dknet-crud-operations
+description: Build CRUD operations with business logic, validators, repositories, and domain events. Use this when adding Create/Read/Update/Delete functionality to entities.
+---
+
 # Skill: CRUD Operations Implementation
 
 **Duration**: 45–60 minutes | **Difficulty**: Intermediate | **Category**: Business Logic & Commands

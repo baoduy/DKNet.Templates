@@ -1,5 +1,5 @@
 {
-    "id": "domain-modeling",
+    "id": "dknet-domain-modeling",
     "version": "1.0.0",
     "title": "Domain Modeling with EFCore Mapping Configuration",
     "category": "Persistence & Entities",

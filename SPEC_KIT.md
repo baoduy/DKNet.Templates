@@ -3,8 +3,13 @@
 ## Initialize and Verify
 
 ```bash
+# 1. install
+uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
+
+# 2. setup
 specify init . --ai copilot
-# Check installed tools
+
+# 3. Check installed tools
 specify check
 ```
 

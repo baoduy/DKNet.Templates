@@ -1,3 +1,8 @@
+---
+name: dknet-feature-documentation
+description: Generate structured technical documentation and Mermaid architecture diagrams for completed features. Use this when documenting implemented features with README, architecture diagrams, and API references.
+---
+
 # Skill: Feature Documentation with Diagrams
 
 **Duration**: 30–60 minutes | **Difficulty**: Beginner | **Category**: Documentation & Knowledge Management

@@ -18,7 +18,7 @@ All skills are located under `.github/skills/` with a strict naming and organiza
 ### Naming Convention
 
 - **Skill folders**: kebab-case (lowercase, hyphens as word separators)
-  - Examples: `domain-modeling`, `crud-operations`, `api-endpoints`
+  - Examples: `dknet-domain-modeling`, `dknet-crud-operations`, `dknet-api-endpoints`
   - ❌ Avoid: `DomainModeling`, `domain_modeling`, `DOMAIN_MODELING`
 
 - **File names**: lowercase with hyphens for multi-word
@@ -30,7 +30,7 @@ All skills are located under `.github/skills/` with a strict naming and organiza
 Each skill must follow this directory layout:
 
 ```
-.github/copilot/skills/
+.github/skills/
 ├── domain-modeling/                      ← Skill folder (kebab-case)
 │   ├── skill.md                         ← Main skill guidance (REQUIRED)
 │   ├── metadata.json                    ← Machine-readable discovery (REQUIRED)
@@ -79,7 +79,7 @@ Every skill's `metadata.json` MUST include these fields:
 
 ```json
 {
-  "id": "domain-modeling",
+  "id": "dknet-domain-modeling",
   "title": "Domain Modeling with EFCore Mapping Configuration",
   "category": "Persistence & Entities",
   "difficulty": "Intermediate",
@@ -103,7 +103,7 @@ Every skill's `metadata.json` MUST include these fields:
     "Testing the entity (see CRUD Operations Skill for business logic tests)",
     "Building API endpoints (see API Endpoints Skill for that)"
   ],
-  "relatedSkills": ["crud-operations", "api-endpoints"],
+  "relatedSkills": ["dknet-crud-operations", "dknet-api-endpoints"],
   "folderPath": ".github/skills/domain-modeling",
   "examplesPath": ".github/skills/domain-modeling/examples/customer-profile-example",
   "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs"
@@ -216,8 +216,8 @@ See [customer-profile-example/](./examples/customer-profile-example/) for a comp
 
 Once your entity + mapper is complete:
 1. **Test & Validate**: Run the [validation checklist](./checklist.md)
-2. **Add Business Logic**: Follow the [CRUD Operations Skill](../crud-operations/skill.md)
-3. **Expose via API**: Follow the [API Endpoints Skill](../api-endpoints/skill.md)
+2. **Add Business Logic**: Follow the [CRUD Operations Skill](../crud-operations/skill.md) (skill ID: `dknet-crud-operations`)
+3. **Expose via API**: Follow the [API Endpoints Skill](../api-endpoints/skill.md) (skill ID: `dknet-api-endpoints`)
 ```
 
 ---
@@ -328,7 +328,7 @@ Developers browse `.github/skills/CATALOG.md` and follow guides directly.
 
 ### Path 2: GitHub Copilot Chat (future)
 ```
-@copilot /skill domain-modeling
+@copilot /skill dknet-domain-modeling
 
 "I need to create a new entity called Order. Guide me through it."
 ```
@@ -336,7 +336,7 @@ Developers browse `.github/skills/CATALOG.md` and follow guides directly.
 ### Path 3: CLI Tool (future)
 ```bash
 copilot-skills list
-copilot-skills show domain-modeling
+copilot-skills show dknet-domain-modeling
 copilot-skills search "add entity"
 ```
 

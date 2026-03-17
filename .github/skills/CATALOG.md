@@ -8,7 +8,7 @@
 
 ### 1. Domain Modeling with EF Core
 
-- **ID**: `domain-modeling`
+- **ID**: `dknet-domain-modeling`
 - **Category**: Persistence & Entities
 - **Difficulty**: Intermediate
 - **Duration**: 20–30 minutes
@@ -21,8 +21,8 @@
   - Mapper auto-discovered by Scrutor
   - Migration applies cleanly
   - Zero compiler warnings
-- **Related Skills**: crud-operations, api-endpoints
-- **Folder**: [`.github/copilot/skills/domain-modeling/`](./domain-modeling/)
+- **Related Skills**: dknet-crud-operations, dknet-api-endpoints
+- **Folder**: [`.github/skills/domain-modeling/`](./domain-modeling/)
 - **Example**: [CustomerProfile entity example](./domain-modeling/examples/customer-profile-example/)
 
 **Start Here**: Read [Domain Modeling skill.md](./domain-modeling/skill.md)
@@ -31,7 +31,7 @@
 
 ### 2. CRUD Operations
 
-- **ID**: `crud-operations`
+- **ID**: `dknet-crud-operations`
 - **Category**: Business Logic & Commands
 - **Difficulty**: Intermediate
 - **Duration**: 45–60 minutes
@@ -45,7 +45,7 @@
   - Domain events published after mutations
   - All validators auto-discovered
   - Zero compiler warnings
-- **Related Skills**: domain-modeling, api-endpoints
+- **Related Skills**: dknet-domain-modeling, dknet-api-endpoints
 - **Folder**: [`.github/skills/crud-operations/`](./crud-operations/)
 - **Example**: [CustomerProfile CRUD example](./crud-operations/examples/customer-profile-crud/)
 
@@ -55,7 +55,7 @@
 
 ### 3. API REST Endpoints
 
-- **ID**: `api-endpoints`
+- **ID**: `dknet-api-endpoints`
 - **Category**: REST API & Orchestration
 - **Difficulty**: Intermediate
 - **Duration**: 30–40 minutes
@@ -69,7 +69,7 @@
   - Request DTOs have validators
   - OpenAPI/Swagger documentation complete
   - Status codes correct (201, 204, 404, etc.)
-- **Related Skills**: crud-operations, domain-modeling
+- **Related Skills**: dknet-crud-operations, dknet-domain-modeling
 - **Folder**: [`.github/skills/api-endpoints/`](./api-endpoints/)
 - **Example**: [Profile V1 Endpoints example](./api-endpoints/examples/profile-endpoints-example/)
 
@@ -79,7 +79,7 @@
 
 ### 4. Feature Documentation with Diagrams
 
-- **ID**: `feature-documentation`
+- **ID**: `dknet-feature-documentation`
 - **Category**: Documentation & Knowledge Management
 - **Difficulty**: Beginner
 - **Duration**: 30–60 minutes
@@ -104,44 +104,44 @@
 ## Skills by Category
 
 ### Persistence & Entities
-- [Domain Modeling](./domain-modeling/skill.md) - 20-30 min
+- [dknet-domain-modeling](./domain-modeling/skill.md) - 20-30 min
 
 ### Business Logic & Commands
-- [CRUD Operations](./crud-operations/skill.md) - 45-60 min
+- [dknet-crud-operations](./crud-operations/skill.md) - 45-60 min
 
 ### REST API & Orchestration
-- [API REST Endpoints](./api-endpoints/skill.md) - 30-40 min
+- [dknet-api-endpoints](./api-endpoints/skill.md) - 30-40 min
 
 ### Documentation & Knowledge Management
-- [Feature Documentation with Diagrams](./feature-documentation/skill.md) - 30-60 min
+- [dknet-feature-documentation](./feature-documentation/skill.md) - 30-60 min
 
 ---
 
 ## Skills by Difficulty
 
 ### Beginner
-- Feature Documentation with Diagrams (30-60 min)
+- dknet-feature-documentation (30-60 min)
 
 ### Intermediate
-- Domain Modeling (20-30 min)
-- CRUD Operations (45-60 min)
-- API REST Endpoints (30-40 min)
+- dknet-domain-modeling (20-30 min)
+- dknet-crud-operations (45-60 min)
+- dknet-api-endpoints (30-40 min)
 
 ---
 
 ## Recommended Learning Path
 
 ```
-1. Domain Modeling Skill (20-30 min)
+1. dknet-domain-modeling (20-30 min)
    └─ Learn to create entities with EF Core mappers
    
-2. CRUD Operations Skill (45-60 min)
+2. dknet-crud-operations (45-60 min)
    └─ Add business logic, validators, repositories, events
    
-3. API Endpoints Skill (30-40 min)
+3. dknet-api-endpoints (30-40 min)
    └─ Expose functionality via REST API with documentation
 
-4. Feature Documentation Skill (30-60 min)
+4. dknet-feature-documentation (30-60 min)
    └─ Generate README, architecture diagrams, API reference, data model, and events catalog
 ```
 
@@ -212,7 +212,7 @@ All skills use machine-readable **metadata.json** files for automated discovery:
 
 ```json
 {
-  "id": "domain-modeling",
+  "id": "dknet-domain-modeling",
   "title": "Domain Modeling with EF Core",
   "category": "Persistence & Entities",
   "difficulty": "Intermediate",

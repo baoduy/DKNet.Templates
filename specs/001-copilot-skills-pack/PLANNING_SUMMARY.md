@@ -24,7 +24,7 @@ This document serves as the comprehensive implementation plan for the Copilot Sk
 
 ## 🎯 Key Design Decisions
 
-### 1. Location: `.github/copilot/skills/`
+### 1. Location: `.github/skills/`
 - **Why**: GitHub's conventional location for integrations (aligns with `.github/workflows/`, `.github/ISSUE_TEMPLATE/`)
 - **Benefit**: Discoverable, version-controlled, offline-accessible
 
@@ -57,7 +57,7 @@ This document serves as the comprehensive implementation plan for the Copilot Sk
 ## 📁 Complete Project Structure
 
 ```
-.github/copilot/skills/              ← Skills root
+.github/skills/              ← Skills root
 ├── README.md                         ← Catalog guide + quick-start
 ├── CATALOG.md                        ← Searchable index of all skills
 ├── CONVENTIONS.md                    ← Maintenance rules (for skill authors)
@@ -131,7 +131,7 @@ specs/001-copilot-skills-pack/contracts/
 ## 📚 Skills Specifications
 
 ### Skill 1: Domain Modeling with EFCore Mapping Configuration
-- **Folder**: `.github/copilot/skills/domain-modeling/`
+- **Folder**: `.github/skills/domain-modeling/`
 - **Duration**: 20-30 minutes
 - **What it teaches**: Creating domain entities and EF Core mappings using auto-configuration
 - **Outputs**: Entity class + Mapper + Migration script
@@ -139,7 +139,7 @@ specs/001-copilot-skills-pack/contracts/
 - **Example**: CustomerProfile + CustomerProfileMapper (fully worked, tested)
 
 ### Skill 2: CRUD Operations Implementation  
-- **Folder**: `.github/copilot/skills/crud-operations/`
+- **Folder**: `.github/skills/crud-operations/`
 - **Duration**: 45-60 minutes
 - **What it teaches**: Building Create/Read/Update/Delete with commands, repositories, domain events
 - **Outputs**: Commands + handlers, Repository, Domain events, Unit tests
@@ -147,7 +147,7 @@ specs/001-copilot-skills-pack/contracts/
 - **Example**: CustomerProfile CRUD (all four operations fully worked, tested)
 
 ### Skill 3: API REST Endpoints Configuration
-- **Folder**: `.github/copilot/skills/api-endpoints/`
+- **Folder**: `.github/skills/api-endpoints/`
 - **Duration**: 30-40 minutes
 - **What it teaches**: Wiring commands/queries to HTTP endpoints, OpenAPI documentation
 - **Outputs**: Endpoints + DTOs + OpenAPI annotations + Integration tests
@@ -168,7 +168,7 @@ specs/001-copilot-skills-pack/contracts/
    - Phase 0-2 planning sections
 
 2. **research.md** ✅  
-   - Folder structure decision (`.github/copilot/skills/`)
+   - Folder structure decision (`.github/skills/`)
    - Metadata format (JSON + checklist.md)
    - Skill scope (3 foundational skills)
    - Testing approach (worked examples + tests)
@@ -262,9 +262,9 @@ The following tasks remain for Phase 2 (run `/speckit.tasks` command):
 - [ ] Create domain-modeling/metadata.json (and repeat)
 
 ### Task Category 2: Catalog & Discovery (~1 week)
-- [ ] Create .github/copilot/skills/README.md (quick-start guide)
-- [ ] Create .github/copilot/skills/CATALOG.md (searchable index)
-- [ ] Create .github/copilot/skills/CONVENTIONS.md (maintenance rules)
+- [ ] Create .github/skills/README.md (quick-start guide)
+- [ ] Create .github/skills/CATALOG.md (searchable index)
+- [ ] Create .github/skills/CONVENTIONS.md (maintenance rules)
 - [ ] Implement generate-catalog.sh (auto-index from metadata.json)
 - [ ] Create .github/workflows/validate-skills.yaml (CI validation)
 
