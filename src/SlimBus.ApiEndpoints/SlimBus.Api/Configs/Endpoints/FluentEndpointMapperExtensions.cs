@@ -23,7 +23,7 @@ internal static class FluentsEndpointMapperExtensions
     /// </summary>
     /// <param name="routeBuilder">The route handler builder.</param>
     /// <returns>The route handler builder with common error responses.</returns>
-    internal static RouteHandlerBuilder ProducesCommons(this RouteHandlerBuilder routeBuilder)
+    private static RouteHandlerBuilder ProducesCommons(this RouteHandlerBuilder routeBuilder)
     {
         return routeBuilder
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
@@ -37,7 +37,6 @@ internal static class FluentsEndpointMapperExtensions
 
     #endregion
 
-    /// <param name="app">The route group builder.</param>
     extension(RouteGroupBuilder app)
     {
         /// <summary>
@@ -221,11 +220,7 @@ internal static class FluentsEndpointMapperExtensions
                 return rs.Response();
             }).ProducesCommons();
         }
-    }
 
-    /// <param name="app"></param>
-    extension(RouteGroupBuilder app)
-    {
         /// <summary>
         ///     Gets a paged list of entities endpoint.
         /// </summary>

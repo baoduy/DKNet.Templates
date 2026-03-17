@@ -1,7 +1,7 @@
 using SlimBus.Api.Configs.Idempotency;
-using SlimBus.AppServices.Profiles.V1;
-using SlimBus.AppServices.Profiles.V1.Actions;
+using SlimBus.AppServices.CustomerProfiles.V1.Actions;
 using SlimBus.Domains.Features.Profiles.Entities;
+using CustomerProfileDto = SlimBus.AppServices.CustomerProfiles.V1.CustomerProfileDto;
 
 namespace SlimBus.Api.ApiEndpoints;
 
@@ -24,16 +24,16 @@ internal sealed class ProfileV1Endpoint : IEndpointConfig
         group.MapGetById<CustomerProfile,CustomerProfileDto>("{id:guid}")
             .WithDescription("Get profile by id");
 
-        group.MapPost<CreateProfileCommand, CustomerProfileDto>("")
+        group.MapPost<CreateProfileRequest, CustomerProfileDto>("")
             .AddIdempotencyFilter()
             .WithDescription(
                 "Create profile. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
                 "X-Idempotency-Key: {IdempotencyKey} <br/>");
 
-        group.MapPut<UpdateProfileCommand, CustomerProfileDto>("{id:guid}")
+        group.MapPut<UpdateProfileRequest, CustomerProfileDto>("{id:guid}")
             .WithDescription("Update profile by id");
 
-        group.MapDelete<DeleteProfileCommand>("{id:guid}")
+        group.MapDelete<DeleteProfileRequest>("{id:guid}")
             .WithDescription("Delete profile by id");
     }
 

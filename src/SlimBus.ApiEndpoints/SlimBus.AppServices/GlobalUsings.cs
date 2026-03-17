@@ -2,7 +2,6 @@ global using DKNet.SlimBus.Extensions;
 global using System.ComponentModel.DataAnnotations;
 global using System.Text.Json.Serialization;
 global using FluentResults;
-global using SlimBus.AppServices.Profiles.V1.Events;
 global using SlimBus.Domains.Services;
 global using Microsoft.Extensions.DependencyInjection;
 global using FluentValidation;

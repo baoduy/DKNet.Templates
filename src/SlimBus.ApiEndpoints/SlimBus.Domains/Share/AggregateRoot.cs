@@ -12,7 +12,7 @@ public abstract class AggregateRoot : DomainEntity
     protected AggregateRoot(Guid id, string createdBy, DateTimeOffset? createdOn = null)
         : base(id,createdBy, createdOn)
     {
-        this.SetCreatedBy(createdBy, createdOn);
+        SetCreatedBy(createdBy, createdOn);
     }
 
     /// <inheritdoc />

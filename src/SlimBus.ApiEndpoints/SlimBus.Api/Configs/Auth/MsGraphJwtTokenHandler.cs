@@ -21,7 +21,7 @@ internal class MsGraphJwtTokenHandler : JwtSecurityTokenHandler
     /// <returns>The JWT security token read from the provided token string.</returns>
     protected override JwtSecurityToken
         ValidateSignature(string token, TokenValidationParameters validationParameters) =>
-        this.ReadJwtToken(token);
+        ReadJwtToken(token);
 
     /// <summary>
     ///     Asynchronously validates the JWT token.
@@ -34,7 +34,7 @@ internal class MsGraphJwtTokenHandler : JwtSecurityTokenHandler
         TokenValidationParameters validationParameters)
     {
         // Override the default signature validation process with the custom method.
-        validationParameters.SignatureValidator = this.ValidateSignature;
+        validationParameters.SignatureValidator = ValidateSignature;
 
         // Disable issuer signing key validation.
         validationParameters.ValidateIssuerSigningKey = false;

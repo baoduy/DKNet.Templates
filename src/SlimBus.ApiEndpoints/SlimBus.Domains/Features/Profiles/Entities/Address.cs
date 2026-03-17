@@ -10,11 +10,11 @@ public class Address
 
     public Address(string line, string state, string city, string country, string postal)
     {
-        this.Line = line;
-        this.State = state;
-        this.City = city;
-        this.Country = country;
-        this.Postal = postal;
+        Line = line;
+        State = state;
+        City = city;
+        Country = country;
+        Postal = postal;
     }
 
     internal Address()

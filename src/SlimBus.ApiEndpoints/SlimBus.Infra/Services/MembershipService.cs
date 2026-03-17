@@ -1,4 +1,6 @@
-﻿namespace SlimBus.Infra.Services;
+﻿using SlimBus.Infra.Contexts;
 
-internal sealed class MembershipService(DbContext dbContext)
+namespace SlimBus.Infra.Services;
+
+internal sealed class MembershipService(CoreDbContext dbContext)
     : SequenceService(dbContext, Sequences.Membership), IMembershipService;

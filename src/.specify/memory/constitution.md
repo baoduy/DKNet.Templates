@@ -1,50 +1,60 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# DKNet.Templates Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Layered Boundaries Are Mandatory
+All changes SHALL preserve the dependency direction `Api -> AppServices -> Domains`, with infrastructure wiring isolated in `SlimBus.Infra`. Domain entities own mutation behavior and SHALL NOT depend on API or infrastructure concerns.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Vertical Slice Delivery Is the Default
+New features SHALL follow the existing slice pattern across Domains, Infra, AppServices, and Api. Endpoint contracts implement `IEndpointConfig`, application logic uses command/query handlers, and persistence mapping lives in Infra mappers.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Deterministic Startup and Configuration
+Application startup SHALL preserve the canonical sequence in `Program.cs`: bind `FeatureOptions`, then logging, Azure App Configuration, validation, migration check, and final app service wiring. Feature flags SHALL be sourced from `FeatureManagement` and remain strongly typed.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Eventing and Bus Safety
+Internal message handling SHALL always function through the in-memory child bus, and Azure Service Bus integration SHALL be optional and configuration-driven. Domain events SHALL be published through the infrastructure event publisher abstraction, not direct transport calls from application logic.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Quality Gates Before Merge
+Every change SHALL pass restore, build, and test gates on `src/DKNet.Templates.sln`. Production code SHALL respect centralized analyzer and warnings-as-errors policy. New behavior SHALL include tests at the appropriate level (unit and/or integration) before merge.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Additional Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- Target framework, SDK, and package versions SHALL be managed centrally via `src/global.json` and `src/Directory.Packages.props`.
+- Infrastructure services and repositories intended for scanning SHALL be `sealed` and placed in `.Repos` or `.Services` namespaces.
+- EF Core persistence SHALL use `UseAutoConfigModel` and `UseAutoDataSeeding` conventions already established in `InfraSetup`.
+- API versioning SHALL continue through endpoint groups (`/v{version}` pattern) and endpoint discovery via `IEndpointConfig` scanning.
+- `BaseCommand.ByUser` population SHALL continue through endpoint filters, not manual assignment inside handlers.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow, Review Process, Quality Gates
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Minimum local gate for a feature branch:
+
+1. `dotnet restore src/DKNet.Templates.sln`
+2. `dotnet build src/DKNet.Templates.sln -c Release`
+3. `dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage"`
+
+Review checklist:
+
+- Architecture boundaries and slice structure are preserved.
+- New endpoints are versioned and mapped through existing fluent endpoint helpers.
+- Data access and mapping changes include migration/configuration updates when required.
+- Domain events are emitted and consumed through approved bus abstractions.
+- Tests cover happy path and at least one failure/validation path for new behavior.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution is the highest-priority engineering policy for this repository. In case of conflict, this file overrides informal guidance and older README content.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Amendment rules:
+
+1. Propose amendments in a pull request that includes rationale, impacted sections, and migration steps for in-flight work.
+2. Obtain approval from at least one maintainer before merge.
+3. Update constitution version using semantic versioning: MAJOR for principle removals/redefinitions, MINOR for new principles/sections, PATCH for clarifications.
+4. Keep `.specify` templates and related guidance aligned after amendment.
+
+Compliance rules:
+
+- Every PR review SHALL verify constitution compliance explicitly.
+- Exceptions SHALL be documented in the PR with scope, risk, and follow-up remediation issue.
+
+**Version**: 1.0.0 | **Ratified**: 2026-03-17 | **Last Amended**: 2026-03-17

@@ -8,7 +8,7 @@ internal static class SwaggerConfig
 {
     #region Fields
 
-    private static readonly string[] ExcludeFromPublic = ["internal", "static", "merchants/me/apis"];
+    private static readonly string[] ExcludeFromPublic = ["internal", "static"];
 
     #endregion
 
@@ -37,8 +37,7 @@ internal static class SwaggerConfig
     {
         public IServiceCollection AddOpenApiDoc(FeatureOptions features)
         {
-            services.AddOpenApiDocVersion("full", features.RequireAuthorization, true)
-                .AddOpenApiDocVersion("public", features.RequireAuthorization);
+            services.AddOpenApiDocVersion("v1", features.RequireAuthorization, true);
 
             ConfigAdded = true;
             return services;
@@ -58,29 +57,18 @@ internal static class SwaggerConfig
                             description.RelativePath!.Contains(s, StringComparison.OrdinalIgnoreCase));
                     };
 
-                    if (enableAuthentication)
-                        c.AddDocumentTransformer<BearerSecurityTransformer>();
-                    c.AddOperationTransformer<PathParameterOperationTransformer>();
-                    c.AddSchemaTransformer<JsonStringEnumSchemaTransformer>();
-                    c.AddSchemaTransformer<ExcludeInterfaceSchemaTransformer>();
+                    // if (enableAuthentication)
+                    //     c.AddDocumentTransformer<BearerSecurityTransformer>();
+                    //c.AddOperationTransformer<PathParameterOperationTransformer>();
+                    //c.AddSchemaTransformer<JsonStringEnumSchemaTransformer>();
+                    //c.AddSchemaTransformer<ExcludeInterfaceSchemaTransformer>();
                     //c.AddSchemaTransformer<DisplayNameSchemaTransformer>();
                     //c.AddDocumentTransformer<DisplayNameSchemaDocumentTransformer>();
 
                     c.AddDocumentTransformer((doc, _, _) =>
                     {
                         doc.Info.Title = $"{SharedConsts.ApiName} API {name} Version";
-                        doc.Servers!.AddRange([
-                            new OpenApiServer
-                            {
-                                Description = "Monxa Sandbox Api",
-                                Url = "https://api.monxa.dev"
-                            },
-                            new OpenApiServer
-                            {
-                                Description = "Monxa Production Api",
-                                Url = "https://api.monxa.co"
-                            }
-                        ]);
+                        //doc.Servers!.AddRange();
 
                         var paths = new OpenApiPaths();
                         foreach (var openApiPath in doc.Paths)

@@ -14,7 +14,7 @@ internal class SetUserIdPropertyFilter(IOptions<FeatureOptions> options) : IEndp
     {
         var userName = string.Empty;
 
-        if (this._options.RequireAuthorization)
+        if (_options.RequireAuthorization)
         {
             if (context.HttpContext.User.Identity?.IsAuthenticated == true)
             {
@@ -28,7 +28,7 @@ internal class SetUserIdPropertyFilter(IOptions<FeatureOptions> options) : IEndp
 
         foreach (var a in context.Arguments)
         {
-            if (a is not BaseCommand b)
+            if (a is not RequestBase b)
             {
                 continue;
             }

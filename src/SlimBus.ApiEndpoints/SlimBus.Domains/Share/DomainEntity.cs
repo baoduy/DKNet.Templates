@@ -9,7 +9,7 @@ public abstract class DomainEntity : AuditedEntity<Guid>
     /// <inheritdoc />
     protected DomainEntity(Guid id, string createdBy, DateTimeOffset? createdOn = null) : base(id)
     {
-        this.SetCreatedBy(createdBy, createdOn);
+        SetCreatedBy(createdBy, createdOn);
     }
 
     /// <inheritdoc />

@@ -10,11 +10,11 @@ public class Company
 
     public Company(string name, string uen, string abn, string arbn, string can)
     {
-        this.Name = name;
-        this.UEN = uen;
-        this.ABN = abn;
-        this.ARBN = arbn;
-        this.CAN = can;
+        Name = name;
+        UEN = uen;
+        ABN = abn;
+        ARBN = arbn;
+        CAN = can;
     }
 
     internal Company()

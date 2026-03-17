@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using DKNet.EfCore.Extensions.Extensions;
 using DKNet.EfCore.Hooks;
+using DKNet.EfCore.Specifications;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SlimBus.Infra.Contexts;
 using SlimBus.Infra.Services;
@@ -41,6 +42,7 @@ public static class InfraSetup
     {
         service
             .AddImplementations()
+            .AddSpecRepo<CoreDbContext>()
             .AddEventPublisher<CoreDbContext, EventPublisher>()
             .AddDbContextWithHook<CoreDbContext>((sp, builder) =>
             {

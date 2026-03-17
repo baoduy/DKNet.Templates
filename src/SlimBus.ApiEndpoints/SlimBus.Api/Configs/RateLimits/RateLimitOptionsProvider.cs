@@ -27,7 +27,7 @@ internal sealed class RateLimitOptionsProvider(IOptions<RateLimitOptions> option
     public ConcurrencyLimiterOptions GetConcurrencyLimiterOptions() =>
         new()
         {
-            PermitLimit = this._option.DefaultConcurrentLimit,
+            PermitLimit = _option.DefaultConcurrentLimit,
             QueueLimit = 0,
             QueueProcessingOrder = QueueProcessingOrder.OldestFirst
         };
@@ -36,10 +36,10 @@ internal sealed class RateLimitOptionsProvider(IOptions<RateLimitOptions> option
         new()
         {
             AutoReplenishment = true,
-            PermitLimit = this._option.DefaultRequestLimit,
+            PermitLimit = _option.DefaultRequestLimit,
             QueueLimit = 0,
             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            Window = TimeSpan.FromSeconds(this._option.TimeWindowInSeconds)
+            Window = TimeSpan.FromSeconds(_option.TimeWindowInSeconds)
         };
 
     #endregion
