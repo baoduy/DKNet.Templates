@@ -1,0 +1,59 @@
+{
+    "id": "domain-modeling",
+    "version": "1.0.0",
+    "title": "Domain Modeling with EFCore Mapping Configuration",
+    "category": "Persistence & Entities",
+    "difficulty": "Intermediate",
+    "estimatedDurationMinutes": {
+        "min": 20,
+        "max": 30
+    },
+    "prerequisites": [
+        "Read AGENTS.md - Feature Vertical Slice Pattern section",
+        "Familiarity with C# classes, properties, and constructors",
+        "Understanding of database relationships (one-to-many, foreign keys)",
+        "Basic knowledge of Entity Framework Core concepts"
+    ],
+    "inputs": {
+        "description": "Domain entity specification with properties, relationships, and validation rules",
+        "items": [
+            "Entity name (PascalCase, e.g., CustomerProfile)",
+            "List of properties with C# types and required/optional designation",
+            "Relationships to other entities (if any)",
+            "Validation rules (string lengths, numeric ranges, custom rules)",
+            "Common query patterns for performance index planning"
+        ]
+    },
+    "outputs": {
+        "description": "Domain entity class and EF Core persistence mapper integrated with the application",
+        "items": [
+            "Domain entity class in SlimBus.Domains/Features/<Feature>/Entities/",
+            "EF Core mapper class in SlimBus.Infra/Features/<Feature>/Mappers/",
+            "Database migration script ready for deployment"
+        ]
+    },
+    "successCriteria": [
+        "Entity class follows class-first design with encapsulated state and mutation methods",
+        "Mapper class is sealed and auto-discoverable via Scrutor scanning",
+        "All properties correctly mapped with EF Core constraints and validation",
+        "Foreign keys and relationships configured for database integrity",
+        "Performance indexes added for common query patterns",
+        "Migration script applies without errors",
+        "Code compiles with zero warnings (warnings-as-errors enforced)"
+    ],
+    "nonGoals": [
+        "Testing the entity (see CRUD Operations Skill for business logic tests)",
+        "Building API endpoints (see API Endpoints Skill for REST exposure)",
+        "Adding domain events (covered in CRUD Operations Skill workflow)"
+    ],
+    "relatedSkills": [
+        "crud-operations",
+        "api-endpoints"
+    ],
+    "folderPath": ".github/skills/domain-modeling",
+    "examplesPath": ".github/skills/domain-modeling/examples/customer-profile-example",
+    "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs",
+    "status": "published",
+    "createdDate": "2026-03-17",
+    "lastUpdatedDate": "2026-03-17"
+}

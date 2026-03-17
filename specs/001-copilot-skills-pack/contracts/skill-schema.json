@@ -1,0 +1,190 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Copilot Skill Metadata Schema",
+    "description": "JSON schema for discovering, validating, and cataloging reusable Copilot skills in DKNet.Templates",
+    "type": "object",
+    "required": [
+        "id",
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "skillFolder",
+        "prerequisites",
+        "inputs",
+        "outputs",
+        "successCriteria",
+        "nonGoals",
+        "estimatedDuration",
+        "examplePath"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "Unique identifier for the skill (kebab-case, matches folder name)",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "examples": [
+                "domain-modeling",
+                "crud-operations",
+                "api-endpoints"
+            ]
+        },
+        "title": {
+            "type": "string",
+            "description": "Human-readable skill title (max 70 chars)",
+            "maxLength": 70,
+            "examples": [
+                "EFCore Mapping Configuration Skill",
+                "CRUD Operations Implementation Skill"
+            ]
+        },
+        "description": {
+            "type": "string",
+            "description": "One-line summary of what the skill teaches (max 160 chars)",
+            "maxLength": 160,
+            "examples": [
+                "Guide developers through creating domain entities and their EF Core persistence mappings using auto-configuration patterns",
+                "Build Create/Read/Update/Delete workflows with encapsulated domain mutations, commands, and event publishing"
+            ]
+        },
+        "category": {
+            "type": "string",
+            "description": "Category for skill discoverability and organization",
+            "enum": [
+                "Persistence & Entities",
+                "Business Logic & Commands",
+                "REST API & Orchestration",
+                "Testing & Quality",
+                "Architecture & Patterns"
+            ]
+        },
+        "difficulty": {
+            "type": "string",
+            "description": "Prerequisite knowledge level",
+            "enum": [
+                "Beginner",
+                "Beginner-Intermediate",
+                "Intermediate",
+                "Intermediate-Advanced",
+                "Advanced"
+            ]
+        },
+        "skillFolder": {
+            "type": "string",
+            "description": "Path relative to .github/copilot/skills/",
+            "examples": [
+                "domain-modeling",
+                "crud-operations",
+                "api-endpoints"
+            ]
+        },
+        "prerequisites": {
+            "type": "array",
+            "description": "Required knowledge, reading, or completed skills before using this skill",
+            "minItems": 1,
+            "items": {
+                "type": "string",
+                "examples": [
+                    "Understand DKNet.Templates vertical slice architecture (read AGENTS.md)",
+                    "Completed Domain Modeling Skill",
+                    "Familiar with BaseCommand + ISpecification patterns"
+                ]
+            }
+        },
+        "inputs": {
+            "type": "object",
+            "description": "What information developers must provide before starting the skill",
+            "required": [
+                "description",
+                "items"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "Summary of inputs required"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Specific input items (entity name, properties, rules, etc.)"
+                }
+            }
+        },
+        "outputs": {
+            "type": "array",
+            "description": "Deliverables after completing the skill (code files, configs, tests)",
+            "minItems": 1,
+            "items": {
+                "type": "string",
+                "examples": [
+                    "Mapper class (e.g., CustomerProfileMapper)",
+                    "EF Core migration script",
+                    "Repository interface + sealed implementation",
+                    "CreateProfileCommand + handler"
+                ]
+            }
+        },
+        "successCriteria": {
+            "type": "array",
+            "description": "Checklist items that MUST be satisfied for skill completion (linked to checklist.md)",
+            "minItems": 5,
+            "items": {
+                "type": "string",
+                "examples": [
+                    "[✓] Mapper class follows ProfileMapper template pattern from AGENTS.md",
+                    "[✓] Code compiles without warnings (warnings-as-errors enforced in CI)",
+                    "[✓] All CRUD paths covered by unit tests with >80% coverage"
+                ]
+            }
+        },
+        "nonGoals": {
+            "type": "array",
+            "description": "Things this skill explicitly does NOT cover",
+            "minItems": 1,
+            "items": {
+                "type": "string",
+                "examples": [
+                    "Does NOT cover repository pattern (see CRUD Operations Skill)",
+                    "Does NOT design REST endpoints (see API Endpoints Skill)",
+                    "Does NOT implement API authentication (covered elsewhere)"
+                ]
+            }
+        },
+        "estimatedDuration": {
+            "type": "string",
+            "description": "Time estimate to complete the skill (e.g., '20-30 minutes', '45-60 minutes')",
+            "examples": [
+                "20-30 minutes",
+                "45-60 minutes",
+                "30-40 minutes"
+            ]
+        },
+        "examplePath": {
+            "type": "string",
+            "description": "Path to worked example directory (relative to skill folder)",
+            "examples": [
+                "examples/customer-profile-example",
+                "examples/customer-profile-crud"
+            ]
+        },
+        "relatedSkills": {
+            "type": "array",
+            "description": "Other skill IDs that complement this skill",
+            "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            }
+        },
+        "tags": {
+            "type": "array",
+            "description": "Optional tags for filtering (e.g., 'testing', 'performance', 'advanced')",
+            "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+$"
+            }
+        }
+    }
+}

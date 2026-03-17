@@ -1,0 +1,62 @@
+{
+    "id": "crud-operations",
+    "version": "1.0.0",
+    "title": "CRUD Operations Implementation",
+    "category": "Business Logic & Commands",
+    "difficulty": "Intermediate",
+    "estimatedDurationMinutes": {
+        "min": 45,
+        "max": 60
+    },
+    "prerequisites": [
+        "Complete Domain Modeling Skill first",
+        "Familiarity with command pattern (request → handler → response)",
+        "Understanding of domain events and event sourcing",
+        "Knowledge of repository pattern for data access",
+        "Comfort with async/await in C#"
+    ],
+    "inputs": {
+        "description": "Domain entity with CRUD requirements and business rules",
+        "items": [
+            "Domain entity name (from Domain Modeling Skill)",
+            "List of CRUD operations needed (Create, Read, Update, Delete)",
+            "Business rules for mutations (validations, constraints)",
+            "Query patterns for Read operations (by ID, by user, by email, etc.)",
+            "Domain events to publish upon state changes"
+        ]
+    },
+    "outputs": {
+        "description": "Command classes, handlers, repository, and domain events for CRUD operations",
+        "items": [
+            "Command classes in SlimBus.AppServices/Features/<Feature>/Commands/",
+            "Validators for each command",
+            "Repository interface in AppServices",
+            "Repository implementation in SlimBus.Infra/Features/<Feature>/Repos/",
+            "Domain events in AppServices/Features/<Feature>/Events/",
+            "Command handlers that execute business logic and publish events"
+        ]
+    },
+    "successCriteria": [
+        "All CRUD commands execute successfully with validation",
+        "Repository is deterministic and testable",
+        "Domain events published after each mutation operation",
+        "Business rules enforced at command handler level",
+        "All code compiles with zero warnings",
+        "Unit tests for command handlers pass with >80% coverage"
+    ],
+    "nonGoals": [
+        "Testing strategy (see Testing Skills for that)",
+        "API endpoints (see API Endpoints Skill)",
+        "Web UI or client code"
+    ],
+    "relatedSkills": [
+        "domain-modeling",
+        "api-endpoints"
+    ],
+    "folderPath": ".github/skills/crud-operations",
+    "examplesPath": ".github/skills/crud-operations/examples/customer-profile-crud",
+    "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/CrudOperationsSkillTests.cs",
+    "status": "published",
+    "createdDate": "2026-03-17",
+    "lastUpdatedDate": "2026-03-17"
+}

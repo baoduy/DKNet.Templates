@@ -5,13 +5,13 @@ using CustomerProfileDto = SlimBus.AppServices.CustomerProfiles.V1.CustomerProfi
 
 namespace SlimBus.Api.ApiEndpoints;
 
-internal sealed class ProfileV1Endpoint : IEndpointConfig
+internal sealed class CustomerProfileV1Endpoint : IEndpointConfig
 {
     #region Properties
 
     public int Version => 1;
 
-    public string GroupEndpoint => "/profiles";
+    public string GroupEndpoint => "/customer-profiles";
 
     #endregion
 
@@ -19,21 +19,21 @@ internal sealed class ProfileV1Endpoint : IEndpointConfig
 
     public void Map(RouteGroupBuilder group)
     {
-        group.MapGetList<CustomerProfile,CustomerProfileDto>("")
+        group.MapGetList<CustomerProfile, CustomerProfileDto>()
             .WithDescription("Get all profiles");
-        group.MapGetById<CustomerProfile,CustomerProfileDto>("{id:guid}")
+        group.MapGetById<CustomerProfile, CustomerProfileDto>()
             .WithDescription("Get profile by id");
 
-        group.MapPost<CreateProfileRequest, CustomerProfileDto>("")
+        group.MapPost<CreateProfileRequest, CustomerProfileDto>()
             .AddIdempotencyFilter()
             .WithDescription(
                 "Create profile. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
                 "X-Idempotency-Key: {IdempotencyKey} <br/>");
 
-        group.MapPut<UpdateProfileRequest, CustomerProfileDto>("{id:guid}")
+        group.MapPut<UpdateProfileRequest, CustomerProfileDto>()
             .WithDescription("Update profile by id");
 
-        group.MapDelete<DeleteProfileRequest>("{id:guid}")
+        group.MapDelete<DeleteProfileRequest>()
             .WithDescription("Delete profile by id");
     }
 

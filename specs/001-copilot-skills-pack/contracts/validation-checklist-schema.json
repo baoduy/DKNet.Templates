@@ -1,0 +1,245 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Skill Validation Checklist Schema",
+    "description": "JSON schema for automated CI validation of skill completeness and compliance",
+    "type": "object",
+    "required": [
+        "skillId",
+        "skillName",
+        "validationGates",
+        "mustPassGates"
+    ],
+    "properties": {
+        "skillId": {
+            "type": "string",
+            "description": "Unique skill identifier (matches metadata.json)",
+            "examples": [
+                "domain-modeling",
+                "crud-operations",
+                "api-endpoints"
+            ]
+        },
+        "skillName": {
+            "type": "string",
+            "description": "Human-readable skill name",
+            "examples": [
+                "EFCore Mapping Configuration Skill",
+                "CRUD Operations Implementation Skill"
+            ]
+        },
+        "version": {
+            "type": "string",
+            "description": "Skill version (for tracking updates)",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "example": "1.0.0"
+        },
+        "description": {
+            "type": "string",
+            "description": "Brief description of what is being validated"
+        },
+        "validationGates": {
+            "type": "object",
+            "description": "All validation checkpoints organized by phase",
+            "properties": {
+                "preImplementation": {
+                    "type": "object",
+                    "description": "Checks before developer starts work",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "example": "Pre-Implementation Gates"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/ValidationItem"
+                            }
+                        }
+                    }
+                },
+                "implementation": {
+                    "type": "object",
+                    "description": "Checks during development",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "example": "Implementation Validation Gates"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/ValidationItem"
+                            }
+                        }
+                    }
+                },
+                "qualityGates": {
+                    "type": "object",
+                    "description": "Hard stops - MUST PASS gates",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "example": "Quality Gates (MUST PASS)"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/ValidationItem"
+                            }
+                        }
+                    }
+                },
+                "documentation": {
+                    "type": "object",
+                    "description": "Checks that code is well documented",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "example": "Documentation Gates"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/ValidationItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "mustPassGates": {
+            "type": "array",
+            "description": "List of gate IDs that MUST pass before skill is complete",
+            "items": {
+                "type": "string"
+            },
+            "examples": [
+                [
+                    "compiles-no-warnings",
+                    "tests-pass",
+                    "coverage-80-percent",
+                    "examples-validated"
+                ]
+            ]
+        },
+        "ciValidationScript": {
+            "type": "string",
+            "description": "Shell script or command to run all validation checks",
+            "example": "bash .github/scripts/validate-skill.sh domain-modeling"
+        },
+        "successDefinition": {
+            "type": "object",
+            "description": "How to determine if the skill has been successfully completed",
+            "properties": {
+                "qualityCriteria": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "All items in Quality Gates are checked",
+                        "Example tests pass in CI",
+                        "Code compiles without warnings",
+                        "Coverage report shows >80% coverage"
+                    ]
+                },
+                "signOff": {
+                    "type": "object",
+                    "description": "Who verifies the skill is complete",
+                    "properties": {
+                        "developer": {
+                            "type": "string",
+                            "example": "Developer who completed the skill (self-check against checklist.md)"
+                        },
+                        "reviewer": {
+                            "type": "string",
+                            "example": "Code reviewer (verify against AGENTS.md patterns + CI validation)"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ValidationItem": {
+                "type": "object",
+                "description": "Single validation checkpoint",
+                "required": [
+                    "id",
+                    "description"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Unique ID for this validation item",
+                        "pattern": "^[a-z0-9-]+$",
+                        "examples": [
+                            "entity-encapsulates-mutations",
+                            "compiles-no-warnings",
+                            "tests-pass"
+                        ]
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Human-readable description of what to check",
+                        "examples": [
+                            "Entity class encapsulates all mutations (no public setters)",
+                            "Code compiles with warnings-as-errors (-warnaserror)",
+                            "All unit tests pass with xUnit"
+                        ]
+                    },
+                    "howToCheck": {
+                        "type": "string",
+                        "description": "Instructions on how to verify this item",
+                        "examples": [
+                            "Review entity.cs; look for Create(), Update(), Delete() methods; verify properties don't have public setters",
+                            "Run: dotnet build src/DKNet.Templates.sln -c Release",
+                            "Run: dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings"
+                        ]
+                    },
+                    "autoCheckable": {
+                        "type": "boolean",
+                        "description": "Whether this can be automatically validated via script/CI",
+                        "examples": [
+                            true,
+                            false
+                        ]
+                    },
+                    "ciCommand": {
+                        "type": "string",
+                        "description": "Command to run in CI if autoCheckable=true",
+                        "examples": [
+                            "dotnet build src/DKNet.Templates.sln -c Release",
+                            "dotnet test --filter TestClass=EntityTests",
+                            "find . -path '*Mapper.cs' -name '*Sealed*'"
+                        ]
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "INFO",
+                            "WARNING",
+                            "ERROR"
+                        ],
+                        "description": "Impact if this check fails",
+                        "examples": [
+                            "INFO",
+                            "WARNING",
+                            "ERROR"
+                        ]
+                    },
+                    "reference": {
+                        "type": "string",
+                        "description": "Link to relevant documentation (AGENTS.md section, skill.md step, etc.)",
+                        "examples": [
+                            "AGENTS.md section 'Feature vertical slice pattern'",
+                            "skill.md step 2: 'Encapsulate mutations in entity methods'",
+                            "src/SlimBus.Domains/Features/Profiles/Entities/CustomerProfile.cs (canonical example)"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
