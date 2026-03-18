@@ -4,7 +4,8 @@ using Minimal.AppServices.CustomerProfiles.V1.Events;
 
 namespace Minimal.Infra.Features.Profiles.ExternalEvents;
 
-internal sealed class CustomerProfileCreatedEmailNotificationHandler(ILogger<CustomerProfileCreatedEmailNotificationHandler> logger)
+internal sealed class CustomerProfileCreatedEmailNotificationHandler(
+    ILogger<CustomerProfileCreatedEmailNotificationHandler> logger)
     : Fluents.EventsConsumers.IHandler<ProfileCreatedEvent>
 {
     #region Properties
@@ -18,7 +19,11 @@ internal sealed class CustomerProfileCreatedEmailNotificationHandler(ILogger<Cus
     public Task OnHandle(ProfileCreatedEvent notification, CancellationToken cancellationToken)
     {
         Called = notification.Id != Guid.Empty;
-        logger.LogInformation("ProfileCreatedEmailNotificationHandler called with Id: {Id}", notification.Id);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("ProfileCreatedEmailNotificationHandler called with Id: {Id}", notification.Id);
+        }
+
         return Task.CompletedTask;
     }
 

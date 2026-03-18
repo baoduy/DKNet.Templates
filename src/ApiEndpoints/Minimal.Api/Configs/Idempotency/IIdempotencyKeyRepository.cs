@@ -45,11 +45,18 @@ internal class IdempotencyKeyRepository(
         idempotencyKey = idempotencyKey.Replace("\n", "", StringComparison.Ordinal)
             .Replace("\r", "", StringComparison.Ordinal); // Sanitize user input
         var cacheKey = $"{_options.CachePrefix}{idempotencyKey}";
-        logger.LogDebug("Trying to get existing result for cache key: {CacheKey}", cacheKey);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Trying to get existing result for cache key: {CacheKey}", cacheKey);
+        }
 
         var result = await cache.GetStringAsync(cacheKey);
 
-        logger.LogDebug("Existing result found: {Result}", result);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Existing result found: {Result}", result);
+        }
+
         return (!string.IsNullOrWhiteSpace(result), result);
     }
 
@@ -58,7 +65,10 @@ internal class IdempotencyKeyRepository(
         idempotencyKey = idempotencyKey.Replace("\n", "", StringComparison.Ordinal)
             .Replace("\r", "", StringComparison.Ordinal); // Sanitize user input
         var cacheKey = $"{_options.CachePrefix}{idempotencyKey}";
-        logger.LogDebug("Setting cache result for cache key: {CacheKey}", cacheKey);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Setting cache result for cache key: {CacheKey}", cacheKey);
+        }
 
         await cache.SetStringAsync(
             cacheKey,

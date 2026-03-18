@@ -12,13 +12,11 @@
         <PackageReference Include="AspNetCore.HealthChecks.UI.Client"/>
         <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore"/>
         <PackageReference Include="FluentValidation.DependencyInjectionExtensions"/>
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
         <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore"/>
         <PackageReference Include="Microsoft.Extensions.Caching.Hybrid"/>
         <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis"/>
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks"/>
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"/>
         <PackageReference Include="Microsoft.FeatureManagement.AspNetCore"/>
         <PackageReference Include="OpenTelemetry"/>

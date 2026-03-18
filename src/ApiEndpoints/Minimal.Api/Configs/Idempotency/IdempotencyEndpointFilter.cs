@@ -38,7 +38,10 @@ internal sealed class IdempotencyEndpointFilter(
         }
 
         idempotencyKey = idempotencyKey.SanitizeForLogging(); // Sanitize user input
-        logger.LogDebug("Checking idempotency header key: {Key}", _options.IdempotencyHeaderKey);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Checking idempotency header key: {Key}", _options.IdempotencyHeaderKey);
+        }
 
         var endpoint = context.HttpContext.GetEndpoint();
         var routeTemplate = endpoint?.Metadata.GetMetadata<RouteAttribute>()?.Template ??
@@ -48,7 +51,10 @@ internal sealed class IdempotencyEndpointFilter(
         var existingResult = await cacher.IsKeyProcessedAsync(compositeKey);
         if (existingResult.processed)
         {
-            logger.LogInformation("Existing result found for idempotency key: {Key}", idempotencyKey);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation("Existing result found for idempotency key: {Key}", idempotencyKey);
+            }
 
             if (_options.ConflictHandling == IdempotentConflictHandling.ConflictResponse)
             {
@@ -71,7 +77,10 @@ internal sealed class IdempotencyEndpointFilter(
             await cacher.MarkKeyAsProcessedAsync(
                 compositeKey,
                 JsonSerializer.Serialize(resultValue, _options.JsonSerializerOptions));
-            logger.LogInformation("Caching the response for idempotency key: {Key}", idempotencyKey);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation("Caching the response for idempotency key: {Key}", idempotencyKey);
+            }
         }
 
         logger.LogDebug("Returning result to the client");
