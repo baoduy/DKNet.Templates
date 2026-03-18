@@ -1,0 +1,13 @@
+global using DKNet.SlimBus.Extensions;
+global using System.ComponentModel.DataAnnotations;
+global using System.Text.Json.Serialization;
+global using FluentResults;
+global using Minimal.Domains.Services;
+global using Microsoft.Extensions.DependencyInjection;
+global using FluentValidation;
+global using Mapster;
+global using MapsterMapper;
+global using Minimal.AppServices.Extensions;
+global using Minimal.AppServices.Extensions.LazyMapper;
+global using Minimal.AppServices.Share;
+global using Minimal.Domains.Features.Profiles.Entities;

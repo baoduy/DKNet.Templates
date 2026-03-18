@@ -1,0 +1,25 @@
+﻿using DKNet.EfCore.DataAuthorization;
+
+namespace Minimal.AppServices.Share;
+
+public interface IPrincipalProvider : IDataOwnerProvider
+{
+    #region Properties
+
+    /// <summary>
+    ///     The User Id from Bearer Token
+    /// </summary>
+    Guid ProfileId { get; }
+
+    /// <summary>
+    ///     User Email from Bearer Token
+    /// </summary>
+    string Email { get; }
+
+    /// <summary>
+    ///     User name from Bearer Token
+    /// </summary>
+    string UserName { get; }
+
+    #endregion
+}

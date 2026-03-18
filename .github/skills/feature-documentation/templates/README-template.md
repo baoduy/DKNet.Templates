@@ -51,14 +51,14 @@ Authorization: Bearer {token}
 
 | Layer | Path |
 |-------|------|
-| Domain Entity | `SlimBus.Domains/Features/{EntityFolder}/Entities/{EntityName}.cs` |
-| EF Core Mapper | `SlimBus.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs` |
-| Create Handler | `SlimBus.AppServices/{FeatureFolder}/V1/Actions/Create.cs` |
-| Update Handler | `SlimBus.AppServices/{FeatureFolder}/V1/Actions/Update.cs` |
-| Delete Handler | `SlimBus.AppServices/{FeatureFolder}/V1/Actions/Delete.cs` |
-| Domain Events | `SlimBus.AppServices/{FeatureFolder}/V1/Events/` |
-| Query Specs | `SlimBus.AppServices/{FeatureFolder}/V1/Specs/` |
-| API Endpoints | `SlimBus.Api/ApiEndpoints/{EntityName}V1Endpoints.cs` |
+| Domain Entity | `Minimal.Domains/Features/{EntityFolder}/Entities/{EntityName}.cs` |
+| EF Core Mapper | `Minimal.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs` |
+| Create Handler | `Minimal.AppServices/{FeatureFolder}/V1/Actions/Create.cs` |
+| Update Handler | `Minimal.AppServices/{FeatureFolder}/V1/Actions/Update.cs` |
+| Delete Handler | `Minimal.AppServices/{FeatureFolder}/V1/Actions/Delete.cs` |
+| Domain Events | `Minimal.AppServices/{FeatureFolder}/V1/Events/` |
+| Query Specs | `Minimal.AppServices/{FeatureFolder}/V1/Specs/` |
+| API Endpoints | `Minimal.Api/ApiEndpoints/{EntityName}V1Endpoints.cs` |
 
 ## Related Documentation
 

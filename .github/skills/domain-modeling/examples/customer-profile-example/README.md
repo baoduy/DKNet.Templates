@@ -40,7 +40,7 @@ The persistence mapping that configures how CustomerProfile maps to the database
 
 **Quote from AGENTS.md - EF Core Auto Configuration**:
 > All EF model configuration is declarative and centralized using `UseAutoConfigModel` and automatic
-> mapper discovery from `SlimBus.Infra/Features/<Feature>/Mappers`.
+> mapper discovery from `Minimal.Infra/Features/<Feature>/Mappers`.
 
 ---
 
@@ -51,10 +51,10 @@ The persistence mapping that configures how CustomerProfile maps to the database
 1. **Copy both files** to your feature folder:
    ```bash
    # Copy entity
-   cp CustomerProfile.cs ../src/SlimBus.Domains/Features/YourFeature/Entities/YourEntity.cs
+   cp CustomerProfile.cs ../src/Minimal.Domains/Features/YourFeature/Entities/YourEntity.cs
    
    # Copy mapper
-   cp CustomerProfileMapper.cs ../src/SlimBus.Infra/Features/YourFeature/Mappers/YourEntityMapper.cs
+   cp CustomerProfileMapper.cs ../src/Minimal.Infra/Features/YourFeature/Mappers/YourEntityMapper.cs
    ```
 
 2. **Rename the classes**:
@@ -68,8 +68,8 @@ The persistence mapping that configures how CustomerProfile maps to the database
    - Keep audit timestamps (`CreatedAt`, `UpdatedAt`)
 
 4. **Update namespace**:
-   - Entity: `SlimBus.Domains.Features.YourFeature.Entities`
-   - Mapper: `SlimBus.Infra.Features.YourFeature.Mappers`
+   - Entity: `Minimal.Domains.Features.YourFeature.Entities`
+   - Mapper: `Minimal.Infra.Features.YourFeature.Mappers`
 
 5. **Update database configuration**:
    - Change schema name if appropriate (e.g., `"customers"` → `"orders"`)
@@ -118,10 +118,10 @@ This example follows all patterns documented in AGENTS.md:
 
 | AGENTS.md Section                  | Pattern                                  | Evidence in Example                                    |
 | ---------------------------------- | ---------------------------------------- | ------------------------------------------------------ |
-| **Feature Vertical Slice Pattern** | Entity lives in layer-appropriate folder | `SlimBus.Domains/Features/.../Entities/`               |
+| **Feature Vertical Slice Pattern** | Entity lives in layer-appropriate folder | `Minimal.Domains/Features/.../Entities/`               |
 | **Strict Layer Boundaries**        | Business logic stays in domain           | Mutations in `Update()` method, not in infra           |
 | **Class-First Domain Design**      | Sealed class with encapsulation          | `sealed` keyword, `init` properties, `Update()` method |
-| **EF Core Auto Configuration**     | Mapper in Mappers/ folder, sealed        | `SlimBus.Infra/Features/.../Mappers/`                  |
+| **EF Core Auto Configuration**     | Mapper in Mappers/ folder, sealed        | `Minimal.Infra/Features/.../Mappers/`                  |
 | **No scattered configuration**     | Fluent API in Configure() method         | All EF config in one place                             |
 
 ---
@@ -137,7 +137,7 @@ dotnet build src/DKNet.Templates.sln -c Release
 
 ### Run migrations
 ```bash
-cd src/SlimBus.ApiEndpoints
+cd src/Minimal.ApiEndpoints
 ./add-migration.sh CustomerProfileInitial
 dotnet ef database update
 ```

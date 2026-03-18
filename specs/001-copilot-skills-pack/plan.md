@@ -20,7 +20,7 @@ Skills are placed in a Copilot-compatible folder structure with standardized met
 **Language/Version**: C# / .NET 10.0  
 **Primary Dependencies**: EF Core, Mapster, FluentValidation, xUnit, Shouldly  
 **Storage**: SQL Server (via EF Core)  
-**Testing**: xUnit + Shouldly patterns (src/SlimBus.ApiEndpoints/SlimBus.App.Tests/)  
+**Testing**: xUnit + Shouldly patterns (src/Minimal.ApiEndpoints/Minimal.App.Tests/)  
 **Target Platform**: ASP.NET Minimal APIs (Aspire orchestration optional)  
 **Project Type**: Web service / API backend (multi-layered vertical slice architecture)  
 **Performance Goals**: Developer productivity acceleration (25% reduction in rework, <30 min skill discovery/application)  
@@ -121,7 +121,7 @@ specs/001-copilot-skills-pack/
     │       └── README.md
     └── checklist.md                   # Validation checklist for Endpoints Skill
 
-src/SlimBus.ApiEndpoints/SlimBus.App.Tests/
+src/Minimal.ApiEndpoints/Minimal.App.Tests/
     └── Skills/
         ├── DomainModelingSkillTests.cs      # Test that Mapping Skill guidance works
         ├── CrudOperationsSkillTests.cs      # Test that CRUD Skill guidance works  
@@ -556,7 +556,7 @@ Use this checklist to verify your mapper implementation is complete and meets qu
 
 ## Implementation Validation
 - [ ] Mapper class inherits from auto-config pattern (matches ProfileMapper)
-- [ ] Located in SlimBus.Infra/Features/<Feature>/Mappers/ folder
+- [ ] Located in Minimal.Infra/Features/<Feature>/Mappers/ folder
 - [ ] All properties mapped with correct database types (nvarchar, int, datetime, etc.)
 - [ ] Validation constraints encoded (lengths, required fields, indexes)
 - [ ] Foreign keys and navigation properties configured
@@ -639,7 +639,7 @@ Before submitting a pull request:
 
 1. **Domain Modeling (20-30 min)**
    - Use `.github/skills/domain-modeling/skill.md`
-   - Output: `OrderMapper.cs` in `SlimBus.Infra/Features/Orders/Mappers/`
+   - Output: `OrderMapper.cs` in `Minimal.Infra/Features/Orders/Mappers/`
    - Checklist: Validate with `domain-modeling/checklist.md`
 
 2. **CRUD Operations (45-60 min)**
@@ -722,7 +722,7 @@ Phase 2 (not in scope of `/speckit.plan` but documented for clarity) will:
    - Implement `domain-modeling/`, `crud-operations/`, `api-endpoints/` with skill.md, templates, examples
    - Create CATALOG.md, README.md, CONVENTIONS.md discovery and maintenance guides
    - Implement validation infrastructure (CI script to check skill metadata completeness)
-   - Add skill integration tests (`SlimBus.App.Tests/Skills/`)
+   - Add skill integration tests (`Minimal.App.Tests/Skills/`)
    - Create GitHub Copilot agent integration for `@skills` commands
 
 2. **Success Criteria Verification**:

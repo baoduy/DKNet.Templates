@@ -44,7 +44,7 @@
     ],
     "folderPath": ".github/skills/your-skill-id",
     "examplesPath": ".github/skills/your-skill-id/examples",
-    "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/YourSkillTests.cs",
+    "testPath": "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/YourSkillTests.cs",
     "status": "published",
     "createdDate": "2026-03-17",
     "lastUpdatedDate": "2026-03-17"

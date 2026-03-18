@@ -52,14 +52,14 @@ description: Expose CRUD operations via REST endpoints with OpenAPI documentatio
 
 **What you're doing**: Auto-generate the response DTO from your entity using `[GenerateDto]` attribute.
 
-In `SlimBus.AppServices/Features/<YourFeature>/V1/`:
+In `Minimal.AppServices/Features/<YourFeature>/V1/`:
 
 ```csharp
 using DKNet.EfCore.DtoGenerator;
 using Mapster;
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
 
-namespace SlimBus.AppServices.CustomerProfiles.V1;
+namespace Minimal.AppServices.CustomerProfiles.V1;
 
 /// <summary>
 /// Response DTO auto-generated from CustomerProfile entity.
@@ -79,11 +79,11 @@ public sealed partial record CustomerProfileDto;
 **What you're doing**: Create request records that inherit from `RequestBase` and implement `IWitResponse<TResponse>` interface. Each CRUD operation needs its own request type.
 
 ```csharp
-using SlimBus.AppServices.Share;
+using Minimal.AppServices.Share;
 using Mapster;
 using Fluents.Requests;
 
-namespace SlimBus.AppServices.CustomerProfiles.V1.Actions;
+namespace Minimal.AppServices.CustomerProfiles.V1.Actions;
 
 /// <summary>
 /// Command to create a new customer profile.
@@ -177,7 +177,7 @@ public sealed record RejectProfileRequest : RequestBase, IWitResponse<CustomerPr
 ```csharp
 using FluentValidation;
 
-namespace SlimBus.AppServices.CustomerProfiles.V1.Actions;
+namespace Minimal.AppServices.CustomerProfiles.V1.Actions;
 
 /// <summary>
 /// Validates CreateProfileRequest before command execution.
@@ -251,7 +251,7 @@ public sealed class RejectProfileRequestValidator : AbstractValidator<RejectProf
 **What you're doing**: Create handler classes that execute the commands. These inherit from `IHandler<TRequest, TResponse>` and are auto-discovered by message bus.
 
 ```csharp
-namespace SlimBus.AppServices.CustomerProfiles.V1.Actions;
+namespace Minimal.AppServices.CustomerProfiles.V1.Actions;
 
 /// <summary>
 /// Handles CreateProfileRequest: creates and persists new customer profile.
@@ -440,7 +440,7 @@ internal sealed class ApproveProfileCommandHandler :
 ```csharp
 using Fluents.Builder;
 
-namespace SlimBus.Api.ApiEndpoints;
+namespace Minimal.Api.ApiEndpoints;
 
 /// <summary>
 /// Endpoint configuration for Customer Profile API.
@@ -551,7 +551,7 @@ internal sealed class CustomerProfileV1Endpoint : IEndpointConfig
 **What you're doing**: Wire up the `IEndpointConfig` implementation so endpoints are available at runtime.
 
 ```csharp
-// In SlimBus.Api/Program.cs
+// In Minimal.Api/Program.cs
 
 var builder = WebApplication.CreateBuilder(args);
 

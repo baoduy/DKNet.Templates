@@ -1,7 +1,7 @@
 // ==================================================
 // COMMAND HANDLER TEMPLATE (IHandler Implementation)
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/V1/Actions/<Action>.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/V1/Actions/<Action>.cs
 //   (Same file as request type, or separate internal class)
 //
 // INSTRUCTIONS:
@@ -17,7 +17,7 @@ using DKNet.EfCore.Specifications;
 using Fluents.Requests;
 using Mapster;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.V1.Actions;
+namespace Minimal.AppServices.Features.<FEATURE>.V1.Actions;
 
 // ========== CREATE HANDLER ==========
 

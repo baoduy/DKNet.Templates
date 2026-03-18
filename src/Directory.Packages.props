@@ -230,6 +230,9 @@
       S4581; <!-- Sonar: use Guid.NewGuid() instead of new Guid(). -->
       CA1859; <!-- Prefer concrete types for better performance. -->
       CA1308; <!-- Prefer uppercase normalization over lowercase. -->
+      CS1591; <!-- Missing XML comments for publicly visible members. -->
+      CS1574; <!-- XML comment cref references that cannot be resolved. -->
+      CS9057; <!-- Analyzer compiled against newer Roslyn than local compiler. -->
       SA1124; <!-- StyleCop: do not use regions. -->
       SA1200; <!-- StyleCop: using directives placement rule. -->
       SA1636; <!-- StyleCop: file header text/documentation rule. -->
@@ -238,6 +241,7 @@
       SA1413; <!-- StyleCop: use trailing comma in multi-line initializers. -->
       SA1101; <!-- StyleCop: prefix local member calls with this. -->
       SA1402; <!-- StyleCop: one type per file rule. -->
+      CA1303; <!-- Do not pass literals as localized parameters. -->
     </NoWarn>
   </PropertyGroup>
 </Project>

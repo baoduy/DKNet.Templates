@@ -1,7 +1,7 @@
 // ==================================================
 // WRITE REPOSITORY IMPLEMENTATION TEMPLATE
 // ==================================================
-// Location: SlimBus.Infra/Features/<FEATURE>/Repos/<FEATURE>Repository.cs
+// Location: Minimal.Infra/Features/<FEATURE>/Repos/<FEATURE>Repository.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your entity name

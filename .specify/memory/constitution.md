@@ -34,7 +34,7 @@ accurately reflects real-world rules and is self-documenting (per coding prefere
 ### IV. EF Core Auto Configuration and Seeding
 
 All EF model configuration is declarative and centralized using `UseAutoConfigModel` and automatic
-mapper discovery from `SlimBus.Infra/Features/<Feature>/Mappers`. No fluent API scattered across the
+mapper discovery from `Minimal.Infra/Features/<Feature>/Mappers`. No fluent API scattered across the
 codebase. Seeding uses `UseAutoDataSeeding` in `InfraSetup.AddInfraServices`. This approach keeps the
 context clean and configuration patterns consistent.
 
@@ -74,23 +74,23 @@ AGENTS.md and add a migration guide for existing code.
 
 - **Framework**: .NET 10.0 (pinned in `src/global.json` and `src/Directory.Packages.props`)
 - **Persistence**: EF Core with SQL Server
-- **Mapping**: Mapster (global configuration in `SlimBus.AppServices/AppSetup.cs`)
+- **Mapping**: Mapster (global configuration in `Minimal.AppServices/AppSetup.cs`)
 - **Validation**: FluentValidation
 - **Messaging**: In-memory bus + Azure Service Bus (optional)
-- **Hosting**: Optional Aspire orchestration (`SlimBus.AppHost`)
+- **Hosting**: Optional Aspire orchestration (`Minimal.AppHost`)
 
 All packages are centralized in `Directory.Packages.props`; projects reference without version numbers.
 
 ### Feature Configuration
 
 Feature flags are managed via `FeatureOptions` (JSON key: `FeatureManagement` in settings).
-Must align with `SlimBus.Share/Options/FeatureOptions.cs`. Never hardcode feature state; always
+Must align with `Minimal.Share/Options/FeatureOptions.cs`. Never hardcode feature state; always
 bind and inject `IOptions<FeatureOptions>`.
 
 ### Naming and Structure Rules
 
 - **Namespaces**: Follow folder structure exactly; no divergence between namespace and path.
-- **Tests**: Live under `SlimBus.App.Tests/<Category>/<Feature>.cs` (Unit, Integration, Architecture).
+- **Tests**: Live under `Minimal.App.Tests/<Category>/<Feature>.cs` (Unit, Integration, Architecture).
 - **Infra classes**: MUST be `sealed` and placed in `.Repos` or `.Services` subdirectories for Scrutor auto-registration.
 - **Feature slices**: Mirror the `Profiles/V1` template structure across all layers.
 

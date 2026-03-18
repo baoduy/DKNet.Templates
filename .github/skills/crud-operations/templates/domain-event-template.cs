@@ -1,7 +1,7 @@
 // ==================================================
 // DOMAIN EVENT TEMPLATE
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/Events/<FEATURE>Events.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/Events/<FEATURE>Events.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your feature name
@@ -12,7 +12,7 @@
 
 using System;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.Events;
+namespace Minimal.AppServices.Features.<FEATURE>.Events;
 
 public sealed record <FEATURE>CreatedEvent(
     // TODO: Replace with your event properties

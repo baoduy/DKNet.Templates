@@ -55,7 +55,7 @@ Outputs:
   
 SuccessCriteria:
   - "[✓] Mapper class follows ProfileMapper template pattern from AGENTS.md"
-  - "[✓] Class is placed in SlimBus.Infra/Features/<Feature>/Mappers/ (auto-discovery)"
+  - "[✓] Class is placed in Minimal.Infra/Features/<Feature>/Mappers/ (auto-discovery)"
   - "[✓] All entity properties correctly mapped to database types (nvarchar, int, datetime, etc.)"
   - "[✓] Validation rules (lengths, nullability) enforced in mapping (ConfigureProperty)"
   - "[✓] Foreign keys and navigation properties configured (HasOne, HasMany)"
@@ -79,7 +79,7 @@ Example:
     - "CustomerProfileMapper.cs" → EF Core configuration (the main output)
     - "README.md" → explanation of the example
   
-TestPath: "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs"
+TestPath: "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs"
 ```
 
 ### Skill 2: CRUD Operations Implementation
@@ -133,7 +133,7 @@ SuccessCriteria:
   - "[✓] Domain events published via EventPublisher.Publish() after each mutation"
   - "[✓] Entities follow class-first design: business rules are methods, not anemic data"
   - "[✓] Repository interface defined in Domains; implementation sealed in Infra"
-  - "[✓] Repository sealed + placed in SlimBus.Infra/Features/<Feature>/Repos/ (auto-discovered by Scrutor)"
+  - "[✓] Repository sealed + placed in Minimal.Infra/Features/<Feature>/Repos/ (auto-discovered by Scrutor)"
   - "[✓] Specifications/queries implement ISpecification pattern"
   - "[✓] All CRUD paths covered by unit tests; assertions use Shouldly (.Should().Be(...) pattern)"
   - "[✓] Test coverage >80% for domain entity and commands"
@@ -159,7 +159,7 @@ Example:
     - "CustomerProfileTests.cs" → unit tests
     - "README.md" → explanation
   
-TestPath: "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/CrudOperationsSkillTests.cs"
+TestPath: "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/CrudOperationsSkillTests.cs"
 ```
 
 ### Skill 3: API REST Endpoints Configuration
@@ -231,7 +231,7 @@ Example:
     - "ProfileEndpointsTests.cs" → integration tests (REST API calls)
     - "README.md" → explanation + example curl commands
   
-TestPath: "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/ApiEndpointsSkillTests.cs"
+TestPath: "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/ApiEndpointsSkillTests.cs"
 ```
 
 ---

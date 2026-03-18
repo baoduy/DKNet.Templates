@@ -1,18 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SlimBus.ApiEndpoints", "SlimBus.ApiEndpoints", "{5217F0FC-7FBA-4FB2-9B86-9BCD8969049E}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiEndpoints", "ApiEndpoints", "{5217F0FC-7FBA-4FB2-9B86-9BCD8969049E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.Share", "SlimBus.ApiEndpoints\SlimBus.Share\SlimBus.Share.csproj", "{F18DEA7D-11DE-4EC3-9FC6-7F2AAC1AA511}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimal.Share", "ApiEndpoints\Minimal.Share\Minimal.Share.csproj", "{F18DEA7D-11DE-4EC3-9FC6-7F2AAC1AA511}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.Infra", "SlimBus.ApiEndpoints\SlimBus.Infra\SlimBus.Infra.csproj", "{B801C80D-7DDC-44ED-8FCD-E190A9BAF412}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimal.Infra", "ApiEndpoints\Minimal.Infra\Minimal.Infra.csproj", "{B801C80D-7DDC-44ED-8FCD-E190A9BAF412}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.Domains", "SlimBus.ApiEndpoints\SlimBus.Domains\SlimBus.Domains.csproj", "{6D8041F2-76CA-4360-98DF-A02083827EDE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimal.Domains", "ApiEndpoints\Minimal.Domains\Minimal.Domains.csproj", "{6D8041F2-76CA-4360-98DF-A02083827EDE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.AppServices", "SlimBus.ApiEndpoints\SlimBus.AppServices\SlimBus.AppServices.csproj", "{CC11A264-30B6-4069-8DFA-AFCA8177A01E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimal.AppServices", "ApiEndpoints\Minimal.AppServices\Minimal.AppServices.csproj", "{CC11A264-30B6-4069-8DFA-AFCA8177A01E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.App.Tests", "SlimBus.ApiEndpoints\SlimBus.App.Tests\SlimBus.App.Tests.csproj", "{DEE2D6D9-A9DF-4C09-B2BE-6020FB7FF57F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimal.App.Tests", "ApiEndpoints\Minimal.App.Tests\Minimal.App.Tests.csproj", "{DEE2D6D9-A9DF-4C09-B2BE-6020FB7FF57F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.Api", "SlimBus.ApiEndpoints\SlimBus.Api\SlimBus.Api.csproj", "{8F9B24BC-C17B-40C3-A2EC-34737951154C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimal.Api", "ApiEndpoints\Minimal.Api\Minimal.Api.csproj", "{8F9B24BC-C17B-40C3-A2EC-34737951154C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{DE144418-A998-49D3-B4D0-98974A02AFC4}"
 	ProjectSection(SolutionItems) = preProject
@@ -23,7 +23,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{DE144418
 		..\AGENTS.md = ..\AGENTS.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.AppHost", "SlimBus.ApiEndpoints\SlimBus.AppHost\SlimBus.AppHost.csproj", "{EAB0ED23-FF31-45B9-A59B-9D0B78B677EC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimal.AppHost", "ApiEndpoints\Minimal.AppHost\Minimal.AppHost.csproj", "{EAB0ED23-FF31-45B9-A59B-9D0B78B677EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

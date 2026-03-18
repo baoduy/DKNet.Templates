@@ -37,7 +37,7 @@ erDiagram
 
 ## EF Core Mapping Configuration
 
-Configured in `SlimBus.Infra/Features/Profiles/Mappers/ProfileMapper.cs` via `IEntityTypeConfiguration<CustomerProfile>`.
+Configured in `Minimal.Infra/Features/Profiles/Mappers/ProfileMapper.cs` via `IEntityTypeConfiguration<CustomerProfile>`.
 
 | Configuration | Detail |
 |---------------|--------|
@@ -101,6 +101,6 @@ public void Update(
 To create a new migration after schema changes:
 
 ```bash
-# From src/SlimBus.ApiEndpoints/
+# From src/Minimal.ApiEndpoints/
 ./add-migration.sh <MigrationName>
 ```

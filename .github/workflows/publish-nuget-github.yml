@@ -4,7 +4,7 @@ name: Build and Publish NuGet Package
   workflow_dispatch:
   push:
     branches:
-      #- dev
+      - dev
       - main
 
 permissions:
@@ -54,11 +54,11 @@ jobs:
 
       - name: Set nuspec version
         run: |
-          sed -i.bak "s|<version>.*</version>|<version>${{ steps.version.outputs.version }}</version>|" src/DKNet.SlimBus.Template.nuspec
-          rm src/DKNet.SlimBus.Template.nuspec.bak
+          sed -i.bak "s|<version>.*</version>|<version>${{ steps.version.outputs.version }}</version>|" src/DKNet.Minimal.Template.nuspec
+          rm src/DKNet.Minimal.Template.nuspec.bak
 
       - name: Pack template
-        run: dotnet pack src/DKNet.SlimBus.Template.csproj -c Release -o src/nupkgs
+        run: dotnet pack src/DKNet.Minimal.Template.csproj -c Release -o src/nupkgs
 
       - name: Add GitHub Packages source
         run: |

@@ -1,7 +1,7 @@
 // ==================================================
 // REQUEST VALIDATOR TEMPLATE
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/V1/<REQUEST>Validator.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/V1/<REQUEST>Validator.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> and <REQUEST> with your names
@@ -13,7 +13,7 @@
 using FluentValidation;
 using System;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.V1;
+namespace Minimal.AppServices.Features.<FEATURE>.V1;
 
 public sealed class Create<FEATURE>RequestValidator 
     : AbstractValidator<Create<FEATURE>Request>

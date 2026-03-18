@@ -135,8 +135,8 @@ services.AddValidatorsFromAssembly(typeof(AppSetup).Assembly);
 <summary><strong>Q: Where should my repository go?</strong></summary>
 
 A: 
-- **Interface**: `SlimBus.AppServices/Features/<Feature>/Repositories/IXxxRepository.cs`
-- **Implementation**: `SlimBus.Infra/Features/<Feature>/Repos/XxxRepository.cs` (sealed)
+- **Interface**: `Minimal.AppServices/Features/<Feature>/Repositories/IXxxRepository.cs`
+- **Implementation**: `Minimal.Infra/Features/<Feature>/Repos/XxxRepository.cs` (sealed)
 
 [Learn more →](./crud-operations/skill.md#step-3-create-repository-interface-in-appservices)
 
@@ -177,20 +177,20 @@ code ./domain-modeling/checklist.md
 Skills are designed around **DKNet.Templates vertical slice architecture**:
 
 ```
-API Layer (SlimBus.Api)
+API Layer (Minimal.Api)
   └─ ProfileV1Endpoints.cs           (Skill 3: API Endpoints)
      ├─ Request DTOs + Validators    (Skill 3: API Endpoints)
      └─ Response DTOs [GenerateDto]  (Skill 3: API Endpoints)
 
-AppServices Layer (SlimBus.AppServices)
+AppServices Layer (Minimal.AppServices)
   ├─ Request DTOs + Validators       (Skill 2: CRUD Operations)
   ├─ IRepository interface           (Skill 2: CRUD Operations)
   └─ Domain Events                   (Skill 2: CRUD Operations)
 
-Domain Layer (SlimBus.Domains)
+Domain Layer (Minimal.Domains)
   └─ CustomerProfile entity          (Skill 1: Domain Modeling)
 
-Infra Layer (SlimBus.Infra)
+Infra Layer (Minimal.Infra)
   ├─ CustomerProfileMapper           (Skill 1: Domain Modeling)
   └─ CustomerProfileRepository impl  (Skill 2: CRUD Operations)
 ```

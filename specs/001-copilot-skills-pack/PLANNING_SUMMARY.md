@@ -113,7 +113,7 @@ Skill Folders (concrete paths):
 
 Test Integration:
 
-src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/
+src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/
   ├── DomainModelingSkillTests.cs
   ├── CrudOperationsSkillTests.cs
   └── ApiEndpointsSkillTests.cs
@@ -269,9 +269,9 @@ The following tasks remain for Phase 2 (run `/speckit.tasks` command):
 - [ ] Create .github/workflows/validate-skills.yaml (CI validation)
 
 ### Task Category 3: Testing & Validation (~1 week)
-- [ ] Create SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs
-- [ ] Create SlimBus.App.Tests/Skills/CrudOperationsSkillTests.cs
-- [ ] Create SlimBus.App.Tests/Skills/ApiEndpointsSkillTests.cs
+- [ ] Create Minimal.App.Tests/Skills/DomainModelingSkillTests.cs
+- [ ] Create Minimal.App.Tests/Skills/CrudOperationsSkillTests.cs
+- [ ] Create Minimal.App.Tests/Skills/ApiEndpointsSkillTests.cs
 - [ ] Wire example tests into skill validation CI
 - [ ] Test skill workflows with pilot developers
 

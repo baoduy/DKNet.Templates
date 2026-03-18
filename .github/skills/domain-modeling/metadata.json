@@ -27,8 +27,8 @@
     "outputs": {
         "description": "Domain entity class and EF Core persistence mapper integrated with the application",
         "items": [
-            "Domain entity class in SlimBus.Domains/Features/<Feature>/Entities/",
-            "EF Core mapper class in SlimBus.Infra/Features/<Feature>/Mappers/",
+            "Domain entity class in Minimal.Domains/Features/<Feature>/Entities/",
+            "EF Core mapper class in Minimal.Infra/Features/<Feature>/Mappers/",
             "Database migration script ready for deployment"
         ]
     },
@@ -52,7 +52,7 @@
     ],
     "folderPath": ".github/skills/domain-modeling",
     "examplesPath": ".github/skills/domain-modeling/examples/customer-profile-example",
-    "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs",
+    "testPath": "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs",
     "status": "published",
     "createdDate": "2026-03-17",
     "lastUpdatedDate": "2026-03-17"

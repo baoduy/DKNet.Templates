@@ -62,14 +62,14 @@ Before you start following the step-by-step workflow, collect this information:
 
 **What you're doing**: Define the business entity as a C# class in the Domains layer (no infrastructure concerns).
 
-1. In VS Code, open `src/SlimBus.Domains/Features/` and create a new folder for your feature (e.g., `CustomerProfiles/`)
+1. In VS Code, open `src/Minimal.Domains/Features/` and create a new folder for your feature (e.g., `CustomerProfiles/`)
 2. Inside that folder, create a `Entities/` subfolder
 3. Create a new C# file: `<YourEntity>.cs` (e.g., `CustomerProfile.cs`)
 4. Copy the [entity-template.cs](./templates/entity-template.cs) and customize it with your entity name and properties:
 
 ```csharp
 // Example: CustomerProfile.cs
-namespace SlimBus.Domains.Features.CustomerProfiles.Entities;
+namespace Minimal.Domains.Features.CustomerProfiles.Entities;
 
 /// <summary>
 /// Customer profile domain entity containing customer information.
@@ -158,7 +158,7 @@ public sealed class CustomerProfile
 
 **What you're doing**: Define how the entity maps to the database schema using EF Core's fluent configuration API.
 
-1. In `src/SlimBus.Infra/Features/`, create a folder matching your feature (e.g., `CustomerProfiles/`)
+1. In `src/Minimal.Infra/Features/`, create a folder matching your feature (e.g., `CustomerProfiles/`)
 2. Inside that folder, create a `Mappers/` subfolder
 3. Create a new mapper file: `<YourEntity>Mapper.cs` (e.g., `CustomerProfileMapper.cs`)
 4. Copy the [mapper-template.cs](./templates/mapper-template.cs) and customize:
@@ -169,7 +169,7 @@ using SmartCode.Domains.Features.CustomerProfiles.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace SlimBus.Infra.Features.CustomerProfiles.Mappers;
+namespace Minimal.Infra.Features.CustomerProfiles.Mappers;
 
 /// <summary>
 /// EF Core mapper configuration for CustomerProfile entity.
@@ -235,12 +235,12 @@ public sealed class CustomerProfileMapper : IEntityTypeConfiguration<CustomerPro
 
 **What you're doing**: Generate the database migration script and verify the schema is correct.
 
-1. Open terminal in `src/SlimBus.ApiEndpoints/` directory
+1. Open terminal in `src/Minimal.ApiEndpoints/` directory
 2. Run the migration script:
    ```bash
    ./add-migration.sh CustomerProfileInitial
    ```
-3. Verify the generated migration file in `src/SlimBus.Infra/Migrations/` looks correct:
+3. Verify the generated migration file in `src/Minimal.Infra/Migrations/` looks correct:
    - Table name matches your mapper setup
    - Columns and constraints match your properties
    - Indexes are created correctly
@@ -253,7 +253,7 @@ public sealed class CustomerProfileMapper : IEntityTypeConfiguration<CustomerPro
 **Expected output**: Migration applies cleanly; database table created with correct schema.
 
 **Common mistake**: Running migration before mapper is in correct location (Scrutor auto-discovery failure).  
-**Fix**: Ensure mapper is in `SlimBus.Infra/Features/<Feature>/Mappers/` and is `sealed`.
+**Fix**: Ensure mapper is in `Minimal.Infra/Features/<Feature>/Mappers/` and is `sealed`.
 
 ---
 
@@ -275,8 +275,8 @@ Expected: Zero warnings, all projects build successfully ✅
 
 Print or copy the checklist from [checklist.md](./checklist.md) and verify ALL items are complete:
 
-- [ ] Entity class created in `SlimBus.Domains/Features/<Feature>/Entities/<Entity>.cs`
-- [ ] Mapper class created in `SlimBus.Infra/Features/<Feature>/Mappers/<Entity>Mapper.cs`
+- [ ] Entity class created in `Minimal.Domains/Features/<Feature>/Entities/<Entity>.cs`
+- [ ] Mapper class created in `Minimal.Infra/Features/<Feature>/Mappers/<Entity>Mapper.cs`
 - [ ] Mapper class is `sealed` (required for Scrutor auto-discovery)
 - [ ] All entity properties mapped with correct EF configuration
 - [ ] Validation rules enforced (string lengths, nullability, etc.)
@@ -297,7 +297,7 @@ Print or copy the checklist from [checklist.md](./checklist.md) and verify ALL i
 **Why it happens**: Mapper is either in wrong folder or not sealed; Scrutor cannot auto-register it.
 
 **How to fix**:
-1. Verify mapper is in: `SlimBus.Infra/Features/<Feature>/Mappers/`
+1. Verify mapper is in: `Minimal.Infra/Features/<Feature>/Mappers/`
 2. Add `sealed` keyword to class declaration
 3. Verify it inherits from `IEntityTypeConfiguration<YourEntity>`
 4. Run migration again; it should now pick up the mapper

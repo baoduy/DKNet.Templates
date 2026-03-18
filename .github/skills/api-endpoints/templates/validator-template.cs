@@ -1,7 +1,7 @@
 // ==================================================
 // VALIDATOR TEMPLATE (FluentValidation for Request Types)
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/V1/Actions/<Action>.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/V1/Actions/<Action>.cs
 //   (Same file as request type, as internal sealed class)
 //
 // INSTRUCTIONS:
@@ -15,7 +15,7 @@
 
 using FluentValidation;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.V1.Actions;
+namespace Minimal.AppServices.Features.<FEATURE>.V1.Actions;
 
 // ========== CREATE VALIDATOR ==========
 

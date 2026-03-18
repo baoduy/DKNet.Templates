@@ -182,9 +182,9 @@ PARALLEL EXECUTION OPPORTUNITIES:
     - **Prerequisites**: Before you start (read AGENTS.md Architecture, understand C# classes)
     - **Inputs Checklist**: What information you need (entity name, properties, relationships, validation rules)
     - **Step-by-Step Workflow**:
-      - Step 1: Define the entity class in SlimBus.Domains/Features/<Feature>/Entities/
+      - Step 1: Define the entity class in Minimal.Domains/Features/<Feature>/Entities/
       - Step 2: Implement mutation methods (Create(), Update(), Delete() if applicable)
-      - Step 3: Create mapper class in SlimBus.Infra/Features/<Feature>/Mappers/ inheriting from auto-config base
+      - Step 3: Create mapper class in Minimal.Infra/Features/<Feature>/Mappers/ inheriting from auto-config base
       - Step 4: Configure properties (ConfigureProperty for types, lengths, required fields)
       - Step 5: Configure relationships (HasOne, HasMany, WithMany)
       - Step 6: Configure indexes for query performance
@@ -261,7 +261,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
   - **Checklist Sections**:
     - **Entity Class**: 
       - [✓] Mapper class follows ProfileMapper template pattern from AGENTS.md
-      - [✓] Class is placed in `SlimBus.Infra/Features/<Feature>/Mappers/` (auto-discovery)
+      - [✓] Class is placed in `Minimal.Infra/Features/<Feature>/Mappers/` (auto-discovery)
       - [✓] Mapper class is sealed (for Scrutor auto-registration)
     - **Property Mapping**:
       - [✓] All entity properties correctly mapped to database types
@@ -286,8 +286,8 @@ PARALLEL EXECUTION OPPORTUNITIES:
 
 #### Skill 1 Tests
 
-- [ ] **T009** Create `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs`
-  - **File Path**: `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs`
+- [ ] **T009** Create `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs`
+  - **File Path**: `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs`
   - **Description**: Unit tests verifying that Domain Modeling Skill templates and guidance produce valid code artifacts. Tests shall verify: mapper auto-discovery, property configuration correctness, sealed class requirement, and migration generation.
   - **Test Cases** (xUnit + Shouldly):
     - **Test 1**: "Mapper class in Mappers/ folder is auto-discovered by Scrutor"
@@ -487,8 +487,8 @@ PARALLEL EXECUTION OPPORTUNITIES:
 
 #### Skill 2 Tests
 
-- [ ] **T014** Create `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/CrudOperationsSkillTests.cs`
-  - **File Path**: `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/CrudOperationsSkillTests.cs`
+- [ ] **T014** Create `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/CrudOperationsSkillTests.cs`
+  - **File Path**: `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/CrudOperationsSkillTests.cs`
   - **Description**: Unit tests verifying that CRUD Operations Skill templates produce valid artifacts and workflows. Test: command handling, domain mutation encapsulation, event publishing, repository persistence, and specification queries.
   - **Test Cases** (xUnit + Shouldly):
     - **Test 1**: "CreateProfileCommand handler creates entity, publishes event, and persists"
@@ -683,8 +683,8 @@ PARALLEL EXECUTION OPPORTUNITIES:
 
 #### Skill 3 Tests
 
-- [ ] **T019** Create `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/ApiEndpointsSkillTests.cs`
-  - **File Path**: `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/ApiEndpointsSkillTests.cs`
+- [ ] **T019** Create `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/ApiEndpointsSkillTests.cs`
+  - **File Path**: `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/ApiEndpointsSkillTests.cs`
   - **Description**: Integration tests verifying that API Endpoints Skill templates work end-to-end. Test: endpoint routing, command wiring, DTO mapping, error handling, and OpenAPI generation.
   - **Test Cases** (xUnit):
     - **Test 1**: "POST /api/v1/profiles creates profile and returns 201 Created"
@@ -830,7 +830,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
       },
       "successCriteria": [
         "[✓] Mapper class follows ProfileMapper template pattern",
-        "[✓] Class placed in SlimBus.Infra/Features/<Feature>/Mappers/",
+        "[✓] Class placed in Minimal.Infra/Features/<Feature>/Mappers/",
         "[✓] Sealed class for Scrutor auto-registration",
         "[✓] All entity properties correctly mapped",
         "[✓] Validation rules enforced in ConfigureProperty",
@@ -845,7 +845,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
       "skillFile": "skill.md",
       "examplePath": "examples/customer-profile-example/",
       "checklistFile": "checklist.md",
-      "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs",
+      "testPath": "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs",
       "relatedSkills": ["crud-operations"],
       "nextSkill": "crud-operations"
     }
@@ -911,7 +911,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
 #### Testing Infrastructure
 
 - [ ] **T024** [P] Create skill metadata validation unit tests
-  - **File Path**: `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/SkillMetadataValidationTests.cs`
+  - **File Path**: `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/SkillMetadataValidationTests.cs`
   - **Description**: Unit tests verifying that all skill metadata.json files conform to schema and contain required fields. Tests shall: load metadata, validate against schema, check field completeness, and verify relationships between skills.
   - **Test Cases** (xUnit):
     - **Test 1**: "All skill metadata.json files exist and are valid JSON"
@@ -950,7 +950,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
   - **Dependencies**: T003, T022
 
 - [ ] **T025** [P] Create skill guidance execution tests (verify template usage patterns)
-  - **File Path**: `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/SkillGuidanceTests.cs`
+  - **File Path**: `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/SkillGuidanceTests.cs`
   - **Description**: Integration-style tests verifying that following skill guidance produces correct codebase artifacts. Tests shall: instantiate examples from skill guidance, verify compilation, check for warnings, and validate that outputs match expected patterns.
   - **Test Cases** (xUnit):
     - **Test 1**: "Domain Modeling Skill example (CustomerProfileMapper) compiles without warnings"
@@ -987,7 +987,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
 #### End-to-End Skill Usage Test
 
 - [ ] **T026** End-to-end test: developer uses all 3 skills to implement a new feature
-  - **File Path**: `src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/EndToEndSkillUsageTests.cs`
+  - **File Path**: `src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/EndToEndSkillUsageTests.cs`
   - **Description**: Integration test demonstrating a complete feature workflow using all three skills in sequence. Simulate a developer following skill guidance step-by-step and verify the result is production-ready.
   - **Scenario**: "Add a new Order entity with full CRUD operations and REST API"
   - **Workflow Simulation**:
@@ -1067,7 +1067,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
     - **Per-Skill Migration Checklist**:
       - **Domain Modeling Migration**:
         - If: You have mappers in non-standard locations or inheriting from custom base
-        - Then: Move to SlimBus.Infra/Features/<Feature>/Mappers/, inherit from auto-config base
+        - Then: Move to Minimal.Infra/Features/<Feature>/Mappers/, inherit from auto-config base
         - Checklist: 5 steps with examples
       - **CRUD Operations Migration**:
         - If: Commands in non-standard places, or events not being published
@@ -1097,7 +1097,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
       - A: "Start at `.github/copilot/skills/README.md`"
     - **Domain Modeling**:
       - Q: "My mapper class isn't being auto-discovered. What's wrong?"
-      - A: "Mapper must be sealed and in `SlimBus.Infra/Features/<Feature>/Mappers/`. Check namespace and sealed keyword."
+      - A: "Mapper must be sealed and in `Minimal.Infra/Features/<Feature>/Mappers/`. Check namespace and sealed keyword."
       - Q: "What's the difference between ConfigureProperty and HasOne?"
       - A: "ConfigureProperty configures scalar properties (strings, ints); HasOne configures relationships with other entities."
     - **CRUD Operations**:
@@ -1143,7 +1143,7 @@ PARALLEL EXECUTION OPPORTUNITIES:
       - Step 1: Create folder under .github/copilot/skills/ (follow CONVENTIONS.md)
       - Step 2: Draft skill.md, metadata.json, checklist.md
       - Step 3: Create templates and at least one working example
-      - Step 4: Write tests in SlimBus.App.Tests/Skills/
+      - Step 4: Write tests in Minimal.App.Tests/Skills/
       - Step 5: Submit PR; ensure all validation CI checks pass; request review
     - **Updating an Existing Skill**:
       - Minor updates (docs, examples): direct update + test

@@ -67,14 +67,14 @@ Authorization: Bearer {admin-token}
 
 | Layer | Path |
 |-------|------|
-| Domain Entity | `SlimBus.Domains/Features/Profiles/Entities/CustomerProfile.cs` |
-| EF Core Mapper | `SlimBus.Infra/Features/Profiles/Mappers/ProfileMapper.cs` |
-| Create Handler | `SlimBus.AppServices/CustomerProfiles/V1/Actions/Create.cs` |
-| Update Handler | `SlimBus.AppServices/CustomerProfiles/V1/Actions/Update.cs` |
-| Delete Handler | `SlimBus.AppServices/CustomerProfiles/V1/Actions/Delete.cs` |
-| Domain Events | `SlimBus.AppServices/CustomerProfiles/V1/Events/` |
-| Query Specs | `SlimBus.AppServices/CustomerProfiles/V1/Specs/` |
-| API Endpoints | `SlimBus.Api/ApiEndpoints/ProfileEndpoints.cs` |
+| Domain Entity | `Minimal.Domains/Features/Profiles/Entities/CustomerProfile.cs` |
+| EF Core Mapper | `Minimal.Infra/Features/Profiles/Mappers/ProfileMapper.cs` |
+| Create Handler | `Minimal.AppServices/CustomerProfiles/V1/Actions/Create.cs` |
+| Update Handler | `Minimal.AppServices/CustomerProfiles/V1/Actions/Update.cs` |
+| Delete Handler | `Minimal.AppServices/CustomerProfiles/V1/Actions/Delete.cs` |
+| Domain Events | `Minimal.AppServices/CustomerProfiles/V1/Events/` |
+| Query Specs | `Minimal.AppServices/CustomerProfiles/V1/Specs/` |
+| API Endpoints | `Minimal.Api/ApiEndpoints/ProfileEndpoints.cs` |
 
 ## Related Documentation
 

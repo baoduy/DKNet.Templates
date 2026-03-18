@@ -6,7 +6,7 @@
                 <Configuration>
                     <Include>
                         [DKNet*]*
-                        [SlimBus*]*
+                        [Minimal*]*
                     </Include>
                     <Exclude>
                         [*.Tests]*

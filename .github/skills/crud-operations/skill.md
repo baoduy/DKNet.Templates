@@ -47,16 +47,16 @@ Before starting, ensure you have:
 
 **What you're doing**: Define request/response DTOs with the `[GenerateDto]` attribute pattern. DTOs are auto-generated from domain entities using the code generator.
 
-1. In `src/SlimBus.AppServices/Features/<YourFeature>/V1/` create DTO files
+1. In `src/Minimal.AppServices/Features/<YourFeature>/V1/` create DTO files
 2. For request/response models, use the `[GenerateDto]` attribute:
 
 ```csharp
 // Example: CustomerProfileDtos.cs
 using DKNet.EfCore.DtoGenerator;
 using Mapster;
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
 
-namespace SlimBus.AppServices.Features.CustomerProfiles.V1;
+namespace Minimal.AppServices.Features.CustomerProfiles.V1;
 
 // Response DTO - auto-generated from entity
 [GenerateDto(typeof(CustomerProfile), Exclude = [])]
@@ -83,9 +83,9 @@ public sealed record UpdateCustomerProfileRequest(
 
 ```csharp
 using FluentValidation;
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
 
-namespace SlimBus.AppServices.Features.CustomerProfiles.V1;
+namespace Minimal.AppServices.Features.CustomerProfiles.V1;
 
 // Validator for Create request
 public sealed class CreateCustomerProfileRequestValidator 
@@ -140,9 +140,9 @@ public sealed class UpdateCustomerProfileRequestValidator
 
 ```csharp
 // In AppServices/Features/CustomerProfiles/Repositories/ICustomerProfileRepository.cs
-namespace SlimBus.AppServices.Features.CustomerProfiles.Repositories;
+namespace Minimal.AppServices.Features.CustomerProfiles.Repositories;
 
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
 
 public interface ICustomerProfileRepository
 {
@@ -162,9 +162,9 @@ public interface ICustomerProfileRepository
 
 ```csharp
 // In AppServices/Features/CustomerProfiles/Repositories/ICustomerProfileRepository.cs
-namespace SlimBus.AppServices.Features.CustomerProfiles.Repositories;
+namespace Minimal.AppServices.Features.CustomerProfiles.Repositories;
 
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
 
 public interface ICustomerProfileRepository
 {
@@ -180,11 +180,11 @@ public interface ICustomerProfileRepository
 
 ```csharp
 // In Infra/Features/CustomerProfiles/Repos/CustomerProfileRepository.cs
-namespace SlimBus.Infra.Features.CustomerProfiles.Repos;
+namespace Minimal.Infra.Features.CustomerProfiles.Repos;
 
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
-using SlimBus.AppServices.Features.CustomerProfiles.Repositories;
-using SlimBus.Infra.Contexts;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
+using Minimal.AppServices.Features.CustomerProfiles.Repositories;
+using Minimal.Infra.Contexts;
 
 public sealed class CustomerProfileRepository : ICustomerProfileRepository
 {
@@ -228,11 +228,11 @@ public sealed class CustomerProfileRepository : ICustomerProfileRepository
 
 ```csharp
 // In Infra/Features/CustomerProfiles/Repos/CustomerProfileRepository.cs
-namespace SlimBus.Infra.Features.CustomerProfiles.Repos;
+namespace Minimal.Infra.Features.CustomerProfiles.Repos;
 
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
-using SlimBus.AppServices.Features.CustomerProfiles.Repositories;
-using SlimBus.Infra.Contexts;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
+using Minimal.AppServices.Features.CustomerProfiles.Repositories;
+using Minimal.Infra.Contexts;
 
 public sealed class CustomerProfileRepository : ICustomerProfileRepository
 {
@@ -267,7 +267,7 @@ public sealed class CustomerProfileRepository : ICustomerProfileRepository
 
 ```csharp
 // In AppServices/Features/CustomerProfiles/Events/CustomerProfileCreatedEvent.cs
-namespace SlimBus.AppServices.Features.CustomerProfiles.Events;
+namespace Minimal.AppServices.Features.CustomerProfiles.Events;
 
 public sealed record CustomerProfileCreatedEvent(
     Guid ProfileId,
@@ -286,7 +286,7 @@ public sealed record CustomerProfileUpdatedEvent(
 
 ```csharp
 // In AppServices/Features/CustomerProfiles/Events/CustomerProfileEvents.cs
-namespace SlimBus.AppServices.Features.CustomerProfiles.Events;
+namespace Minimal.AppServices.Features.CustomerProfiles.Events;
 
 public sealed record CustomerProfileCreatedEvent(
     Guid ProfileId,
@@ -309,13 +309,13 @@ public sealed record CustomerProfileDeletedEvent(
 
 ```csharp
 // In AppServices/Features/CustomerProfiles/Services/ProfileService.cs
-namespace SlimBus.AppServices.Features.CustomerProfiles.Services;
+namespace Minimal.AppServices.Features.CustomerProfiles.Services;
 
-using SlimBus.AppServices.Features.CustomerProfiles.V1;
-using SlimBus.AppServices.Features.CustomerProfiles.Events;
-using SlimBus.AppServices.Features.CustomerProfiles.Repositories;
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
-using SlimBus.Infra.Services;
+using Minimal.AppServices.Features.CustomerProfiles.V1;
+using Minimal.AppServices.Features.CustomerProfiles.Events;
+using Minimal.AppServices.Features.CustomerProfiles.Repositories;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Infra.Services;
 
 public sealed class ProfileService
 {
@@ -369,9 +369,9 @@ public sealed class ProfileService
 
 ```csharp
 // In AppServices/Specs/SpecGetCustomerProfileByEmail.cs
-namespace SlimBus.AppServices.Specs;
+namespace Minimal.AppServices.Specs;
 
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
 using Ardalis.Specification;
 
 public sealed class SpecGetCustomerProfileByEmail : Specification<CustomerProfile>

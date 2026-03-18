@@ -9,17 +9,17 @@
     "Aspire",
     "Clean Architecture"
   ],
-  "name": "DKNet SlimBus API Solution",
+  "name": "DKNet Minimal API Solution",
   "description": "A production-ready ASP.NET Core solution template built on vertical slice architecture with DDD, CQRS, EF Core, .NET Aspire, Redis, SQL Server, FluentValidation, OpenTelemetry, and Azure integration.",
-  "identity": "DKNet.SlimBus.Template",
-  "groupIdentity": "DKNet.SlimBus",
-  "shortName": "dknet-slimbus",
-  "defaultName": "MySlimBusApp",
+  "identity": "DKNet.Minimal.Template",
+  "groupIdentity": "DKNet.Minimal",
+  "shortName": "dknet-minimal",
+  "defaultName": "MyMinimalApp",
   "tags": {
     "language": "C#",
     "type": "solution"
   },
-  "sourceName": "SlimBus",
+  "sourceName": "Minimal",
   "preferNameDirectory": true,
   "symbols": {
     "Framework": {
@@ -62,7 +62,7 @@
       "source": "./",
       "target": "./",
       "rename": {
-        "DKNet.Templates.sln": "SlimBus.sln"
+        "DKNet.Templates.sln": "Minimal.sln"
       },
       "modifiers": [
         {

@@ -144,7 +144,7 @@ If you've written the code correctly, existing tests should pass:
 
 ```bash
 cd /Users/steven/_CODE/GIT/DKNet.Templates/src
-dotnet test SlimBus.App.Tests --filter "SkillName"
+dotnet test Minimal.App.Tests --filter "SkillName"
 ```
 
 Expected output: All tests pass ✅

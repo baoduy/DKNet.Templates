@@ -1,7 +1,7 @@
 // ==================================================
 // REQUEST DTO TEMPLATE
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/V1/<OPERATION>Request.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/V1/<OPERATION>Request.cs
 // 
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your feature name (e.g., "CustomerProfiles")
@@ -12,7 +12,7 @@
 
 using System;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.V1;
+namespace Minimal.AppServices.Features.<FEATURE>.V1;
 
 public sealed record Create<FEATURE>Request(
     // TODO: Replace with your DTO properties

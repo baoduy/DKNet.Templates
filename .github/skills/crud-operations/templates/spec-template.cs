@@ -1,7 +1,7 @@
 // ==================================================
 // QUERY SPEC TEMPLATE
 // ==================================================
-// Location: SlimBus.AppServices/Specs/<FEATURE>Specs.cs
+// Location: Minimal.AppServices/Specs/<FEATURE>Specs.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your entity name (e.g., "CustomerProfile")
@@ -14,7 +14,7 @@
 using Ardalis.Specification;
 using <DOMAIN_NAMESPACE>.<ENTITY>;
 
-namespace SlimBus.AppServices.Specs;
+namespace Minimal.AppServices.Specs;
 
 // ==== Example 1: Get by ID ====
 public sealed class SpecGet<FEATURE>ById : Specification<<ENTITY>>
