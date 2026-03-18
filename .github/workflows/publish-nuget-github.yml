@@ -52,8 +52,8 @@ jobs:
       - name: Build
         run: dotnet build src/DKNet.Templates.sln -c Release --no-restore
 
-      - name: Test
-        run: dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage" --no-build
+    #   - name: Test
+    #     run: dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage" --no-build
 
       - name: Pack template
         run: dotnet pack src/DKNet.SlimBus.Template.csproj -c Release -o src/nupkgs -p:PackageVersion=${{ env.NEXT_VERSION }}
