@@ -31,7 +31,7 @@ Defines configuration options for Azure App Configuration integration:
 
 Contains extension methods for configuring Azure App Configuration:
 
-- **AddSlimBusAzureAppConfiguration**: Adds Azure App Configuration as a configuration source
+- **AddAzureAppConfiguration**: Adds Azure App Configuration as a configuration source
 - **AddAzureAppConfigurationServices**: Registers Azure App Configuration services for dependency injection
 - Helper methods for configuring key-value retrieval, refresh settings, and feature flags
 
@@ -106,9 +106,9 @@ In Azure Portal, navigate to your App Configuration resource and add key-value p
 
 **Configuration Keys:**
 
-- `SlimBus:FeatureManagement:EnableSwagger` = `true`
-- `SlimBus:Logging:LogLevel:Default` = `Information`
-- `SlimBus:CustomSetting` = `RemoteValue`
+- `Minimal:FeatureManagement:EnableSwagger` = `true`
+- `Minimal:Logging:LogLevel:Default` = `Information`
+- `Minimal:CustomSetting` = `RemoteValue`
 
 **Feature Flags:**
 
@@ -153,7 +153,7 @@ public class MyService
     {
         // This value comes from Azure App Configuration if enabled
         var setting = _configuration["CustomSetting"];
-        var nestedSetting = _configuration["SlimBus:FeatureManagement:EnableSwagger"];
+        var nestedSetting = _configuration["Minimal:FeatureManagement:EnableSwagger"];
     }
 }
 ```
@@ -215,7 +215,7 @@ The integration includes robust error handling:
 
 ### Configuration Organization
 
-1. **Use consistent key naming conventions** (e.g., `SlimBus:FeatureName:Setting`)
+1. **Use consistent key naming conventions** (e.g., `Minimal:FeatureName:Setting`)
 2. **Group related settings** using prefixes
 3. **Use labels for environment-specific values**
 4. **Document configuration keys** in your team wiki

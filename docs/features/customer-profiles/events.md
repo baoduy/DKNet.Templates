@@ -32,7 +32,7 @@ and `Minimal.Infra/Features/Profiles/` (if infra handlers present)
 **Subscriber Example**
 
 ```csharp
-// In AppServices or Infra — auto-discovered by SlimBus assembly scan
+// In AppServices or Infra — auto-discovered by Minimal assembly scan
 internal sealed class ProfileCreatedEventFromMemoryHandler :
     Fluents.EventsConsumers.IHandler<ProfileCreatedEvent>
 {
@@ -113,7 +113,7 @@ To react to `ProfileCreatedEvent` from another feature or service:
 
 1. Create a handler class in your feature's AppServices project
 2. Implement `Fluents.EventsConsumers.IHandler<ProfileCreatedEvent>`
-3. No manual DI registration — SlimBus scans assemblies automatically
+3. No manual DI registration — Minimal scans assemblies automatically
 
 ```csharp
 internal sealed class SendWelcomeEmailOnProfileCreatedHandler :

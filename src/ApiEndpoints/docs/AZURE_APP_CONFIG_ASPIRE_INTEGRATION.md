@@ -4,7 +4,7 @@ This document outlines the enhanced integration tests for Azure App Configuratio
 
 ## Overview
 
-The SlimBus API integration tests have been improved to leverage .NET Aspire host for testing Azure App Configuration scenarios. This provides more realistic testing with proper infrastructure orchestration including Redis cache, SQL Server database, and Azure App Configuration resources.
+The Minimal API integration tests have been improved to leverage .NET Aspire host for testing Azure App Configuration scenarios. This provides more realistic testing with proper infrastructure orchestration including Redis cache, SQL Server database, and Azure App Configuration resources.
 
 ## Test Structure
 

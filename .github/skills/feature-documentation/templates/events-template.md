@@ -104,7 +104,7 @@ This feature does not currently consume events from other features.
 
 ## Event Bus Configuration
 
-Events are dispatched via the SlimBus message bus with two bus types:
+Events are dispatched via the Minimal message bus with two bus types:
 
 | Bus Type | When Active | Purpose |
 |----------|-------------|---------|

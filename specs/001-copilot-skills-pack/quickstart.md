@@ -150,7 +150,7 @@ From `templates/` folder, copy the template matching your entity:
 ```bash
 # Example: Using Domain Modeling Skill
 cp .github/skills/domain-modeling/templates/mapper-template.cs \
-   src/SlimBus.Infra/Features/Orders/Mappers/OrderHeaderMapper.cs
+   src/Minimal.Infra/Features/Orders/Mappers/OrderHeaderMapper.cs
 
 # Customize the template
 # Change "ProfileMapper" → "OrderHeaderMapper"
@@ -250,9 +250,9 @@ dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings
 # 2. Follow steps 1-4 (entity class, mapper, migration, test)
 
 # 3. Deliverables:
-#    - src/SlimBus.Domains/Features/Orders/Entities/Order.cs
-#    - src/SlimBus.Infra/Features/Orders/Mappers/OrderMapper.cs
-#    - Migration: src/SlimBus.ApiEndpoints/Migrations/202603171538_AddOrder.cs
+#    - src/Minimal.Domains/Features/Orders/Entities/Order.cs
+#    - src/Minimal.Infra/Features/Orders/Mappers/OrderMapper.cs
+#    - Migration: src/Minimal.ApiEndpoints/Migrations/202603171538_AddOrder.cs
 
 # 4. Validate using domain-modeling/checklist.md
 ```
@@ -384,7 +384,7 @@ dotnet build src/DKNet.Templates.sln -c Release
 - Response DTO doesn't match entity
 
 **Solution**:
-1. Check similar tests in SlimBus.App.Tests/ (use as reference)
+1. Check similar tests in Minimal.App.Tests/ (use as reference)
 2. Use debugger to inspect test failure details
 3. Refer to api-endpoints/checklist.md "Integration Tests" section
 4. Ask Copilot: `@skills help with endpoint testing`
