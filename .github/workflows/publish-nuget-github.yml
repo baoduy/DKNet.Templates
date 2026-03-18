@@ -1,0 +1,92 @@
+name: Build and Publish NuGet Package
+
+'on':
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Versioning
+      - name: Calculate version
+        id: version
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
+          version_format: "${major}.${minor}.${patch}"
+          bump_each_commit: false
+          search_commit_body: false
+
+      - name: Set NEXT_VERSION
+        run: echo "NEXT_VERSION=${{ steps.version.outputs.version }}" >> $GITHUB_ENV
+
+      - name: Print the version
+        run: echo ${{ steps.version.outputs.version }}
+    
+    # Dotnet build and publish
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore src/DKNet.Templates.sln
+
+      - name: Build
+        run: dotnet build src/DKNet.Templates.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage" --no-build
+
+      - name: Pack template
+        run: dotnet pack src/DKNet.SlimBus.Template.csproj -c Release -o src/nupkgs -p:PackageVersion=${{ env.NEXT_VERSION }}
+
+      - name: Add GitHub Packages source
+        run: |
+          dotnet nuget add source \
+            --username "${{ github.actor }}" \
+            --password "${{ secrets.GITHUB_TOKEN }}" \
+            --store-password-in-clear-text \
+            --name "github" \
+            "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
+      - name: Push package to GitHub Packages
+        run: |
+          dotnet nuget push "src/nupkgs/*.nupkg" \
+            --source "github" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --skip-duplicate
+    
+    # Create Release
+      - name: Zip Release
+        uses: thedoctor0/zip-release@0.7.5
+        with:
+          # Filename for archive
+          filename: release.zip
+          directory: ${{ runner.WORKSPACE }}/nupkgs
+          
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          make_latest: true
+          files: ${{ runner.WORKSPACE }}/nupkgs/release.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ env.NEXT_VERSION }}
