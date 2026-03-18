@@ -16,6 +16,7 @@
     <projectUrl>https://github.com/baoduy/DKNet</projectUrl>
     <repository type="git" url="https://github.com/baoduy/DKNet" />
     <license type="expression">MIT</license>
+    <readme>README.md</readme>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <tags>template aspnetcore ddd cqrs efcore aspire slimbus vertical-slice clean-architecture azure opentelemetry</tags>
     <language>en</language>
@@ -24,6 +25,9 @@
     </packageTypes>
   </metadata>
   <files>
+
+    <!-- NuGet package readme shown on package page -->
+    <file src="..\README.md" target="" />
 
     <!-- template.json — must live at content/.template.config/ -->
     <file src=".template.config\**\*" target="content\.template.config\" />

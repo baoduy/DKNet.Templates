@@ -34,9 +34,6 @@ jobs:
           bump_each_commit: false
           search_commit_body: false
 
-      - name: Set NEXT_VERSION
-        run: echo "NEXT_VERSION=${{ steps.version.outputs.version }}" >> $GITHUB_ENV
-
       - name: Print the version
         run: echo ${{ steps.version.outputs.version }}
     
@@ -55,8 +52,13 @@ jobs:
     #   - name: Test
     #     run: dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage" --no-build
 
+      - name: Set nuspec version
+        run: |
+          sed -i.bak "s|<version>.*</version>|<version>${{ steps.version.outputs.version }}</version>|" src/DKNet.SlimBus.Template.nuspec
+          rm src/DKNet.SlimBus.Template.nuspec.bak
+
       - name: Pack template
-        run: dotnet pack src/DKNet.SlimBus.Template.csproj -c Release -o src/nupkgs -p:PackageVersion=${{ env.NEXT_VERSION }}
+        run: dotnet pack src/DKNet.SlimBus.Template.csproj -c Release -o src/nupkgs
 
       - name: Add GitHub Packages source
         run: |
@@ -82,4 +84,4 @@ jobs:
           make_latest: true
           #files: ${{ runner.WORKSPACE }}/nupkgs/release.zip
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: v${{ env.NEXT_VERSION }}
+          tag_name: v${{ steps.version.outputs.version }}
