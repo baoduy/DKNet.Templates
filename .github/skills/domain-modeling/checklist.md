@@ -10,7 +10,7 @@
 
 | #   | Requirement                                       | Success Looks Like                                                            | Fix If Failed                                                  |
 | --- | ------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 1   | Entity class created in correct folder            | File at `src/SlimBus.Domains/Features/<YourFeature>/Entities/<YourEntity>.cs` | Move file to correct location and update namespace             |
+| 1   | Entity class created in correct folder            | File at `src/Minimal.Domains/Features/<YourFeature>/Entities/<YourEntity>.cs` | Move file to correct location and update namespace             |
 | 2   | Class is sealed                                   | `public sealed class YourEntity`                                              | Add `sealed` keyword to class declaration                      |
 | 3   | Properties use required modifier where applicable | Properties marked with `required` keyword for non-optional fields             | Add `required` modifier or init-only property `{ get; init; }` |
 | 4   | Entity has ID property                            | `public required Guid Id { get; init; }`                                      | Add Id property for entity identity                            |
@@ -23,7 +23,7 @@
 
 | #   | Requirement                            | Success Looks Like                                                               | Fix If Failed                                                    |
 | --- | -------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 7   | Mapper created in Mappers folder       | File at `src/SlimBus.Infra/Features/<YourFeature>/Mappers/<YourEntity>Mapper.cs` | Move file to correct location under `.../Mappers/`               |
+| 7   | Mapper created in Mappers folder       | File at `src/Minimal.Infra/Features/<YourFeature>/Mappers/<YourEntity>Mapper.cs` | Move file to correct location under `.../Mappers/`               |
 | 8   | Mapper class is sealed                 | `public sealed class YourEntityMapper : IEntityTypeConfiguration<YourEntity>`    | Add `sealed` keyword; Scrutor auto-registration requires it      |
 | 9   | Implements IEntityTypeConfiguration<T> | `public class YourEntityMapper : IEntityTypeConfiguration<YourEntity>`           | Inherit from `IEntityTypeConfiguration<>` interface              |
 | 10  | All properties configured              | Each entity property has a `builder.Property()` configuration call               | Add ConfigureProperty calls for every property                   |
@@ -61,7 +61,7 @@
 | 21  | Code compiles without errors       | Run `dotnet build src/DKNet.Templates.sln -c Release` — zero errors              | Fix compilation errors; typically namespace or syntax issues |
 | 22  | Code compiles with zero warnings   | Same build command produces zero warnings                                        | Address all warnings; project enforces warnings-as-errors    |
 | 23  | XML documentation comments         | All non-obvious properties and methods have `/// <summary>` comments             | Add doc comments for clarity                                 |
-| 24  | Namespace matches folder path      | `namespace SlimBus.Domains.Features.YourFeature.Entities`                        | Update namespace to match file location                      |
+| 24  | Namespace matches folder path      | `namespace Minimal.Domains.Features.YourFeature.Entities`                        | Update namespace to match file location                      |
 | 25  | Follows project naming conventions | Entity names PascalCase, property names PascalCase, mapper names end in `Mapper` | Rename to match conventions                                  |
 
 ---

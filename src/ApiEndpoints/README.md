@@ -1,4 +1,4 @@
-# SlimBus.ApiEndpoints
+# Minimal.ApiEndpoints
 
 A modular and scalable framework for building API-driven applications with modern development practices, emphasizing
 Domain-Driven Design (DDD), separation of concerns, and extensibility.
@@ -7,7 +7,7 @@ Domain-Driven Design (DDD), separation of concerns, and extensibility.
 
 ## Overview
 
-SlimBus.ApiEndpoints is designed to simplify the management of domains, services, and API endpoints while integrating
+Minimal.ApiEndpoints is designed to simplify the management of domains, services, and API endpoints while integrating
 robust error handling and configurability. It is built using .NET 9.0, ensuring high performance and modern features.
 
 ---
@@ -33,7 +33,7 @@ These skills help GitHub Copilot provide better code suggestions and assist your
 
 ## Project Structure
 
-### 1. **SlimBus.Api**
+### 1. **Minimal.Api**
 
 - Contains all API endpoint configurations and controllers.
 - **Subfolders:**
@@ -41,14 +41,14 @@ These skills help GitHub Copilot provide better code suggestions and assist your
     - **`Configs`**: Houses configurations for middleware, authentication, Swagger, and global exception handling.
     - **`Extensions`**: Provides utility methods and extensions for API services.
 
-### 2. **SlimBus.AppHost**
+### 2. **Minimal.AppHost**
 
 - Entry point for the application.
 - **Responsibilities:**
     - Configures and hosts services.
     - Loads environment-specific configurations.
 
-### 3. **SlimBus.AppServices**
+### 3. **Minimal.AppServices**
 
 - Implements business logic and core services.
 - **Key Components:**
@@ -57,7 +57,7 @@ These skills help GitHub Copilot provide better code suggestions and assist your
     - **`Profiles/V1`**: Defines actions, queries, and events for the `Profiles` domain.
     - **`Share`**: Shared service implementations.
 
-### 4. **SlimBus.Domains**
+### 4. **Minimal.Domains**
 
 - Encapsulates core domain logic using DDD principles.
 - **Features:**
@@ -65,7 +65,7 @@ These skills help GitHub Copilot provide better code suggestions and assist your
     - **`Profiles/Repos`**: Repository interfaces for data access.
     - **`Share`**: Provides base classes and utilities (e.g., `AggregateRoot`, `DomainEntity`).
 
-### 5. **SlimBus.Infra**
+### 5. **Minimal.Infra**
 
 - Manages data persistence and integrations.
 - **Core Services:**
@@ -76,12 +76,12 @@ These skills help GitHub Copilot provide better code suggestions and assist your
     - **`Profiles/Repos`**: Implements repository patterns.
     - **`Profiles/StaticData`**: Provides static data configurations.
 
-### 6. **SlimBus.Share**
+### 6. **Minimal.Share**
 
 - Shared resources and constants used across the solution.
 - **Options:** Encapsulates configuration options for various modules.
 
-### 7. **SlimBus.App.Tests**
+### 7. **Minimal.App.Tests**
 
 - Contains unit and integration tests for services and API endpoints.
 - **Subfolders:**
@@ -278,7 +278,7 @@ These skills help GitHub Copilot provide better code suggestions and assist your
 
 ## Conclusion
 
-The SlimBus.ApiEndpoints solution demonstrates a robust architecture for developing modern APIs with scalability and
+The Minimal.ApiEndpoints solution demonstrates a robust architecture for developing modern APIs with scalability and
 maintainability at its core. Its modular design, adherence to DDD, and integration of cutting-edge .NET technologies
 make it a reliable foundation for enterprise-grade applications.
 

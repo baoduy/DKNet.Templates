@@ -127,11 +127,11 @@ Authorization: Bearer {token}
 ## Feature Map
 
 ```
-Domain Modeling   → SlimBus.Domains/Features/Profiles/Entities/CustomerProfile.cs
-EF Mapping        → SlimBus.Infra/Features/Profiles/Mappers/ProfileMapper.cs
-CRUD Handlers     → SlimBus.AppServices/CustomerProfiles/V1/Actions/
-Domain Events     → SlimBus.AppServices/CustomerProfiles/V1/Events/
-API Endpoints     → SlimBus.Api/ApiEndpoints/ProfileEndpoints.cs
+Domain Modeling   → Minimal.Domains/Features/Profiles/Entities/CustomerProfile.cs
+EF Mapping        → Minimal.Infra/Features/Profiles/Mappers/ProfileMapper.cs
+CRUD Handlers     → Minimal.AppServices/CustomerProfiles/V1/Actions/
+Domain Events     → Minimal.AppServices/CustomerProfiles/V1/Events/
+API Endpoints     → Minimal.Api/ApiEndpoints/ProfileEndpoints.cs
 ```
 
 ## Related Documentation
@@ -168,11 +168,11 @@ Each slice is self-contained: it owns its entity, handlers, specs, and events.
 graph TD
     Client["Client / Browser"]
 
-    subgraph API["SlimBus.Api"]
+    subgraph API["Minimal.Api"]
         EP["ProfileEndpoints.cs\n(IEndpointConfig)"]
     end
 
-    subgraph AppServices["SlimBus.AppServices"]
+    subgraph AppServices["Minimal.AppServices"]
         REQ["Request Types\n(Create/Update/Delete/Approve/Reject)"]
         VAL["Validators\n(FluentValidation)"]
         HDL["Command Handlers\n(IHandler)"]
@@ -180,11 +180,11 @@ graph TD
         EVT["Domain Events\n(ProfileCreatedEvent)"]
     end
 
-    subgraph Domains["SlimBus.Domains"]
+    subgraph Domains["Minimal.Domains"]
         ENT["CustomerProfile\n(AggregateRoot)"]
     end
 
-    subgraph Infra["SlimBus.Infra"]
+    subgraph Infra["Minimal.Infra"]
         MAP["ProfileMapper.cs\n(EF Core Config)"]
         REPO["IRepositorySpec\n(EF Core + Spec)"]
         EVH["Event Handlers\n(Azure Bus / In-Memory)"]
@@ -320,10 +320,10 @@ graph LR
 
 | Layer | Responsibility in this feature |
 |-------|-------------------------------|
-| `SlimBus.Api` | Route mapping only; no business logic |
-| `SlimBus.AppServices` | Command handling, validation, event publishing |
-| `SlimBus.Domains` | Entity state, domain rules, invariants |
-| `SlimBus.Infra` | Persistence, EF Core config, message bus setup |
+| `Minimal.Api` | Route mapping only; no business logic |
+| `Minimal.AppServices` | Command handling, validation, event publishing |
+| `Minimal.Domains` | Entity state, domain rules, invariants |
+| `Minimal.Infra` | Persistence, EF Core config, message bus setup |
 ````
 
 ---
@@ -613,7 +613,7 @@ erDiagram
 
 ## EF Core Mapping Configuration
 
-See `SlimBus.Infra/Features/Profiles/Mappers/ProfileMapper.cs` for the full config.
+See `Minimal.Infra/Features/Profiles/Mappers/ProfileMapper.cs` for the full config.
 
 Key mapping decisions:
 - **Table name**: `CustomerProfiles` (schema: `dbo`)
@@ -695,7 +695,7 @@ This feature does not currently consume events from other features.
 - **In-Memory bus**: Always active. Used for local handlers in the same process.
 - **Azure Service Bus**: Active when `ConnectionStrings:AzureBus` is configured in `appsettings.json`.
 
-See `SlimBus.Infra/Extensions/ServiceBusSetup.cs` for the bus wiring.
+See `Minimal.Infra/Extensions/ServiceBusSetup.cs` for the bus wiring.
 
 ```mermaid
 graph LR

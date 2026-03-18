@@ -235,7 +235,7 @@
                         "examples": [
                             "AGENTS.md section 'Feature vertical slice pattern'",
                             "skill.md step 2: 'Encapsulate mutations in entity methods'",
-                            "src/SlimBus.Domains/Features/Profiles/Entities/CustomerProfile.cs (canonical example)"
+                            "src/Minimal.Domains/Features/Profiles/Entities/CustomerProfile.cs (canonical example)"
                         ]
                     }
                 }

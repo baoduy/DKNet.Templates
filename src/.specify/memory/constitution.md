@@ -3,7 +3,7 @@
 ## Core Principles
 
 ### I. Layered Boundaries Are Mandatory
-All changes SHALL preserve the dependency direction `Api -> AppServices -> Domains`, with infrastructure wiring isolated in `SlimBus.Infra`. Domain entities own mutation behavior and SHALL NOT depend on API or infrastructure concerns.
+All changes SHALL preserve the dependency direction `Api -> AppServices -> Domains`, with infrastructure wiring isolated in `Minimal.Infra`. Domain entities own mutation behavior and SHALL NOT depend on API or infrastructure concerns.
 
 ### II. Vertical Slice Delivery Is the Default
 New features SHALL follow the existing slice pattern across Domains, Infra, AppServices, and Api. Endpoint contracts implement `IEndpointConfig`, application logic uses command/query handlers, and persistence mapping lives in Infra mappers.

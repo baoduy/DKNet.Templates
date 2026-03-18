@@ -1,8 +1,8 @@
-using SlimBus.Domains.Features.YourFeature.Entities;  // TODO: Update namespace
+using Minimal.Domains.Features.YourFeature.Entities;  // TODO: Update namespace
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace SlimBus.Infra.Features.YourFeature.Mappers;  // TODO: Update namespace to match your feature
+namespace Minimal.Infra.Features.YourFeature.Mappers;  // TODO: Update namespace to match your feature
 
 /// <summary>
 /// EF Core mapper configuration for YourEntityName entity.

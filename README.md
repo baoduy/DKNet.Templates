@@ -1,6 +1,6 @@
-# DKNet SlimBus API Solution Template
+# DKNet API Solution Template
 
-[![NuGet](https://img.shields.io/nuget/v/DKNet.SlimBus.Template.svg)](https://www.nuget.org/packages/DKNet.SlimBus.Template)
+[![NuGet](https://img.shields.io/nuget/v/DKNet.Minimal.Template.svg)](https://www.nuget.org/packages/DKNet.Minimal.Template)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A production-ready ASP.NET Core solution template built on **vertical slice architecture** combining:
@@ -30,13 +30,13 @@ dotnet nuget add source \
 Install the latest template version directly from the GitHub feed:
 
 ```bash
-dotnet new install DKNet.SlimBus.Template --nuget-source "https://nuget.pkg.github.com/baoduy/index.json"
+dotnet new install DKNet.Minimal.Template --nuget-source "https://nuget.pkg.github.com/baoduy/index.json"
 ```
 
 Or install a specific version:
 
 ```bash
-dotnet new install DKNet.SlimBus.Template::latest --nuget-source "https://nuget.pkg.github.com/baoduy/index.json"
+dotnet new install DKNet.Minimal.Template::latest --nuget-source "https://nuget.pkg.github.com/baoduy/index.json"
 ```
 
 ---
@@ -46,7 +46,7 @@ dotnet new install DKNet.SlimBus.Template::latest --nuget-source "https://nuget.
 ### Create a new solution
 
 ```bash
-dotnet new dknet-slimbus -n MyCompany.MyService
+dotnet new dknet-minimal -n MyCompany.MyService
 ```
 
 This generates a fully-wired solution under a `MyCompany.MyService/` folder:
@@ -71,7 +71,7 @@ MyCompany.MyService/
 
 | Parameter       | Default                        | Description                          |
 |-----------------|-------------------------------|--------------------------------------|
-| `-n`, `--name`  | `MySlimBusApp`                | Root namespace and folder name       |
+| `-n`, `--name`  | `MyApp`                | Root namespace and folder name       |
 | `--AuthorName`  | `Steven Hoang`                | Embedded in project metadata         |
 | `--CompanyUrl`  | `https://drunkcoding.net`     | `<Company>` in project metadata      |
 | `--RepositoryUrl` | `https://github.com/baoduy/DKNet` | `<RepositoryUrl>` in metadata  |
@@ -79,7 +79,7 @@ MyCompany.MyService/
 Example with all parameters:
 
 ```bash
-dotnet new dknet-slimbus -n Acme.OrderService \
+dotnet new dknet-minimal -n Acme.OrderService \
   --AuthorName "Jane Smith" \
   --CompanyUrl "https://acme.com" \
   --RepositoryUrl "https://github.com/acme/order-service"
@@ -141,23 +141,23 @@ See [AGENTS.md](AGENTS.md) for the full architecture reference.
 
 ```bash
 cd src
-dotnet pack DKNet.SlimBus.Template.csproj -c Release -o ./nupkgs
+dotnet pack DKNet.Minimal.Template.csproj -c Release -o ./nupkgs
 ```
 
 ### Test locally before publishing
 
 ```bash
 # Install from local pack
-dotnet new install ./nupkgs/DKNet.SlimBus.Template.1.0.0.nupkg
+dotnet new install ./nupkgs/DKNet.Minimal.Template.1.0.0.nupkg
 
 # Uninstall local pack
-dotnet new uninstall DKNet.SlimBus.Template
+dotnet new uninstall DKNet.Minimal.Template
 ```
 
 ### Push to nuget.org
 
 ```bash
-dotnet nuget push ./nupkgs/DKNet.SlimBus.Template.1.0.0.nupkg \
+dotnet nuget push ./nupkgs/DKNet.Minimal.Template.1.0.0.nupkg \
   --api-key <YOUR_NUGET_API_KEY> \
   --source https://api.nuget.org/v3/index.json
 ```

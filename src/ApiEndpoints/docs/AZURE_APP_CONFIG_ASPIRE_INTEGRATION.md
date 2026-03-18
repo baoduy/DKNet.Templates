@@ -59,8 +59,8 @@ The following NuGet packages have been added to the test project:
 To run the tests locally:
 
 ```bash
-cd Templates/SlimBus.ApiEndpoints
-dotnet test SlimBus.App.Tests/SlimBus.App.Tests.csproj --filter "Category=Integration"
+cd Templates/Minimal.ApiEndpoints
+dotnet test Minimal.App.Tests/Minimal.App.Tests.csproj --filter "Category=Integration"
 ```
 
 ### CI/CD Pipeline

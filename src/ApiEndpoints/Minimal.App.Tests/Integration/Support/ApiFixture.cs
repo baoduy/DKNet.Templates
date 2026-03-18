@@ -14,7 +14,7 @@ public sealed class ApiFixture : WebApplicationFactory<Minimal.Api.Program>, IAs
 {
     #region Fields
 
-    private readonly string _dbName = $"slimbus-integration-{Guid.NewGuid():N}";
+    private readonly string _dbName = $"integration-{Guid.NewGuid():N}";
 
     #endregion
 

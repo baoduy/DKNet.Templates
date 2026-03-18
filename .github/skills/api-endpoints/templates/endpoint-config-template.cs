@@ -1,7 +1,7 @@
 // ==================================================
 // ENDPOINT CONFIGURATION TEMPLATE (IEndpointConfig)
 // ==================================================
-// Location: SlimBus.Api/ApiEndpoints/<FEATURE>V1Endpoints.cs
+// Location: Minimal.Api/ApiEndpoints/<FEATURE>V1Endpoints.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your entity name (e.g., "Profile")
@@ -13,7 +13,7 @@
 
 using Fluents.Builder;
 
-namespace SlimBus.Api.ApiEndpoints;
+namespace Minimal.Api.ApiEndpoints;
 
 /// <summary>
 /// Endpoint configuration for <FEATURE> API.

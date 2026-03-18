@@ -26,8 +26,8 @@ public sealed record ProfileCreatedEvent(Guid Id, string Name);
 | `ProfileCreatedEventFromMemoryHandler` | In-Memory | Internal log / test hook |
 | _(None configured)_ | Azure Service Bus | — (reserved for external notifications) |
 
-Source: `SlimBus.AppServices/CustomerProfiles/V1/Events/`
-and `SlimBus.Infra/Features/Profiles/` (if infra handlers present)
+Source: `Minimal.AppServices/CustomerProfiles/V1/Events/`
+and `Minimal.Infra/Features/Profiles/` (if infra handlers present)
 
 **Subscriber Example**
 
@@ -73,7 +73,7 @@ This feature does not currently consume events from other features.
 | **In-Memory** | Always (all environments) | Same-process handlers — logging, internal side effects |
 | **Azure Service Bus** | When `ConnectionStrings:AzureBus` is non-empty in config | Cross-service messaging, notifications, billing hooks |
 
-The wiring is in `SlimBus.Infra/Extensions/ServiceBusSetup.cs`:
+The wiring is in `Minimal.Infra/Extensions/ServiceBusSetup.cs`:
 
 ```csharp
 // Excerpt from ServiceBusSetup.cs

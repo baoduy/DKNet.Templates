@@ -1,38 +1,39 @@
-# SlimBus.Api Configs
+# Minimal.Api Configs
 
-This directory contains modular configuration components for a MediatR-based API built with SlimBus. Each module is
+This directory contains modular configuration components for a MediatR-based API built with Minimal. Each module is
 responsible for a specific aspect of API infrastructure, promoting maintainability and extensibility.
 
 ---
 
 ## Table of Contents
 
-- [SlimBus.Api Configs](#slimbusapi-configs)
-    - [Table of Contents](#table-of-contents)
-    - [Overview](#overview)
-    - [Configuration Modules](#configuration-modules)
-        - [AppConfig.cs](#appconfigcs)
-        - [ServiceConfigs.cs](#serviceconfigscs)
-        - [Azure App Configuration](#azure-app-configuration)
-            - [AzureAppConfiguration (`AzureAppConfiguration/`)](#azureappconfiguration-azureappconfiguration)
-        - [Authentication \& Security](#authentication--security)
-            - [Antiforgery (`Antiforgery/`)](#antiforgery-antiforgery)
-            - [Auth (`Auth/`)](#auth-auth)
-        - [API Documentation](#api-documentation)
-            - [Swagger (`Swagger/`)](#swagger-swagger)
-        - [API Features](#api-features)
-            - [Versioning (`VersioningConfig.cs`)](#versioning-versioningconfigcs)
-            - [Endpoints (`Endpoints/`)](#endpoints-endpoints)
-            - [Idempotency (`Idempotency/`)](#idempotency-idempotency)
-        - [Error Handling (`GlobalExceptions/`)](#error-handling-globalexceptions)
-        - [Monitoring \& Health](#monitoring--health)
-            - [Healthz (`Healthz/`)](#healthz-healthz)
-        - [Performance \& Reliability](#performance--reliability)
-            - [CacheConfig.cs](#cacheconfigcs)
-    - [Implementation Examples](#implementation-examples)
-    - [Best Practices](#best-practices)
-    - [Directory Structure](#directory-structure)
-    - [Middleware Order](#middleware-order)
+- [Minimal.Api Configs](#minimalapi-configs)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Configuration Modules](#configuration-modules)
+    - [AppConfig.cs](#appconfigcs)
+    - [ServiceConfigs.cs](#serviceconfigscs)
+    - [Azure App Configuration](#azure-app-configuration)
+      - [AzureAppConfiguration (`AzureAppConfiguration/`)](#azureappconfiguration-azureappconfiguration)
+    - [Authentication \& Security](#authentication--security)
+      - [Antiforgery (`Antiforgery/`)](#antiforgery-antiforgery)
+      - [Auth (`Auth/`)](#auth-auth)
+    - [API Documentation](#api-documentation)
+      - [Swagger (`Swagger/`)](#swagger-swagger)
+    - [API Features](#api-features)
+      - [Versioning (`VersioningConfig.cs`)](#versioning-versioningconfigcs)
+      - [Endpoints (`Endpoints/`)](#endpoints-endpoints)
+      - [Idempotency (`Idempotency/`)](#idempotency-idempotency)
+    - [Error Handling (`GlobalExceptions/`)](#error-handling-globalexceptions)
+    - [Monitoring \& Health](#monitoring--health)
+      - [Healthz (`Healthz/`)](#healthz-healthz)
+    - [Performance \& Reliability](#performance--reliability)
+      - [CacheConfig.cs](#cacheconfigcs)
+      - [Rate Limiting (`RateLimits/`)](#rate-limiting-ratelimits)
+  - [Implementation Examples](#implementation-examples)
+  - [Best Practices](#best-practices)
+  - [Directory Structure](#directory-structure)
+  - [Middleware Order](#middleware-order)
 
 ---
 
@@ -90,11 +91,11 @@ versioning, documentation, error handling, and more. This modularity enables eas
     "EnableAzureAppConfiguration": true
   },
   "AzureAppConfiguration": {
-    "KeyPrefix": "SlimBus:",
+    "KeyPrefix": "Minimal:",
     "Label": "Development",
     "CacheExpirationInSeconds": 300,
     "LoadFeatureFlags": true,
-    "FeatureFlagPrefix": "SlimBus"
+    "FeatureFlagPrefix": "Minimal"
   }
 }
 ```

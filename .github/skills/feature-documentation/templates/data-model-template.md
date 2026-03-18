@@ -50,7 +50,7 @@ erDiagram
 
 ## EF Core Mapping Configuration
 
-Source: `SlimBus.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs`
+Source: `Minimal.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs`
 
 Key mapping decisions:
 

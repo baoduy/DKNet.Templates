@@ -1,7 +1,7 @@
 // ==================================================
 // WRITE REPOSITORY INTERFACE TEMPLATE
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/Repositories/I<FEATURE>Repository.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/Repositories/I<FEATURE>Repository.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your entity name (e.g., "CustomerProfile")
@@ -14,7 +14,7 @@ using System;
 using System.Threading.Tasks;
 using <DOMAIN_NAMESPACE>.<ENTITY>;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.Repositories;
+namespace Minimal.AppServices.Features.<FEATURE>.Repositories;
 
 /// <summary>
 /// Write-only repository for <ENTITY>

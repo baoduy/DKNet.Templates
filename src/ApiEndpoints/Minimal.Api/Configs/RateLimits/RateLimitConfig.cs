@@ -3,7 +3,7 @@ using System.Threading.RateLimiting;
 namespace Minimal.Api.Configs.RateLimits;
 
 /// <summary>
-///     Rate limiting configuration for SlimBus API
+///     Rate limiting configuration for Minimal API
 /// </summary>
 [ExcludeFromCodeCoverage]
 internal static class RateLimitConfig

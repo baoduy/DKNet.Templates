@@ -1,7 +1,7 @@
 // ==================================================
 // REQUEST TYPE TEMPLATE (Custom CRUD & Action Commands)
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/V1/Actions/<Action>.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/V1/Actions/<Action>.cs
 //
 // INSTRUCTIONS:
 // 1. Each CRUD operation needs one request record
@@ -15,7 +15,7 @@
 using Fluents.Requests;
 using Mapster;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.V1.Actions;
+namespace Minimal.AppServices.Features.<FEATURE>.V1.Actions;
 
 // ========== CREATE REQUEST ==========
 

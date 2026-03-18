@@ -1,8 +1,8 @@
-using SlimBus.Domains.Features.CustomerProfiles.Entities;
+using Minimal.Domains.Features.CustomerProfiles.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace SlimBus.Infra.Features.CustomerProfiles.Mappers;
+namespace Minimal.Infra.Features.CustomerProfiles.Mappers;
 
 /// <summary>
 /// EF Core mapper configuration for CustomerProfile entity.

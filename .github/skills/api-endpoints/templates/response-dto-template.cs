@@ -1,7 +1,7 @@
 // ==================================================
 // RESPONSE DTO TEMPLATE (Auto-Generated with [GenerateDto])
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/V1/<FEATURE>Dto.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/V1/<FEATURE>Dto.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your entity name (e.g., "CustomerProfile")
@@ -13,9 +13,9 @@
 
 using DKNet.EfCore.DtoGenerator;
 using Mapster;
-using SlimBus.Domains.Features.<FEATURE>.Entities;
+using Minimal.Domains.Features.<FEATURE>.Entities;
 
-namespace SlimBus.AppServices.Features.<FEATURE>.V1;
+namespace Minimal.AppServices.Features.<FEATURE>.V1;
 
 /// <summary>
 /// Auto-generated response DTO for <FEATURE>.

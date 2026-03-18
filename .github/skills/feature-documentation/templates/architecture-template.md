@@ -9,11 +9,11 @@ Each layer has a single, focused responsibility for this feature.
 graph TD
     Client["Client / Browser"]
 
-    subgraph API["SlimBus.Api"]
+    subgraph API["Minimal.Api"]
         EP["{EntityName}V1Endpoint\n(IEndpointConfig)"]
     end
 
-    subgraph AppServices["SlimBus.AppServices"]
+    subgraph AppServices["Minimal.AppServices"]
         REQ["Request Types\n(Create / Update / Delete\n+ custom actions)"]
         VAL["Validators\n(FluentValidation)"]
         HDL["Command Handlers\n(IHandler)"]
@@ -21,11 +21,11 @@ graph TD
         EVT["Domain Events\n({EntityName}CreatedEvent etc.)"]
     end
 
-    subgraph Domains["SlimBus.Domains"]
+    subgraph Domains["Minimal.Domains"]
         ENT["{EntityName}\n(AggregateRoot)"]
     end
 
-    subgraph Infra["SlimBus.Infra"]
+    subgraph Infra["Minimal.Infra"]
         MAP["{EntityName}Mapper.cs\n(EF Core Config)"]
         REPO["IRepositorySpec\n(EF Core + Spec)"]
         EVH["Event Handlers\n(Azure Bus / In-Memory)"]
@@ -160,7 +160,7 @@ graph LR
 
 | Layer | Responsibility in this feature |
 |-------|-------------------------------|
-| `SlimBus.Api` | Route mapping only; zero business logic |
-| `SlimBus.AppServices` | Command handling, validation, event publishing |
-| `SlimBus.Domains` | Entity state, domain rules, invariants |
-| `SlimBus.Infra` | Persistence, EF Core config, message bus setup |
+| `Minimal.Api` | Route mapping only; zero business logic |
+| `Minimal.AppServices` | Command handling, validation, event publishing |
+| `Minimal.Domains` | Entity state, domain rules, invariants |
+| `Minimal.Infra` | Persistence, EF Core config, message bus setup |

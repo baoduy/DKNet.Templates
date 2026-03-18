@@ -106,7 +106,7 @@ Every skill's `metadata.json` MUST include these fields:
   "relatedSkills": ["dknet-crud-operations", "dknet-api-endpoints"],
   "folderPath": ".github/skills/domain-modeling",
   "examplesPath": ".github/skills/domain-modeling/examples/customer-profile-example",
-  "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/DomainModelingSkillTests.cs"
+  "testPath": "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs"
 }
 ```
 
@@ -201,7 +201,7 @@ Verify your work against the [Validation Checklist](./checklist.md):
 
 ### Error: "Mapper class not auto-discovered"
 **Cause**: Mapper not in expected location or not sealed  
-**Fix**: Move to `SlimBus.Infra/Features/<Feature>/Mappers/` and add `sealed` keyword
+**Fix**: Move to `Minimal.Infra/Features/<Feature>/Mappers/` and add `sealed` keyword
 
 [etc.]
 

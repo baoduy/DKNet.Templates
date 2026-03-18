@@ -9,11 +9,11 @@ Each layer has a single, focused responsibility for this feature.
 graph TD
     Client["Client / Browser"]
 
-    subgraph API["SlimBus.Api"]
+    subgraph API["Minimal.Api"]
         EP["CustomerProfileV1Endpoint\n(IEndpointConfig)"]
     end
 
-    subgraph AppServices["SlimBus.AppServices/CustomerProfiles"]
+    subgraph AppServices["Minimal.AppServices/CustomerProfiles"]
         REQ["Request Types\n(Create/Update/Delete)"]
         VAL["Validators\n(FluentValidation)"]
         HDL["Command Handlers\n(IHandler)"]
@@ -21,11 +21,11 @@ graph TD
         EVT["Domain Events\nProfileCreatedEvent"]
     end
 
-    subgraph Domains["SlimBus.Domains"]
+    subgraph Domains["Minimal.Domains"]
         ENT["CustomerProfile\n(AggregateRoot)\nId, Name, Email,\nMembershipNo, Phone, Status"]
     end
 
-    subgraph Infra["SlimBus.Infra"]
+    subgraph Infra["Minimal.Infra"]
         MAP["ProfileMapper.cs\n(EF Core Config)"]
         REPO["IRepositorySpec\n(EF Core + Spec)"]
         EVH["ProfileCreatedEventHandlers\n(In-Memory / Azure Bus)"]
@@ -187,7 +187,7 @@ graph LR
 
 | Layer | Responsibility in Customer Profiles |
 |-------|--------------------------------------|
-| `SlimBus.Api` | Route mapping only; no business logic — dispatches to message bus |
-| `SlimBus.AppServices` | Command handling, FluentValidation, membership number generation, event publishing |
-| `SlimBus.Domains` | `CustomerProfile` entity with constructors and `Update()` method |
-| `SlimBus.Infra` | EF Core `ProfileMapper`, `IRepositorySpec` implementation, event handler wiring |
+| `Minimal.Api` | Route mapping only; no business logic — dispatches to message bus |
+| `Minimal.AppServices` | Command handling, FluentValidation, membership number generation, event publishing |
+| `Minimal.Domains` | `CustomerProfile` entity with constructors and `Update()` method |
+| `Minimal.Infra` | EF Core `ProfileMapper`, `IRepositorySpec` implementation, event handler wiring |

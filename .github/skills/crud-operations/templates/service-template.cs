@@ -1,7 +1,7 @@
 // ==================================================
 // SERVICE TEMPLATE (with Specs)
 // ==================================================
-// Location: SlimBus.AppServices/Features/<FEATURE>/Services/<FEATURE>Service.cs
+// Location: Minimal.AppServices/Features/<FEATURE>/Services/<FEATURE>Service.cs
 //
 // INSTRUCTIONS:
 // 1. Replace <FEATURE> with your entity name (e.g., "CustomerProfile")

@@ -28,10 +28,10 @@
     "outputs": {
         "description": "Command classes, handlers, repository, and domain events for CRUD operations",
         "items": [
-            "Command classes in SlimBus.AppServices/Features/<Feature>/Commands/",
+            "Command classes in Minimal.AppServices/Features/<Feature>/Commands/",
             "Validators for each command",
             "Repository interface in AppServices",
-            "Repository implementation in SlimBus.Infra/Features/<Feature>/Repos/",
+            "Repository implementation in Minimal.Infra/Features/<Feature>/Repos/",
             "Domain events in AppServices/Features/<Feature>/Events/",
             "Command handlers that execute business logic and publish events"
         ]
@@ -55,7 +55,7 @@
     ],
     "folderPath": ".github/skills/crud-operations",
     "examplesPath": ".github/skills/crud-operations/examples/customer-profile-crud",
-    "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/CrudOperationsSkillTests.cs",
+    "testPath": "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/CrudOperationsSkillTests.cs",
     "status": "published",
     "createdDate": "2026-03-17",
     "lastUpdatedDate": "2026-03-17"

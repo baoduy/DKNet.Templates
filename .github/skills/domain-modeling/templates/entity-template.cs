@@ -1,4 +1,4 @@
-namespace SlimBus.Domains.Features.YourFeature.Entities;
+namespace Minimal.Domains.Features.YourFeature.Entities;
 
 /// <summary>
 /// TODO: Replace with your entity name and description

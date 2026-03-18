@@ -111,7 +111,7 @@ Events are dispatched via the SlimBus message bus with two bus types:
 | **In-Memory** | Always (all environments) | Same-process handlers; local side effects |
 | **Azure Service Bus** | When `ConnectionStrings:AzureBus` is non-empty | Cross-service/process messaging |
 
-See `SlimBus.Infra/Extensions/ServiceBusSetup.cs` for wiring configuration.
+See `Minimal.Infra/Extensions/ServiceBusSetup.cs` for wiring configuration.
 
 ```mermaid
 graph LR

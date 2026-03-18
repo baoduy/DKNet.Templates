@@ -154,16 +154,16 @@
 ### "I need to build a new feature from scratch"
 
 1. **Start with Domain Modeling**: 
-   - Create your entity in `SlimBus.Domains` with your mapper in `SlimBus.Infra`
+   - Create your entity in `Minimal.Domains` with your mapper in `Minimal.Infra`
    - See [Domain Modeling skill.md](./domain-modeling/skill.md)
 
 2. **Add Business Logic with CRUD**:
-   - Create request DTOs with validators in `SlimBus.AppServices`
+   - Create request DTOs with validators in `Minimal.AppServices`
    - Create repository and domain events
    - See [CRUD Operations skill.md](./crud-operations/skill.md)
 
 3. **Expose via API**:
-   - Create endpoints in `SlimBus.Api` with OpenAPI docs
+   - Create endpoints in `Minimal.Api` with OpenAPI docs
    - See [API Endpoints skill.md](./api-endpoints/skill.md)
 
 ### "I need to add validation to my DTOs"
@@ -258,7 +258,7 @@ See [CONVENTIONS.md - Publishing Process](./CONVENTIONS.md#publishing-process) f
 
 ### "My entity mapper isn't auto-registering"
 
-→ Ensure mapper class is `sealed` and in `SlimBus.Infra/Features/<Feature>/Mappers/`  
+→ Ensure mapper class is `sealed` and in `Minimal.Infra/Features/<Feature>/Mappers/`  
 → Check mapper implements `IEntityTypeConfiguration<T>`  
 → Verify `UseAutoConfigModel()` in DbContext configuration
 

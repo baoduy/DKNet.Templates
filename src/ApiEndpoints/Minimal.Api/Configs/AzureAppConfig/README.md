@@ -1,12 +1,12 @@
 # Azure App Configuration Integration
 
-This folder contains the Azure App Configuration integration for SlimBus.Api, providing centralized configuration
+This folder contains the Azure App Configuration integration for Minimal.Api, providing centralized configuration
 management and feature flags.
 
 ## Overview
 
 Azure App Configuration is a managed service that helps developers centralize their application configuration and
-feature flags simply and securely. This integration enables the SlimBus.Api application to:
+feature flags simply and securely. This integration enables the Minimal.Api application to:
 
 - Load configuration values from Azure App Configuration
 - Override local appsettings.json values with remote configuration
@@ -112,8 +112,8 @@ In Azure Portal, navigate to your App Configuration resource and add key-value p
 
 **Feature Flags:**
 
-- `SlimBus.EnableNewFeature` = `true`
-- `SlimBus.EnableBetaFeatures` = `false`
+- `Minimal.EnableNewFeature` = `true`
+- `Minimal.EnableBetaFeatures` = `false`
 
 ### 5. Use Labels for Environment-Specific Configuration
 
@@ -174,7 +174,7 @@ public class MyController : ControllerBase
 
     public async Task<IActionResult> GetData()
     {
-        if (await _featureManager.IsEnabledAsync("SlimBus.EnableNewFeature"))
+        if (await _featureManager.IsEnabledAsync("Minimal.EnableNewFeature"))
         {
             // New feature code
             return Ok("New feature enabled!");
@@ -270,7 +270,7 @@ Enable detailed logging to troubleshoot issues:
 
 ## Integration with Existing Features
 
-The Azure App Configuration integration works seamlessly with existing SlimBus.Api features:
+The Azure App Configuration integration works seamlessly with existing Minimal.Api features:
 
 - **Feature Management**: Remote feature flags override local feature flags
 - **Configuration Binding**: All existing `IConfiguration` usage continues to work

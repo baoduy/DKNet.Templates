@@ -1,4 +1,4 @@
-namespace SlimBus.Domains.Features.CustomerProfiles.Entities;
+namespace Minimal.Domains.Features.CustomerProfiles.Entities;
 
 /// <summary>
 /// Customer profile domain entity containing customer information.
