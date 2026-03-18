@@ -16,16 +16,27 @@ A production-ready ASP.NET Core solution template built on **vertical slice arch
 
 ## Installation
 
-Install from [nuget.org](https://www.nuget.org/packages/DKNet.SlimBus.Template):
+Install from GitHub Packages:
 
 ```bash
-dotnet new install DKNet.SlimBus.Template
+dotnet nuget add source \
+  --username <YOUR_GITHUB_USERNAME> \
+  --password <YOUR_GITHUB_PAT_WITH_READ_PACKAGES> \
+  --store-password-in-clear-text \
+  --name github \
+  "https://nuget.pkg.github.com/baoduy/index.json"
+```
+
+Install the latest template version directly from the GitHub feed:
+
+```bash
+dotnet new install DKNet.SlimBus.Template --nuget-source "https://nuget.pkg.github.com/baoduy/index.json"
 ```
 
 Or install a specific version:
 
 ```bash
-dotnet new install DKNet.SlimBus.Template::1.0.0
+dotnet new install DKNet.SlimBus.Template::latest --nuget-source "https://nuget.pkg.github.com/baoduy/index.json"
 ```
 
 ---
