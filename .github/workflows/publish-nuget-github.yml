@@ -75,18 +75,11 @@ jobs:
             --skip-duplicate
     
     # Create Release
-      - name: Zip Release
-        uses: thedoctor0/zip-release@0.7.5
-        with:
-          # Filename for archive
-          filename: release.zip
-          directory: ${{ runner.WORKSPACE }}/nupkgs
-          
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           make_latest: true
-          files: ${{ runner.WORKSPACE }}/nupkgs/release.zip
+          #files: ${{ runner.WORKSPACE }}/nupkgs/release.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ env.NEXT_VERSION }}
