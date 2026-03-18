@@ -1,8 +1,6 @@
-using DKNet.EfCore.Abstractions.Entities;
-
 namespace SlimBus.Domains.Share;
 
-public abstract class AggregateRoot : AuditedEntity<Guid>
+public abstract class AggregateRoot : DomainEntity
 {
     #region Constructors
 
@@ -12,9 +10,9 @@ public abstract class AggregateRoot : AuditedEntity<Guid>
     }
 
     protected AggregateRoot(Guid id, string createdBy, DateTimeOffset? createdOn = null)
-        : base(id)
+        : base(id,createdBy, createdOn)
     {
-        this.SetCreatedBy(createdBy, createdOn);
+        SetCreatedBy(createdBy, createdOn);
     }
 
     /// <inheritdoc />

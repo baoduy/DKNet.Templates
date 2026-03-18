@@ -31,9 +31,9 @@ internal class AntiforgeryCookieMiddleware(
         var method = context.Request.Method;
 
         AntiforgeryTokenSet token;
-        if (this._validateMethods.Contains(method, StringComparer.OrdinalIgnoreCase))
+        if (_validateMethods.Contains(method, StringComparer.OrdinalIgnoreCase))
         {
-            token = this.GetCookieToken(context);
+            token = GetCookieToken(context);
             context.Request.Headers[options.Value.HeaderName!] = token.RequestToken;
         }
         else
@@ -42,7 +42,7 @@ internal class AntiforgeryCookieMiddleware(
             token = antiforgery.GetTokens(context);
             if (string.IsNullOrWhiteSpace(token.CookieToken))
             {
-                var oldToken = this.GetCookieToken(context);
+                var oldToken = GetCookieToken(context);
                 token = new AntiforgeryTokenSet(
                     token.RequestToken,
                     oldToken.CookieToken,

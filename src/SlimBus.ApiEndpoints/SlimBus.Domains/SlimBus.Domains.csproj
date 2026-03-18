@@ -10,7 +10,6 @@
     <ItemGroup>
         <PackageReference Include="DKNet.EfCore.Abstractions"/>
         <PackageReference Include="DKNet.EfCore.DataAuthorization"/>
-        <PackageReference Include="DKNet.EfCore.Repos.Abstractions"/>
         <PackageReference Update="Meziantou.Analyzer">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>DKNet.SlimBus.Template</id>
+    <version>1.0.0</version>
+    <title>DKNet SlimBus API Solution Template</title>
+    <description>
+      A production-ready ASP.NET Core solution template built on vertical slice architecture
+      with DDD, CQRS, EF Core, .NET Aspire, Redis, SQL Server, FluentValidation,
+      OpenTelemetry, Azure App Configuration, and JWT Bearer authentication.
+      Scaffolds a fully-wired, layered solution (Api / AppServices / Domains / Infra / Share + Aspire host)
+      ready for feature development following the DKNet SlimBus conventions.
+    </description>
+    <authors>Steven Hoang</authors>
+    <owners>Steven Hoang</owners>
+    <projectUrl>https://github.com/baoduy/DKNet</projectUrl>
+    <repository type="git" url="https://github.com/baoduy/DKNet" />
+    <license type="expression">MIT</license>
+    <readme>README.md</readme>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>template aspnetcore ddd cqrs efcore aspire slimbus vertical-slice clean-architecture azure opentelemetry</tags>
+    <language>en</language>
+    <packageTypes>
+      <packageType name="Template" />
+    </packageTypes>
+  </metadata>
+  <files>
+
+    <!-- NuGet package readme shown on package page -->
+    <file src="..\README.md" target="" />
+
+    <!-- template.json — must live at content/.template.config/ -->
+    <file src=".template.config\**\*" target="content\.template.config\" />
+
+    <!-- Solution-level files -->
+    <file src="global.json" target="content\" />
+    <file src="Directory.Packages.props" target="content\" />
+    <file src="coverage.runsettings" target="content\" />
+    <file src="DKNet.Templates.sln" target="content\" />
+
+        <!-- Template source tree — exclude bin/, obj/, scripts, docs, and macOS artifacts -->
+    <file src="SlimBus.ApiEndpoints\**\*"
+          target="content\SlimBus.ApiEndpoints\"
+          exclude="SlimBus.ApiEndpoints\**\bin\**;SlimBus.ApiEndpoints\**\obj\**;SlimBus.ApiEndpoints\**\TestResults\**;SlimBus.ApiEndpoints\**\*.user;SlimBus.ApiEndpoints\**\*.sh;SlimBus.ApiEndpoints\**\.DS_Store;SlimBus.ApiEndpoints\docs\**;SlimBus.ApiEndpoints\**\docs\**;SlimBus.ApiEndpoints\**\README.md" />
+  </files>
+</package>

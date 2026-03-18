@@ -44,7 +44,7 @@ internal class IdempotencyKeyRepository(
     {
         idempotencyKey = idempotencyKey.Replace("\n", "", StringComparison.Ordinal)
             .Replace("\r", "", StringComparison.Ordinal); // Sanitize user input
-        var cacheKey = $"{this._options.CachePrefix}{idempotencyKey}";
+        var cacheKey = $"{_options.CachePrefix}{idempotencyKey}";
         logger.LogDebug("Trying to get existing result for cache key: {CacheKey}", cacheKey);
 
         var result = await cache.GetStringAsync(cacheKey);
@@ -57,7 +57,7 @@ internal class IdempotencyKeyRepository(
     {
         idempotencyKey = idempotencyKey.Replace("\n", "", StringComparison.Ordinal)
             .Replace("\r", "", StringComparison.Ordinal); // Sanitize user input
-        var cacheKey = $"{this._options.CachePrefix}{idempotencyKey}";
+        var cacheKey = $"{_options.CachePrefix}{idempotencyKey}";
         logger.LogDebug("Setting cache result for cache key: {CacheKey}", cacheKey);
 
         await cache.SetStringAsync(
@@ -65,7 +65,7 @@ internal class IdempotencyKeyRepository(
             result ?? bool.TrueString,
             new DistributedCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = this._options.Expiration
+                AbsoluteExpirationRelativeToNow = _options.Expiration
             });
     }
 

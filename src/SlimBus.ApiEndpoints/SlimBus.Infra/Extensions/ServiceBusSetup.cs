@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Azure.Messaging.ServiceBus;
-using SlimBus.AppServices.Profiles.V1.Events;
+using SlimBus.AppServices.CustomerProfiles.V1.Events;
+using SlimBus.Infra.Contexts;
 using SlimBus.Infra.Features.Profiles.ExternalEvents;
 
 namespace SlimBus.Infra.Extensions;
@@ -50,7 +51,7 @@ public static class ServiceBusSetup
                 azb.Produce<ProfileCreatedEvent>(o => o.DefaultTopic("profile-tp"));
                 azb.Consume<ProfileCreatedEvent>(o => o.Path("profile-tp")
                     .SubscriptionName("profile-sub")
-                    .WithConsumer<ProfileCreatedEmailNotificationHandler>());
+                    .WithConsumer<CustomerProfileCreatedEmailNotificationHandler>());
             });
         return builder;
     }
@@ -82,7 +83,8 @@ public static class ServiceBusSetup
     {
         var busConnectionString = configuration.GetConnectionString(SharedConsts.AzureBusConnectionString)!;
 
-        service.AddSlimBusForEfCore(mbb =>
+        service.AddSlimBusEfCoreInterceptor<CoreDbContext>()
+            .AddSlimMessageBus(mbb =>
         {
             //This is a global config for all the child buses
             mbb.AddJsonSerializer();

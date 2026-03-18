@@ -7,11 +7,11 @@ namespace SlimBus.Infra.Services;
 ///     The event publisher, IMessageBus for both internal and external events.
 /// </summary>
 /// <param name="bus"></param>
-internal sealed class EventPublisher(IMessageBus bus) : IEventPublisher
+internal sealed class EventPublisher(IMessageBus bus) : DefaultEventPublisher
 {
     #region Methods
 
-    public async Task PublishAsync(object eventObj, CancellationToken cancellationToken = default)
+    public override async Task PublishAsync(object eventObj, CancellationToken cancellationToken = default)
     {
         await bus.Publish(eventObj, cancellationToken: cancellationToken);
     }

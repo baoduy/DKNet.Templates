@@ -1,0 +1,341 @@
+openapi: 3.0.0
+info:
+  title: DKNet.Templates Skills Catalog API
+  version: 1.0.0
+  description: |
+    API for discovering, searching, and accessing Copilot skills in DKNet.Templates.
+
+    **Note**: This is a future-state schema for potential tool/portal integration.
+    Current MVP provides skills via CATALOG.md + README.md + Copilot chat (@skills command).
+
+servers:
+  - url: https://api.dknet-templates.dev/skills
+    description: Production catalog API (planned for Phase 2)
+  - url: http://localhost:8080/skills
+    description: Local development catalog API
+
+paths:
+  /catalog:
+    get:
+      summary: Retrieve the complete skills catalog
+      description: |
+        Returns all available skills with metadata summary.
+        Useful for populating UI catalogs or tool integrations.
+      operationId: getCatalog
+      tags:
+        - Catalog
+      parameters:
+        - name: category
+          in: query
+          description: Filter by skill category
+          schema:
+            type: string
+            enum:
+              - Persistence & Entities
+              - Business Logic & Commands
+              - REST API & Orchestration
+              - Testing & Quality
+              - Architecture & Patterns
+        - name: difficulty
+          in: query
+          description: Filter by difficulty level
+          schema:
+            type: string
+            enum:
+              - Beginner
+              - Intermediate
+              - Advanced
+        - name: search
+          in: query
+          description: Full-text search on skill title + description
+          schema:
+            type: string
+            example: entity mapping
+      responses:
+        "200":
+          description: Catalog retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  totalSkills:
+                    type: integer
+                    example: 3
+                  skills:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SkillSummary"
+                  workflows:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Workflow"
+
+  /skills/{skillId}:
+    get:
+      summary: Get detailed information about a specific skill
+      description: Returns full skill metadata, documentation link, and example path
+      operationId: getSkill
+      tags:
+        - Skills
+      parameters:
+        - name: skillId
+          in: path
+          required: true
+          description: Unique skill identifier (e.g., 'domain-modeling')
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Skill details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillDetail"
+        "404":
+          description: Skill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /skills/{skillId}/example:
+    get:
+      summary: Get the worked example for a skill
+      description: Returns path to the example, files, and test information
+      operationId: getSkillExample
+      tags:
+        - Skills
+      parameters:
+        - name: skillId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Example information retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  skillId:
+                    type: string
+                  examplePath:
+                    type: string
+                    example: examples/customer-profile-example
+                  files:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                      - CustomerProfile.cs
+                      - CustomerProfileMapper.cs
+                      - README.md
+                  testPath:
+                    type: string
+                    example: CustomerProfileMapperTests.cs
+                  testStatus:
+                    type: string
+                    enum:
+                      - passing
+                      - failing
+                      - unknown
+
+  /skills/search:
+    get:
+      summary: Search for skills by keyword
+      description: Full-text search across skill titles, descriptions, and tags
+      operationId: searchSkills
+      tags:
+        - Search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+            example: "entity mapping"
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                  resultCount:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SkillSummary"
+
+  /workflows:
+    get:
+      summary: Retrieve recommended workflows
+      description: |
+        Returns suggested sequences of skills for common feature-delivery tasks.
+        Examples: "New Feature (Full Vertical Slice)", "Read-Only Entity", etc.
+      operationId: getWorkflows
+      tags:
+        - Workflows
+      responses:
+        "200":
+          description: Workflows retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflows:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Workflow"
+
+components:
+  schemas:
+    SkillSummary:
+      type: object
+      description: Condensed skill information for catalog/search results
+      required:
+        - id
+        - title
+        - category
+        - difficulty
+        - estimatedDuration
+      properties:
+        id:
+          type: string
+          example: domain-modeling
+        title:
+          type: string
+          example: "EFCore Mapping Configuration Skill"
+        description:
+          type: string
+          example: "Guide developers through creating domain entities and their EF Core persistence mappings"
+        category:
+          type: string
+          example: "Persistence & Entities"
+        difficulty:
+          type: string
+          example: "Intermediate"
+        estimatedDuration:
+          type: string
+          example: "20-30 minutes"
+        useWhen:
+          type: string
+          example: "Adding a new domain entity that requires database persistence"
+        skillDocUrl:
+          type: string
+          format: uri
+          example: "https://github.com/dknet-templates/blob/main/.github/copilot/skills/domain-modeling/skill.md"
+
+    SkillDetail:
+      allOf:
+        - $ref: "#/components/schemas/SkillSummary"
+        - type: object
+          properties:
+            prerequisites:
+              type: array
+              items:
+                type: string
+              example:
+                - "Understand DKNet.Templates vertical slice architecture"
+                - "Familiar with C# classes and inheritance"
+            inputs:
+              type: object
+              properties:
+                description:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    type: string
+            outputs:
+              type: array
+              items:
+                type: string
+              example:
+                - "Mapper class (e.g., CustomerProfileMapper)"
+                - "EF Core migration script"
+            successCriteria:
+              type: array
+              items:
+                type: string
+            nonGoals:
+              type: array
+              items:
+                type: string
+            examplePath:
+              type: string
+            relatedSkills:
+              type: array
+              items:
+                type: string
+
+    Workflow:
+      type: object
+      description: Recommended sequence of skills for a feature delivery task
+      required:
+        - id
+        - name
+        - steps
+        - totalDuration
+      properties:
+        id:
+          type: string
+          example: full-vertical-slice
+        name:
+          type: string
+          example: "New Feature (Full Vertical Slice)"
+        description:
+          type: string
+          example: "Complete workflow for adding a new entity with CRUD operations and REST endpoints"
+        steps:
+          type: array
+          items:
+            type: string
+          description: Ordered list of skill IDs to follow
+          example:
+            - domain-modeling
+            - crud-operations
+            - api-endpoints
+        totalDuration:
+          type: string
+          example: "120 minutes"
+        notes:
+          type: string
+          example: "Most common path for new features; all three skills required"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "SKILL_NOT_FOUND"
+        message:
+          type: string
+          example: "Skill 'unknown-skill' does not exist"
+        details:
+          type: object
+          description: Additional error context

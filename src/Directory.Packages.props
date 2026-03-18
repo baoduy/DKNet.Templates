@@ -1,177 +1,243 @@
 <Project>
-    <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
-        <Authors>Steven Hoang</Authors>
-        <Company>https://drunkcoding.net</Company>
-        <Copyright>Copyright @ $([System.DateTime]::Now. Year)</Copyright>
-        <PackageProjectUrl>https://github.com/baoduy/DKNet</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/baoduy/DKNet</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-        <PackageTags>aspnetcore,aws,azure,cloud,ddd,efcore,entityframework,events,extensions,generator,password,pdf,random,storage,string</PackageTags>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <LangVersion>default</LangVersion>
-        <NeutralLanguage>en</NeutralLanguage>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageIcon>NugetLogo.png</PackageIcon>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>true</ImplicitUsings>
-        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-        <EnableNETAnalyzers>true</EnableNETAnalyzers>
-        <AnalysisMode>All</AnalysisMode>
-        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    </PropertyGroup>
-    <PropertyGroup>
-        <PublishRepositoryUrl>true</PublishRepositoryUrl>
-        <EmbedUntrackedSources>true</EmbedUntrackedSources>
-        <IncludeSymbols>true</IncludeSymbols>
-        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-        <Deterministic>true</Deterministic>
-        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageVersion Include="Asp.Versioning.Http" Version="8.1.0"/>
-        <PackageVersion Include="Aspire.Hosting" Version="9.5.2"/>
-        <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.5.2"/>
-        <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.5.0"/>
-        <PackageVersion Include="Aspire.Hosting.Redis" Version="9.5.2"/>
-        <PackageVersion Include="Aspire.Hosting.SqlServer" Version="9.5.2"/>
-        <PackageVersion Include="Aspire.Hosting.Testing" Version="9.5.2"/>
-        <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0"/>
-        <PackageVersion Include="AutoBogus" Version="2.13.1"/>
-        <PackageVersion Include="AWSSDK.Core" Version="4.0.1.3"/>
-        <PackageVersion Include="AWSSDK.S3" Version="4.0.9"/>
-        <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.3.0"/>
-        <PackageVersion Include="Azure.Storage.Blobs" Version="12.26.0"/>
-        <PackageVersion Include="Bogus" Version="35.6.5"/>
-        <PackageVersion Include="coverlet.collector" Version="6.0.4"/>
-        <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.AspCore.SlimBus" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.Abstractions" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.Events" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.Extensions" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.Relational.Helpers" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.Repos" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.Repos.Abstractions" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.EfCore.Specifications" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.Fw.Extensions" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.RandomCreator" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.SlimBus.Extensions" Version="9.5.29"/>
-        <PackageVersion Include="DKNet.Svc.Encryption" Version="9.5.29"/>
-        <PackageVersion Include="FluentResults" Version="4.0.0"/>
-        <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0"/>
-        <PackageVersion Include="ForEvolve.FluentValidation.AspNetCore.Http" Version="1.0.26"/>
-        <PackageVersion Include="LinqKit.Microsoft.EntityFrameworkCore" Version="9.0.8"/>
-        <PackageVersion Include="Mapster" Version="7.4.0"/>
-        <PackageVersion Include="Mapster.DependencyInjection" Version="1.0.1"/>
-        <PackageVersion Include="Mapster.EFCore" Version="5.1.1"/>
-        <PackageVersion Include="Microsoft.AspNetCore.Http" Version="2.3.0"/>
-        <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0"/>
-        <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.3.0"/>
-        <PackageVersion Include="Microsoft.AspNetCore.Routing.Abstractions" Version="2.3.0"/>
-        <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.4.0"/>
-        <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.CSharp" Version="4.7.0"/>
-        <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="9.10.0"/>
-        <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9"/>
-        <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="8.4.0"/>
-        <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.FileProviders.Abstractions" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.10"/>
-        <PackageVersion Include="Microsoft.FeatureManagement.AspNetCore" Version="4.3.0"/>
-        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0"/>
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all"/>
-        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all"/>
-        <PackageVersion Include="Moq" Version="4.20.72"/>
-        <PackageVersion Include="NetArchTest.Rules" Version="1.3.2"/>
-        <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4"/>
-        <PackageVersion Include="OpenTelemetry" Version="1.13.1"/>
-        <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.13.1"/>
-        <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.13.1"/>
-        <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.13.1"/>
-        <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.13.0"/>
-        <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.13.0"/>
-        <PackageVersion Include="Scalar.AspNetCore" Version="2.9.0"/>
-        <PackageVersion Include="Scrutor" Version="6.1.0"/>
-        <PackageVersion Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="1.5.0"/>
-        <PackageVersion Include="Shouldly" Version="4.3.0"/>
-        <PackageVersion Include="SlimMessageBus" Version="3.0.0"/>
-        <PackageVersion Include="SlimMessageBus.Host" Version="3.3.4"/>
-        <PackageVersion Include="SlimMessageBus.Host.AzureServiceBus" Version="3.3.4"/>
-        <PackageVersion Include="SlimMessageBus.Host.FluentValidation" Version="3.3.4"/>
-        <PackageVersion Include="SlimMessageBus.Host.Interceptor" Version="3.0.0"/>
-        <PackageVersion Include="SlimMessageBus.Host.Memory" Version="3.3.4"/>
-        <PackageVersion Include="SlimMessageBus.Host.Serialization.SystemTextJson" Version="3.3.4"/>
-        <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0"/>
-        <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0"/>
-        <PackageVersion Include="System.Memory.Data" Version="9.0.10"/>
-        <PackageVersion Include="Testcontainers.Azurite" Version="4.8.1"/>
-        <PackageVersion Include="TestContainers.Container.Database.MsSql" Version="1.5.4"/>
-        <PackageVersion Include="Testcontainers.Minio" Version="4.8.1"/>
-        <PackageVersion Include="Testcontainers.MsSql" Version="4.8.1"/>
-        <PackageVersion Include="Testcontainers.PostgreSql" Version="4.8.0"/>
-        <PackageVersion Include="X.PagedList.EF" Version="10.5.9"/>
-        <PackageVersion Include="xunit" Version="2.9.3"/>
-        <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5"/>
-        <PackageVersion Include="Markdig" Version="0.43.0"/>
-        <PackageVersion Include="PdfPig" Version="0.1.11"/>
-        <PackageVersion Include="PuppeteerSharp" Version="20.2.4"/>
-        <PackageVersion Include="YamlDotNet" Version="16.3.0"/>
-    </ItemGroup>
-    <ItemGroup>
-        <PackageVersion Include="Meziantou.Analyzer" Version="2.0.239">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageVersion>
-        <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageVersion>
-        <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageVersion>
-        <!--        <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556">-->
-        <!--            <PrivateAssets>all</PrivateAssets>-->
-        <!--            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>-->
-        <!--        </PackageVersion>-->
-    </ItemGroup>
-    <PropertyGroup>
-        <WarningsAsErrors>
-            CA1068;CA1724;CA2016;CA2000;CS0414;CS8625;CS8604;CS8603;CS8620;CS8619;CS1998;CS8714;CS8618;CS8600;CS8602;
-            CS0168;MSB9008;CS0219;CS9113;IDE0004;CA1018;CA1813;MA0010;CA1711;CA1310;MA0074;CA1823;MA0002;CA1024;CA1829;
-            CA1822;CA1510;CA1816;S2699;
-        </WarningsAsErrors>
-        <NoWarn>
-            ASPIRE002;CA1032;CA1034;CA1040;CA1062;CA1515;CA1812;CA1819;CA1848;CA1852;CA2007;CA2234;CA2254;IDE0008;
-            IDE0011;IDE0022;IDE0055;IDE0058;IDE0130;IDE0160;MA0004;MA0048;MA0056;CS9107;MA0007;CA1707;NU1504;S4581;
-            CA1859;CA1308;SA1124;SA1200;SA1636;SA1309;SA1202;SA1413;SA1309;SA1101;SA1402;
-        </NoWarn>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Authors>Steven Hoang</Authors>
+    <Company>https://drunkcoding.net</Company>
+    <Copyright>Copyright @ $([System.DateTime]::Now. Year)</Copyright>
+    <PackageProjectUrl>https://github.com/baoduy/DKNet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/baoduy/DKNet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>aspnetcore,aws,azure,cloud,ddd,efcore,entityframework,events,extensions,generator,password,pdf,random,storage,string</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <LangVersion>default</LangVersion>
+    <NeutralLanguage>en</NeutralLanguage>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>NugetLogo.png</PackageIcon>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>true</ImplicitUsings>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisMode>All</AnalysisMode>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Asp.Versioning.Http" Version="8.1.1" />
+    <PackageVersion Include="Aspire.Hosting" Version="9.5.2" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.5.0" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="9.5.2" />
+    <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
+    <PackageVersion Include="AutoBogus" Version="2.13.1" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.1.3" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.9" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.4.0" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.26.0" />
+    <PackageVersion Include="Bogus" Version="35.6.5" />
+    <PackageVersion Include="coverlet.collector" Version="8.0.0" />
+    <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="10.0.21" />
+    <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="10.0.21" />
+    <PackageVersion Include="DKNet.EfCore.Abstractions" Version="10.0.21" />
+    <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="10.0.21" />
+    <PackageVersion Include="DKNet.EfCore.Events" Version="10.0.21" />
+    <PackageVersion Include="DKNet.EfCore.Extensions" Version="10.0.21" />
+    <PackageVersion Include="DKNet.EfCore.Relational.Helpers" Version="10.0.21" />
+    <PackageVersion Include="DKNet.EfCore.Specifications" Version="10.0.21" />
+    <PackageVersion Include="DKNet.Fw.Extensions" Version="10.0.21" />
+    <PackageVersion Include="DKNet.RandomCreator" Version="10.0.21" />
+    <PackageVersion Include="DKNet.SlimBus.Extensions" Version="10.0.21" />
+    <PackageVersion Include="DKNet.Svc.Encryption" Version="10.0.21" />
+    <PackageVersion Include="FluentResults" Version="4.0.0" />
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageVersion Include="ForEvolve.FluentValidation.AspNetCore.Http" Version="1.0.26" />
+    <PackageVersion Include="LinqKit.Microsoft.EntityFrameworkCore" Version="9.0.8" />
+    <PackageVersion Include="Mapster" Version="7.4.0" />
+    <PackageVersion Include="Mapster.DependencyInjection" Version="1.0.1" />
+    <PackageVersion Include="Mapster.EFCore" Version="5.1.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Routing.Abstractions" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.5.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="10.4.0" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="8.4.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.FileProviders.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.FeatureManagement.AspNetCore" Version="4.4.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageVersion Include="OpenTelemetry" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.13.10" />
+    <PackageVersion Include="Scrutor" Version="7.0.0" />
+    <PackageVersion Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="2.0.0" />
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="SlimMessageBus" Version="3.0.0" />
+    <PackageVersion Include="SlimMessageBus.Host" Version="3.3.4" />
+    <PackageVersion Include="SlimMessageBus.Host.AzureServiceBus" Version="3.3.6" />
+    <PackageVersion Include="SlimMessageBus.Host.FluentValidation" Version="3.3.6" />
+    <PackageVersion Include="SlimMessageBus.Host.Interceptor" Version="3.0.0" />
+    <PackageVersion Include="SlimMessageBus.Host.Memory" Version="3.3.6" />
+    <PackageVersion Include="SlimMessageBus.Host.Serialization.SystemTextJson" Version="3.3.6" />
+    <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+    <PackageVersion Include="System.Memory.Data" Version="9.0.10" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.8.1" />
+    <PackageVersion Include="TestContainers.Container.Database.MsSql" Version="1.5.4" />
+    <PackageVersion Include="Testcontainers.Minio" Version="4.8.1" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.8.1" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.8.0" />
+    <PackageVersion Include="X.PagedList.EF" Version="10.5.9" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Markdig" Version="0.43.0" />
+    <PackageVersion Include="PdfPig" Version="0.1.11" />
+    <PackageVersion Include="PuppeteerSharp" Version="20.2.4" />
+    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.239">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageVersion>
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageVersion>
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageVersion>
+    <!--        <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556">-->
+    <!--            <PrivateAssets>all</PrivateAssets>-->
+    <!--            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>-->
+    <!--        </PackageVersion>-->
+  </ItemGroup>
+  <PropertyGroup>
+    <!-- Warnings promoted to errors — must be fixed to pass build. -->
+    <WarningsAsErrors>
+      CA1068; <!-- CancellationToken should be the last parameter. -->
+      CA1724; <!-- Type name should not conflict with namespace names. -->
+      CA2016; <!-- Forward CancellationToken to methods that accept one. -->
+      CA2000; <!-- Dispose objects before losing scope. -->
+      CS0414; <!-- Private field is assigned but never used. -->
+      CS8625; <!-- Cannot convert null literal to non-nullable reference type. -->
+      CS8604; <!-- Possible null argument passed to non-nullable parameter. -->
+      CS8603; <!-- Possible null return from non-nullable return type. -->
+      CS8620; <!-- Nullability mismatch in generic/reference type arguments. -->
+      CS8619; <!-- Nullability mismatch in assignment or conversion. -->
+      CS1998; <!-- Async method has no await operators. -->
+      CS8714; <!-- Nullable type used where notnull constraint is required. -->
+      CS8618; <!-- Non-nullable member is uninitialized when constructor exits. -->
+      CS8600; <!-- Possible null assigned to non-nullable type. -->
+      CS8602; <!-- Possible null dereference. -->
+      CS0168; <!-- Variable declared but never used. -->
+      MSB9008; <!-- MSBuild project/input configuration warning. -->
+      CS0219; <!-- Variable assigned but value never used. -->
+      CS9113; <!-- Parameter is unread (never used). -->
+      IDE0004; <!-- Remove unnecessary cast. -->
+      CA1018; <!-- Attributes should declare valid AttributeUsage. -->
+      CA1813; <!-- Attribute classes should be sealed. -->
+      MA0010; <!-- Meziantou: avoid implicit culture-sensitive ToString. -->
+      CA1711; <!-- Identifier names should follow suffix conventions. -->
+      CA1310; <!-- Specify StringComparison for string operations. -->
+      MA0074; <!-- Meziantou: avoid implicit StringComparison. -->
+      CA1823; <!-- Unused private field. -->
+      MA0002; <!-- Meziantou: IEqualityComparer or IComparer should be specified. -->
+      CA1024; <!-- Use properties instead of parameterless Get* methods. -->
+      CA1829; <!-- Prefer Length/Count property over LINQ Count(). -->
+      CA1822; <!-- Mark member static when instance state is not accessed. -->
+      CA1510; <!-- Prefer ArgumentNullException.ThrowIfNull. -->
+      CA1816; <!-- Dispose methods should call GC.SuppressFinalize. -->
+      S2699; <!-- Test methods should contain at least one assertion. -->
+    </WarningsAsErrors>
+    <!-- Suppressed warnings — accepted trade-offs or style preferences. -->
+    <NoWarn>
+      ASPIRE002; <!-- .NET Aspire analyzer project-specific guidance. -->
+      CA1032; <!-- Exception types should expose standard constructors. -->
+      CA1034; <!-- Nested types should not be externally visible. -->
+      CA1040; <!-- Avoid empty interfaces. -->
+      CA1062; <!-- Validate public method arguments for null. -->
+      CA1515; <!-- Consider reducing type visibility to internal. -->
+      CA1812; <!-- Avoid internal classes that are never instantiated. -->
+      CA1819; <!-- Properties should not return arrays directly. -->
+      CA1848; <!-- Prefer LoggerMessage pattern for logging performance. -->
+      CA1852; <!-- Type can be sealed for clarity and performance. -->
+      CA2007; <!-- Consider using ConfigureAwait on awaited tasks. -->
+      CA2234; <!-- Prefer typed objects (e.g. Uri) over plain strings. -->
+      CA2254; <!-- Logger message template should be static or constant. -->
+      IDE0008; <!-- Use explicit type instead of var (style preference). -->
+      IDE0011; <!-- Add braces to control-flow blocks (style preference). -->
+      IDE0022; <!-- Use expression-bodied member (style preference). -->
+      IDE0055; <!-- Fix code-formatting rule violations. -->
+      IDE0058; <!-- Remove unused expression value. -->
+      IDE0130; <!-- Namespace does not match folder structure. -->
+      IDE0160; <!-- Namespace declaration style preference. -->
+      MA0004; <!-- Meziantou: use ConfigureAwait(false). -->
+      MA0048; <!-- Meziantou: file name must match first type name. -->
+      MA0056; <!-- Meziantou: do not use implicit culture-sensitive ToString. -->
+      CS9107; <!-- Primary constructor parameter captured and also forwarded. -->
+      MA0007; <!-- Meziantou: add a comma after the last value. -->
+      CA1707; <!-- Identifiers should not contain underscores. -->
+      NU1504; <!-- Duplicate or conflicting NuGet item metadata. -->
+      S4581; <!-- Sonar: use Guid.NewGuid() instead of new Guid(). -->
+      CA1859; <!-- Prefer concrete types for better performance. -->
+      CA1308; <!-- Prefer uppercase normalization over lowercase. -->
+      SA1124; <!-- StyleCop: do not use regions. -->
+      SA1200; <!-- StyleCop: using directives placement rule. -->
+      SA1636; <!-- StyleCop: file header text/documentation rule. -->
+      SA1309; <!-- StyleCop: field names should not start with underscore. -->
+      SA1202; <!-- StyleCop: elements should be ordered by access level. -->
+      SA1413; <!-- StyleCop: use trailing comma in multi-line initializers. -->
+      SA1101; <!-- StyleCop: prefix local member calls with this. -->
+      SA1402; <!-- StyleCop: one type per file rule. -->
+    </NoWarn>
+  </PropertyGroup>
 </Project>

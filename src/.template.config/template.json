@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json.schemastore.org/template",
+  "author": "Steven Hoang",
+  "classifications": [
+    "Web",
+    "API",
+    "DDD",
+    "CQRS",
+    "Aspire",
+    "Clean Architecture"
+  ],
+  "name": "DKNet SlimBus API Solution",
+  "description": "A production-ready ASP.NET Core solution template built on vertical slice architecture with DDD, CQRS, EF Core, .NET Aspire, Redis, SQL Server, FluentValidation, OpenTelemetry, and Azure integration.",
+  "identity": "DKNet.SlimBus.Template",
+  "groupIdentity": "DKNet.SlimBus",
+  "shortName": "dknet-slimbus",
+  "defaultName": "MySlimBusApp",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "sourceName": "SlimBus",
+  "preferNameDirectory": true,
+  "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "description": "The target framework for the template.",
+      "datatype": "choice",
+      "choices": [
+        {
+          "choice": "net10.0",
+          "description": ".NET 10 (recommended)"
+        }
+      ],
+      "replaces": "net10.0",
+      "defaultValue": "net10.0"
+    },
+    "AuthorName": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Author name used in NuGet package metadata.",
+      "defaultValue": "Steven Hoang",
+      "replaces": "Steven Hoang"
+    },
+    "CompanyUrl": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Company URL used in project metadata (e.g. https://mycompany.com).",
+      "defaultValue": "https://drunkcoding.net",
+      "replaces": "https://drunkcoding.net"
+    },
+    "RepositoryUrl": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "GitHub/Git repository URL used in project metadata.",
+      "defaultValue": "https://github.com/baoduy/DKNet",
+      "replaces": "https://github.com/baoduy/DKNet"
+    }
+  },
+  "sources": [
+    {
+      "source": "./",
+      "target": "./",
+      "rename": {
+        "DKNet.Templates.sln": "SlimBus.sln"
+      },
+      "modifiers": [
+        {
+          "exclude": [
+            "**/[Bb]in/**",
+            "**/[Oo]bj/**",
+            "**/TestResults/**",
+            "**/coverage-report/**",
+            "**/*.user",
+            "**/.DS_Store",
+            ".template.config/**",
+            "**/.gitignore",
+            "**/.gitattributes"
+          ]
+        }
+      ]
+    }
+  ]
+}

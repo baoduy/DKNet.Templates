@@ -1,0 +1,51 @@
+{
+    "id": "your-skill-id",
+    "version": "1.0.0",
+    "title": "Your Skill Title Here",
+    "category": "Persistence & Entities",
+    "difficulty": "Intermediate",
+    "estimatedDurationMinutes": {
+        "min": 20,
+        "max": 30
+    },
+    "prerequisites": [
+        "Read AGENTS.md - Feature Vertical Slice Pattern section",
+        "Familiarity with C# classes and properties",
+        "Understanding of [relevant technology]"
+    ],
+    "inputs": {
+        "description": "Information you need to gather before starting this skill",
+        "items": [
+            "Input item 1 (e.g., Entity name)",
+            "Input item 2 (e.g., Property list)",
+            "Input item 3 (e.g., Relationships)"
+        ]
+    },
+    "outputs": {
+        "description": "What you will have created upon completion",
+        "items": [
+            "Output deliverable 1 (e.g., Entity class)",
+            "Output deliverable 2 (e.g., Mapper class)",
+            "Output deliverable 3 (e.g., Migration)"
+        ]
+    },
+    "successCriteria": [
+        "Success criterion 1 - specific and testable",
+        "Success criterion 2 - specific and testable",
+        "Success criterion 3 - specific and testable"
+    ],
+    "nonGoals": [
+        "Explicitly out-of-scope item 1",
+        "Explicitly out-of-scope item 2 - link to related skill if applicable"
+    ],
+    "relatedSkills": [
+        "crud-operations",
+        "api-endpoints"
+    ],
+    "folderPath": ".github/skills/your-skill-id",
+    "examplesPath": ".github/skills/your-skill-id/examples",
+    "testPath": "src/SlimBus.ApiEndpoints/SlimBus.App.Tests/Skills/YourSkillTests.cs",
+    "status": "published",
+    "createdDate": "2026-03-17",
+    "lastUpdatedDate": "2026-03-17"
+}

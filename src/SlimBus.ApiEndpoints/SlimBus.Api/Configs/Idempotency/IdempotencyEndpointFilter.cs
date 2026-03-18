@@ -28,17 +28,17 @@ internal sealed class IdempotencyEndpointFilter(
     /// <returns>The result of the endpoint invocation.</returns>
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var idempotencyKey = context.HttpContext.Request.Headers[this._options.IdempotencyHeaderKey].FirstOrDefault();
+        var idempotencyKey = context.HttpContext.Request.Headers[_options.IdempotencyHeaderKey].FirstOrDefault();
         if (string.IsNullOrEmpty(idempotencyKey))
         {
             logger.LogWarning("Idempotency header key is missing. Returning 400 Bad Request.");
             return TypedResults.Problem(
-                $"{this._options.IdempotencyHeaderKey} header is required.",
+                $"{_options.IdempotencyHeaderKey} header is required.",
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
         idempotencyKey = idempotencyKey.SanitizeForLogging(); // Sanitize user input
-        logger.LogDebug("Checking idempotency header key: {Key}", this._options.IdempotencyHeaderKey);
+        logger.LogDebug("Checking idempotency header key: {Key}", _options.IdempotencyHeaderKey);
 
         var endpoint = context.HttpContext.GetEndpoint();
         var routeTemplate = endpoint?.Metadata.GetMetadata<RouteAttribute>()?.Template ??
@@ -50,7 +50,7 @@ internal sealed class IdempotencyEndpointFilter(
         {
             logger.LogInformation("Existing result found for idempotency key: {Key}", idempotencyKey);
 
-            if (this._options.ConflictHandling == IdempotentConflictHandling.ConflictResponse)
+            if (_options.ConflictHandling == IdempotentConflictHandling.ConflictResponse)
             {
                 logger.LogWarning("Returning 409 Conflict.");
                 return TypedResults.Problem(
@@ -70,7 +70,7 @@ internal sealed class IdempotencyEndpointFilter(
             var resultValue = result.GetPropertyValue("Value") ?? result;
             await cacher.MarkKeyAsProcessedAsync(
                 compositeKey,
-                JsonSerializer.Serialize(resultValue, this._options.JsonSerializerOptions));
+                JsonSerializer.Serialize(resultValue, _options.JsonSerializerOptions));
             logger.LogInformation("Caching the response for idempotency key: {Key}", idempotencyKey);
         }
 

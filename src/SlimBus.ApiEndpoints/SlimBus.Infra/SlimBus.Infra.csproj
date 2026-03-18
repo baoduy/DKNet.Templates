@@ -21,7 +21,6 @@
         <PackageReference Include="SlimMessageBus.Host.Serialization.SystemTextJson"/>
         <PackageReference Include="DKNet.EfCore.Events"/>
         <PackageReference Include="DKNet.EfCore.Relational.Helpers"/>
-        <PackageReference Include="DKNet.EfCore.Repos"/>
         <PackageReference Include="DKNet.SlimBus.Extensions"/>
         <PackageReference Update="Meziantou.Analyzer">
             <PrivateAssets>all</PrivateAssets>

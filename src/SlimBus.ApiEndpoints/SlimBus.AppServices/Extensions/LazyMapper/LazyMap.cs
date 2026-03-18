@@ -22,9 +22,9 @@ internal class LazyMap<TResult>(object? originalValue, IMapper mapper) : ILazyMa
 
     #region Properties
 
-    public TResult Value => this.ValueOrDefault ?? throw new InvalidOperationException(nameof(this.ValueOrDefault));
+    public TResult Value => ValueOrDefault ?? throw new InvalidOperationException(nameof(ValueOrDefault));
 
-    public TResult ValueOrDefault => this.GetValue()!;
+    public TResult ValueOrDefault => GetValue()!;
 
     #endregion
 
@@ -37,21 +37,21 @@ internal class LazyMap<TResult>(object? originalValue, IMapper mapper) : ILazyMa
             return default;
         }
 
-        if (this._value is not null)
+        if (_value is not null)
         {
-            return this._value;
+            return _value;
         }
 
         if (originalValue is TResult o)
         {
-            this._value = o;
+            _value = o;
         }
         else
         {
-            this._value = this._mapper.Map<TResult>(originalValue);
+            _value = _mapper.Map<TResult>(originalValue);
         }
 
-        return this._value;
+        return _value;
     }
 
     #endregion

@@ -27,7 +27,6 @@
         <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
         <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore"/>
         <PackageReference Include="OpenTelemetry.Instrumentation.Http"/>
-        <PackageReference Include="DKNet.AspCore.SlimBus"/>
         <PackageReference Include="Scalar.AspNetCore"/>
         <PackageReference Update="Meziantou.Analyzer">
             <PrivateAssets>all</PrivateAssets>

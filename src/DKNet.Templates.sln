@@ -19,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{DE144418
 		global.json = global.json
 		Directory.Packages.props = Directory.Packages.props
 		coverage.runsettings = coverage.runsettings
+		..\SPEC_KIT.md = ..\SPEC_KIT.md
+		..\AGENTS.md = ..\AGENTS.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimBus.AppHost", "SlimBus.ApiEndpoints\SlimBus.AppHost\SlimBus.AppHost.csproj", "{EAB0ED23-FF31-45B9-A59B-9D0B78B677EC}"

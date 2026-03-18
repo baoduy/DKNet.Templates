@@ -19,8 +19,8 @@ public class Employee : DomainEntity
 
     public Employee(Guid profileId, EmployeeType type, string userId) : base(Guid.NewGuid(), userId)
     {
-        this.ProfileId = profileId;
-        this.PromoteTo(type, userId);
+        ProfileId = profileId;
+        PromoteTo(type, userId);
     }
 
     private Employee()
@@ -43,8 +43,8 @@ public class Employee : DomainEntity
 
     public void PromoteTo(EmployeeType type, string userId)
     {
-        this.Type = type;
-        this.SetUpdatedBy(userId);
+        Type = type;
+        SetUpdatedBy(userId);
     }
 
     #endregion

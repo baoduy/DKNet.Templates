@@ -22,3 +22,8 @@ CoverageReports
 *.testlog
 **/nupkgs
 src/Directory.Build.targets.bak.*
+
+# NuGet template pack output
+**/*.nupkg
+**/*.snupkg
+**/nupkgs/

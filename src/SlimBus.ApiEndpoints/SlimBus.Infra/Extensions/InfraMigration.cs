@@ -3,11 +3,18 @@ using SlimBus.Infra.Contexts;
 
 namespace SlimBus.Infra.Extensions;
 
+/// <summary>
+///
+/// </summary>
 [ExcludeFromCodeCoverage]
 public static class InfraMigration
 {
     #region Methods
 
+    /// <summary>
+    /// Migrates the database to the latest version. This method should be called during application startup to ensure that the database schema is up to date before the application starts handling requests.
+    /// </summary>
+    /// <param name="connectionString"></param>
     public static async Task MigrateDb(string connectionString)
     {
         //Db migration

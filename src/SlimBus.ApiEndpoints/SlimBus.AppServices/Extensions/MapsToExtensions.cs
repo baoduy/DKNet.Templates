@@ -1,4 +1,5 @@
 using System.Reflection;
+using DKNet.EfCore.DtoGenerator;
 using DKNet.Fw.Extensions.TypeExtractors;
 
 namespace SlimBus.AppServices.Extensions;
@@ -7,24 +8,27 @@ internal static class MapsToExtensions
 {
     #region Methods
 
-    public static void ScanMapsTo(this TypeAdapterConfig config)
+    public static void ScanMaps(this TypeAdapterConfig config)
     {
         var mapsToTypes = typeof(MapsToExtensions).Assembly
-            .Extract().Classes().NotAbstract().NotGeneric().HasAttribute<MapsToAttribute>();
+            .Extract().Classes().NotAbstract().NotGeneric()
+            .Where(t => t.GetCustomAttribute<MapsFromAttribute>() != null ||
+                        t.GetCustomAttribute<GenerateDtoAttribute>() != null);
 
         foreach (var type in mapsToTypes)
         {
-            var attribute = type.GetCustomAttribute<MapsToAttribute>();
-            if (attribute == null)
+            var mapsFromAttr = type.GetCustomAttribute<MapsFromAttribute>();
+            if (mapsFromAttr is not null)
             {
+                config.NewConfig(mapsFromAttr.EntityType, type);
                 continue;
             }
 
-            var ctor = attribute.EntityType.GetConstructors().First(c => c.IsPublic);
-            config.NewConfig(type, attribute.EntityType)
-
-                //.PreserveReference(true)
-                .Settings.MapToConstructor = ctor;
+            var generateDtoAtt = type.GetCustomAttribute<GenerateDtoAttribute>();
+            if (generateDtoAtt is not null)
+            {
+                config.NewConfig(generateDtoAtt.EntityType, type);
+            }
         }
     }
 

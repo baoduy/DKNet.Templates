@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Prevent the SDK from compiling or generating any code -->
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+
+    <!-- NuGet package identity -->
+    <PackageId>DKNet.SlimBus.Template</PackageId>
+    <Version>1.0.0</Version>
+    <Title>DKNet SlimBus API Solution Template</Title>
+    <Description>
+      A production-ready ASP.NET Core solution template built on vertical slice architecture
+      with DDD, CQRS, EF Core, .NET Aspire, Redis, SQL Server, FluentValidation,
+      OpenTelemetry, Azure App Configuration, and JWT Bearer authentication.
+      Scaffolds a fully-wired, layered solution (Api / AppServices / Domains / Infra / Share + Aspire host)
+      ready for feature development following the DKNet SlimBus conventions.
+    </Description>
+
+    <!-- Package metadata (mirrors Directory.Packages.props) -->
+    <Authors>Steven Hoang</Authors>
+    <Company>https://drunkcoding.net</Company>
+    <Copyright>Copyright © $([System.DateTime]::Now.Year) Steven Hoang</Copyright>
+    <PackageProjectUrl>https://github.com/baoduy/DKNet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/baoduy/DKNet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>template;aspnetcore;ddd;cqrs;efcore;aspire;slimbus;vertical-slice;clean-architecture;azure;opentelemetry</PackageTags>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Override icon inherited from Directory.Packages.props — no icon in this pack -->
+    <PackageIcon></PackageIcon>
+
+    <!-- Template pack requirements -->
+    <PackageType>Template</PackageType>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <!-- Use nuspec for explicit content control — avoids dotnet-pack global property interference -->
+    <NuspecFile>DKNet.SlimBus.Template.nuspec</NuspecFile>
+    <IsPackable>true</IsPackable>
+    <!-- Skip the build step entirely — this is a content-only template pack -->
+    <NoBuild>true</NoBuild>
+    <!-- Template packs have no binary output to symbolicate -->
+    <IncludeSymbols>false</IncludeSymbols>
+
+    <!-- Suppress NU5128 (no lib TFM folder expected for template packs) -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <!-- Source Link & deterministic build -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Remove compile items so MSBuild never tries to build template source code -->
+  <!-- NOTE: Do NOT remove None items here — that would remove the Pack=true None items below -->
+  <ItemGroup>
+    <Compile Remove="**/*" />
+    <EmbeddedResource Remove="**/*" />
+  </ItemGroup>
+
+  <!--
+    Embed the template content.
+    bin/ and obj/ are excluded to avoid Aspire-generated .g.cs files and other build artifacts.
+    Using Content with explicit Pack="true" and PackagePath so the items survive
+    the dotnet-pack CLI global property EnableDefaultNoneItems=false.
+  -->
+  <ItemGroup>
+    <Content Include="SlimBus.ApiEndpoints/**/*"
+             Exclude="SlimBus.ApiEndpoints/**/bin/**;SlimBus.ApiEndpoints/**/obj/**;SlimBus.ApiEndpoints/**/TestResults/**;SlimBus.ApiEndpoints/**/*.user;SlimBus.ApiEndpoints/**/.DS_Store"
+             Pack="true"
+             PackagePath="content/" />
+    <Content Include=".template.config/**/*"
+             Pack="true"
+             PackagePath="content/" />
+    <Content Include="global.json"
+             Pack="true"
+             PackagePath="content/" />
+    <Content Include="Directory.Packages.props"
+             Pack="true"
+             PackagePath="content/" />
+    <Content Include="coverage.runsettings"
+             Pack="true"
+             PackagePath="content/" />
+    <Content Include="DKNet.Templates.sln"
+             Pack="true"
+             PackagePath="content/" />
+  </ItemGroup>
+
+</Project>
+
