@@ -19,14 +19,11 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <tags>template aspnetcore ddd cqrs efcore aspire slimbus vertical-slice clean-architecture azure opentelemetry</tags>
     <language>en</language>
-    <readme>README.md</readme>
     <packageTypes>
       <packageType name="Template" />
     </packageTypes>
   </metadata>
   <files>
-    <!-- README displayed on nuget.org -->
-    <file src="..\README.md" target="" />
 
     <!-- template.json — must live at content/.template.config/ -->
     <file src=".template.config\**\*" target="content\.template.config\" />
@@ -37,9 +34,9 @@
     <file src="coverage.runsettings" target="content\" />
     <file src="DKNet.Templates.sln" target="content\" />
 
-    <!-- Template source tree — exclude bin/, obj/, build artifacts -->
+        <!-- Template source tree — exclude bin/, obj/, scripts, docs, and macOS artifacts -->
     <file src="SlimBus.ApiEndpoints\**\*"
           target="content\SlimBus.ApiEndpoints\"
-          exclude="SlimBus.ApiEndpoints\**\bin\**;SlimBus.ApiEndpoints\**\obj\**;SlimBus.ApiEndpoints\**\TestResults\**;SlimBus.ApiEndpoints\**\*.user" />
+          exclude="SlimBus.ApiEndpoints\**\bin\**;SlimBus.ApiEndpoints\**\obj\**;SlimBus.ApiEndpoints\**\TestResults\**;SlimBus.ApiEndpoints\**\*.user;SlimBus.ApiEndpoints\**\*.sh;SlimBus.ApiEndpoints\**\.DS_Store;SlimBus.ApiEndpoints\docs\**;SlimBus.ApiEndpoints\**\docs\**;SlimBus.ApiEndpoints\**\README.md" />
   </files>
 </package>

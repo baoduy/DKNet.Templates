@@ -30,7 +30,6 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>template;aspnetcore;ddd;cqrs;efcore;aspire;slimbus;vertical-slice;clean-architecture;azure;opentelemetry</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NeutralLanguage>en</NeutralLanguage>
     <!-- Override icon inherited from Directory.Packages.props — no icon in this pack -->
     <PackageIcon></PackageIcon>
@@ -91,13 +90,6 @@
     <Content Include="DKNet.Templates.sln"
              Pack="true"
              PackagePath="content/" />
-  </ItemGroup>
-
-  <!-- Pack the README into the NuGet package root -->
-  <ItemGroup>
-    <Content Include="..\README.md"
-             Pack="true"
-             PackagePath="\" />
   </ItemGroup>
 
 </Project>
