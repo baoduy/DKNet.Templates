@@ -8,7 +8,7 @@ name: Build and Publish NuGet Package
       - main
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
