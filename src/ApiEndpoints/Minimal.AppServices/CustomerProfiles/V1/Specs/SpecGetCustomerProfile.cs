@@ -7,6 +7,7 @@ internal sealed class SpecGetCustomerProfile : Specification<CustomerProfile>
     public SpecGetCustomerProfile(Guid? byId = null, string? byEmail = null)
     {
         var predicator = CreatePredicate();
+
         if (byId is not null)
         {
             predicator = predicator.And(a => a.Id == byId);
@@ -18,5 +19,6 @@ internal sealed class SpecGetCustomerProfile : Specification<CustomerProfile>
         }
 
         WithFilter(predicator);
+
     }
 }
