@@ -1,0 +1,23 @@
+# Spec Kit Extension Hooks Configuration
+# This file registers extension hooks that run before/after spec-kit commands
+
+extensions:
+  dknet-implement:
+    enabled: true
+    path: "extensions/dknet-implement"
+
+hooks:
+  after_implement:
+    - extension: "dknet-implement"
+      command: "speckit.dknet-implement.validate"
+      description: "Validate DDD conventions across all 4 layers after implementation"
+      enabled: true
+      optional: false
+
+  after_tasks:
+    - extension: "dknet-implement"
+      command: "speckit.dknet-implement.validate"
+      description: "Check if existing code follows DKNet conventions"
+      enabled: true
+      optional: true
+      prompt: "Run DKNet convention validation on existing implementation?"
