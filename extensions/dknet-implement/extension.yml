@@ -1,0 +1,45 @@
+schema_version: "1.0"
+
+extension:
+  id: "dknet-implement"
+  name: "DKNet Implementation Validator"
+  version: "1.0.0"
+  description: "Validates DDD vertical slice implementation against DKNet.Templates conventions"
+  author: "Steven Hoang (baoduy)"
+  repository: "https://github.com/baoduy/DKNet.Templates"
+  license: "MIT"
+  homepage: "https://drunkcoding.net"
+
+requires:
+  speckit_version: ">=0.1.0"
+
+provides:
+  commands:
+    - name: "speckit.dknet-implement.validate"
+      file: "commands/validate.md"
+      description: "Validate that implemented features follow DKNet DDD conventions across all 4 layers"
+      aliases: ["speckit.dknet.validate"]
+
+    - name: "speckit.dknet-implement.implement"
+      file: "commands/implement.md"
+      description: "Execute implementation using DKNet skills in correct layer order"
+      aliases: ["speckit.dknet.implement"]
+
+hooks:
+  after_implement:
+    command: "speckit.dknet-implement.validate"
+    optional: false
+    description: "Automatically validate DDD layer conventions after implementation completes"
+
+  after_tasks:
+    command: "speckit.dknet-implement.validate"
+    optional: true
+    prompt: "Run DKNet convention validation on existing code?"
+    description: "Check if existing code follows DKNet conventions"
+
+tags:
+  - "ddd"
+  - "dotnet"
+  - "efcore"
+  - "validation"
+  - "vertical-slice"

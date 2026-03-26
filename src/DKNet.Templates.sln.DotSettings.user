@@ -7,5 +7,15 @@
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=a771d025_002D65ec_002D4cb7_002Da008_002Dc9af1cfe7c5f/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="All tests from &amp;lt;Minimal.ApiEndpoints&amp;gt;\&amp;lt;Minimal.App.Tests&amp;gt;" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
   &lt;Project Location="/Users/steven/_CODE/GIT/DKNet.Templates/src/Minimal.ApiEndpoints/Minimal.App.Tests" Presentation="&amp;lt;Minimal.ApiEndpoints&amp;gt;\&amp;lt;Minimal.App.Tests&amp;gt;" /&gt;
 &lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=d5989dfe_002D29e0_002D4bed_002Dbd8d_002D4aaf87c7946d/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="All tests from &amp;lt;ApiEndpoints&amp;gt;" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
+  &lt;Project Location="/Users/steven/_CODE/GIT/DKNet.Templates/src" Presentation="&amp;lt;ApiEndpoints&amp;gt;" /&gt;
+&lt;/SessionState&gt;</s:String>
+	
+	
+	
+	
+	
+	
+	
 	
 	</wpf:ResourceDictionary>
