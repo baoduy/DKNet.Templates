@@ -28,3 +28,4 @@ src/Directory.Build.targets.bak.*
 **/*.snupkg
 **/nupkgs/
 **/worktrees
+**/settings.local.json
