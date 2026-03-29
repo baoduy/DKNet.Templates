@@ -27,3 +27,4 @@ src/Directory.Build.targets.bak.*
 **/*.nupkg
 **/*.snupkg
 **/nupkgs/
+**/worktrees
