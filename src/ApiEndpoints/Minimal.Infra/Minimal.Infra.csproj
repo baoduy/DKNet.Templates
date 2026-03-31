@@ -36,6 +36,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Minimal.App.Tests"/>
+        <InternalsVisibleTo Include="Minimal.App.BDDTests"/>
     </ItemGroup>
 
     <ItemGroup>

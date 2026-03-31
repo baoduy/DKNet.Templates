@@ -25,6 +25,7 @@ You want to build a feature. Pick your starting point:
 - Adding validators? → [CRUD Operations - Step 2](./crud-operations/skill.md#step-2-create-fluentvalidation-validators-for-each-request-dto)
 - Creating endpoints? → [API Endpoints - Step 4](./api-endpoints/skill.md#step-4-create-endpoint-configuration)
 - Entity mapping issues? → [Domain Modeling - Common Errors](./domain-modeling/skill.md#common-errors--how-to-fix-them)
+- Creating or standardizing BDD scenarios? → [BDD Scenarios Skill](./dknet-bdd-tests/skill.md)
 
 ---
 
@@ -35,6 +36,7 @@ You want to build a feature. Pick your starting point:
 | **Domain Modeling** | 20–30 min | Persistence    | [Read skill.md →](./domain-modeling/skill.md) |
 | **CRUD Operations** | 45–60 min | Business Logic | [Read skill.md →](./crud-operations/skill.md) |
 | **API Endpoints**   | 30–40 min | REST API       | [Read skill.md →](./api-endpoints/skill.md)   |
+| **BDD Scenarios**   | 25–45 min | Testing        | [Read skill.md →](./dknet-bdd-tests/skill.md)   |
 
 ---
 

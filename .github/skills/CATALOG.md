@@ -101,6 +101,28 @@
 
 ---
 
+### 5. BDD Scenarios with Reqnroll + NUnit
+
+- **ID**: `dknet-bdd-tests`
+- **Category**: Testing & Quality
+- **Difficulty**: Intermediate
+- **Duration**: 25-45 minutes
+- **Purpose**: Create and standardize BDD `.feature` scenarios and step bindings using `docs/features/**` and `specs/**` as source context
+- **Inputs**: Feature docs, spec/contracts, endpoint behavior, required headers, expected success/failure outcomes
+- **Outputs**: `.feature` scenarios, matching `[Binding]` step definitions, passing BDD tests
+- **Prerequisites**: Existing feature implementation and working `Minimal.App.BDDTests` infrastructure
+- **Success Criteria**:
+   - Scenarios map to acceptance criteria from specs/contracts
+   - Step text matches binding attributes exactly
+   - Assertions validate status and payload semantics
+   - `dotnet test src/ApiEndpoints/Minimal.App.BDDTests` passes
+- **Related Skills**: dknet-crud-operations, dknet-api-endpoints, dknet-feature-documentation
+- **Folder**: [`.github/skills/dknet-bdd-tests/`](./dknet-bdd-tests/)
+
+**Start Here**: Read [BDD Scenarios skill.md](./dknet-bdd-tests/skill.md)
+
+---
+
 ## Skills by Category
 
 ### Persistence & Entities
@@ -115,6 +137,9 @@
 ### Documentation & Knowledge Management
 - [dknet-feature-documentation](./feature-documentation/skill.md) - 30-60 min
 
+### Testing & Quality
+- [dknet-bdd-tests](./dknet-bdd-tests/skill.md) - 25-45 min
+
 ---
 
 ## Skills by Difficulty
@@ -126,6 +151,7 @@
 - dknet-domain-modeling (20-30 min)
 - dknet-crud-operations (45-60 min)
 - dknet-api-endpoints (30-40 min)
+- dknet-bdd-tests (25-45 min)
 
 ---
 

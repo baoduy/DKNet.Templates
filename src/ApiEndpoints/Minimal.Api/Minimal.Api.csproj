@@ -5,6 +5,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <ContainerRepository>baoduy/minimal-api</ContainerRepository>
+        <ContainerImageTags>1.0.0;latest</ContainerImageTags>
+        <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
     </PropertyGroup>
 
     <ItemGroup>

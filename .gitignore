@@ -29,3 +29,11 @@ src/Directory.Build.targets.bak.*
 **/nupkgs/
 **/worktrees
 **/settings.local.json
+*.user
+*.suo
+packages/
+Thumbs.db
+*.tmp
+*.swp
+.env*
+.vscode/

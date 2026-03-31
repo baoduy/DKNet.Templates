@@ -115,6 +115,7 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageVersion Include="Reqnroll.NUnit" Version="3.3.4" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.13.10" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="2.0.0" />
@@ -135,6 +136,9 @@
     <PackageVersion Include="Testcontainers.MsSql" Version="4.8.1" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.8.0" />
     <PackageVersion Include="X.PagedList.EF" Version="10.5.9" />
+    <PackageVersion Include="NUnit" Version="4.5.1" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.12.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Markdig" Version="0.43.0" />
@@ -196,8 +200,7 @@
       CA1822; <!-- Mark member static when instance state is not accessed. -->
       CA1510; <!-- Prefer ArgumentNullException.ThrowIfNull. -->
       CA1816; <!-- Dispose methods should call GC.SuppressFinalize. -->
-      S2699; <!-- Test methods should contain at least one assertion. -->
-    </WarningsAsErrors>
+      S2699; <!-- Test methods should contain at least one assertion. --></WarningsAsErrors>
     <!-- Suppressed warnings — accepted trade-offs or style preferences. -->
     <NoWarn>
       ASPIRE002; <!-- .NET Aspire analyzer project-specific guidance. -->
@@ -241,7 +244,6 @@
       SA1413; <!-- StyleCop: use trailing comma in multi-line initializers. -->
       SA1101; <!-- StyleCop: prefix local member calls with this. -->
       SA1402; <!-- StyleCop: one type per file rule. -->
-      CA1303; <!-- Do not pass literals as localized parameters. -->
-    </NoWarn>
+      CA1303; <!-- Do not pass literals as localized parameters. --></NoWarn>
   </PropertyGroup>
 </Project>
