@@ -22,7 +22,6 @@
   ],
   "agents": ".github/agents/",
   "skills": [
-    ".github/skills/",
-    ".claude/skills/"
+    ".github/skills/"
   ]
 }

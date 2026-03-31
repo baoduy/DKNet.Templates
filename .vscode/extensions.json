@@ -5,6 +5,7 @@
         "jetbrains.resharper-code",
         "github.copilot-chat",
         "github.vscode-github-actions",
-        "rotbarsch.rotbarsch-reqnroll-vscode"
+        "rotbarsch.rotbarsch-reqnroll-vscode",
+        "sonarsource.sonarlint-vscode"
     ]
 }
