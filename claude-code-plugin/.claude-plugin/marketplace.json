@@ -1,0 +1,42 @@
+{
+  "name": "dknet-plugins",
+  "owner": {
+    "name": "baoduy",
+    "email": "baoduy2412@gmail.com"
+  },
+  "metadata": {
+    "description": "Skills and agents for scaffolding production-ready .NET 10 microservices using DKNet.Minimal.Template",
+    "version": "0.0.13"
+  },
+  "plugins": [
+    {
+      "name": "dknet-plugin",
+      "source": ".",
+      "description": "Skills and agents for scaffolding production-ready .NET 10 microservices using DKNet.Minimal.Template with vertical slice DDD/CQRS, EF Core, .NET Aspire, SlimMessageBus, and FluentValidation",
+      "version": "0.0.13",
+      "author": {
+        "name": "baoduy",
+        "email": "baoduy2412@gmail.com"
+      },
+      "license": "MIT",
+      "keywords": [
+        "dotnet",
+        "csharp",
+        "ddd",
+        "cqrs",
+        "vertical-slice",
+        "efcore",
+        "aspire",
+        "microservices"
+      ],
+      "category": "development-workflows",
+      "tags": [
+        "dotnet",
+        "spec-kit",
+        "ddd",
+        "cqrs",
+        "vertical-slice"
+      ]
+    }
+  ]
+}
