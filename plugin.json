@@ -21,7 +21,9 @@
     "fluentvalidation"
   ],
   "agents": ".github/agents/",
+  "commands": ".claude/commands/",
   "skills": [
-    ".github/skills/"
+    ".github/skills/",
+    ".github/prompts/"
   ]
 }
