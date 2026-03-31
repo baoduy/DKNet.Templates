@@ -14,6 +14,17 @@ A production-ready ASP.NET Core solution template built on **vertical slice arch
 
 ---
 
+## AI Plugin
+
+**Copilot**
+```shell
+copilot plugin marketplace add baoduy/DKNet.Templates
+```
+
+**Claude AI**
+```shell
+```
+
 ## Installation
 
 Install from GitHub Packages:
