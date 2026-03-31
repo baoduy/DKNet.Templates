@@ -1,0 +1,12 @@
+global using NUnit.Framework;
+global using System.Net;
+global using Microsoft.Extensions.DependencyInjection;
+global using System.Text;
+global using System.Text.Json;
+global using Microsoft.EntityFrameworkCore;
+global using Minimal.App.BDDTests.Support;
+global using Minimal.Domains.Features.Profiles.Entities;
+global using Minimal.Infra.Contexts;
+global using Minimal.Share;
+global using Reqnroll;
+global using Shouldly;

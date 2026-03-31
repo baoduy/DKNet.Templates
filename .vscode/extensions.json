@@ -1,6 +1,11 @@
 {
     "recommendations": [
         "timheuer.nupkg-viewer",
-        "aliasadidev.nugetpackagemanagergui"
+        "aliasadidev.nugetpackagemanagergui",
+        "jetbrains.resharper-code",
+        "github.copilot-chat",
+        "github.vscode-github-actions",
+        "rotbarsch.rotbarsch-reqnroll-vscode",
+        "sonarsource.sonarlint-vscode"
     ]
 }

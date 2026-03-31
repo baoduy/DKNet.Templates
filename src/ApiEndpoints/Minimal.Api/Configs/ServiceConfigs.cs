@@ -1,5 +1,3 @@
-using Minimal.Api.Configs.Handlers;
-
 namespace Minimal.Api.Configs;
 
 [ExcludeFromCodeCoverage]

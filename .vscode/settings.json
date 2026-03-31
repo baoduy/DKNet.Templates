@@ -25,5 +25,13 @@
     "chat.mcp.assisted.nuget.enabled": true,
     "chat.includeReferencedInstructions": true,
     "chat.experimental.useSkillAdherencePrompt": true,
-    "chat.useNestedAgentsMdFiles": true
+    "chat.useNestedAgentsMdFiles": true,
+    "files.autoSaveWhenNoErrors": true,
+    "files.autoSaveWorkspaceFilesOnly": true,
+    "[reqnroll-feature]": {
+        "editor.formatOnSave": true
+    },
+    "cSpell.words": [
+        "speckit"
+    ]
 }

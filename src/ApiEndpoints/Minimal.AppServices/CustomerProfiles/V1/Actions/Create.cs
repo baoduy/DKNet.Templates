@@ -3,8 +3,6 @@ using DKNet.EfCore.Specifications;
 using DKNet.EfCore.Specifications.Extensions;
 using Minimal.AppServices.CustomerProfiles.V1.Events;
 using Minimal.AppServices.CustomerProfiles.V1.Specs;
-using Minimal.AppServices.Extensions;
-using Minimal.AppServices.Share;
 
 // ReSharper disable UnusedType.Global
 
@@ -22,7 +20,8 @@ public sealed record CreateProfileRequest : RequestBase, Fluents.Requests.IWitRe
     /// <summary>
     /// Gets or sets the email address of the customer. This field is required and must be a valid email format.
     /// </summary>
-    [Required] public string Email { get; set; } = null!;
+    [Required]
+    public string Email { get; set; } = null!;
 
     /// <summary>
     ///     Gets or sets the membership number. Optional; when not supplied it is auto-generated
@@ -35,12 +34,15 @@ public sealed record CreateProfileRequest : RequestBase, Fluents.Requests.IWitRe
     /// <summary>
     ///     Gets or sets the full name of the customer. Required; between 6 and 100 characters.
     /// </summary>
-    [StringLength(150)] [Required] public string Name { get; set; } = null!;
+    [StringLength(150)]
+    [Required]
+    public string Name { get; set; } = null!;
 
     /// <summary>
     ///     Gets or sets the phone number of the customer. Must be a valid phone format; between 6 and 50 characters.
     /// </summary>
-    [Phone] public string Phone { get; set; } = null!;
+    [Phone]
+    public string Phone { get; set; } = null!;
 
     #endregion
 }
@@ -113,7 +115,8 @@ internal sealed class CreateProfileCommandHandler(
         }
 
         //Check duplicate
-        if (await repository.AnyAsync(new SpecGetCustomerProfile(byEmail: request.Email), cancellationToken: cancellationToken))
+        if (await repository.AnyAsync(new SpecGetCustomerProfile(byEmail: request.Email),
+                cancellationToken: cancellationToken))
         {
             return Result.Fail<CustomerProfileDto>($"Email {request.Email} is already existed.");
         }

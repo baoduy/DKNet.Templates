@@ -1,7 +1,7 @@
 {
-  "name": "dknet-templates",
+  "name": "dknet-plugin",
   "description": "GitHub Copilot skills and agents for scaffolding production-ready .NET 10 microservices using the DKNet.Minimal.Template — vertical slice DDD/CQRS with EF Core, .NET Aspire, SlimMessageBus, and FluentValidation.",
-  "version": "0.0.8",
+  "version": "0.0.12",
   "author": {
     "name": "baoduy"
   },
@@ -22,7 +22,6 @@
   ],
   "agents": ".github/agents/",
   "skills": [
-    ".github/skills/",
-    ".claude/skills/"
+    ".github/skills/"
   ]
 }

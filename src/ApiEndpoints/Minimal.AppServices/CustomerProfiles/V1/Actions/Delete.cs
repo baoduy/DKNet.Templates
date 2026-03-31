@@ -1,7 +1,6 @@
 using DKNet.EfCore.Specifications;
 using DKNet.EfCore.Specifications.Extensions;
 using Minimal.AppServices.CustomerProfiles.V1.Specs;
-using Minimal.AppServices.Share;
 
 namespace Minimal.AppServices.CustomerProfiles.V1.Actions;
 

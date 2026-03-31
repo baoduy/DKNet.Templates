@@ -7,7 +7,8 @@
     <description>
       A production-ready ASP.NET Core solution template built on vertical slice architecture
       with DDD, CQRS, EF Core, .NET Aspire, Redis, SQL Server, FluentValidation,
-      OpenTelemetry, Azure App Configuration, and JWT Bearer authentication.
+      OpenTelemetry, Azure App Configuration, JWT Bearer authentication,
+      and BDD testing with Reqnroll + NUnit.
       Scaffolds a fully-wired, layered solution (Api / AppServices / Domains / Infra / Share + Aspire host)
       ready for feature development following the DKNet Minimal conventions.
     </description>
@@ -18,7 +19,7 @@
     <license type="expression">MIT</license>
     <readme>README.md</readme>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <tags>template aspnetcore ddd cqrs efcore aspire vertical-slice clean-architecture azure opentelemetry</tags>
+    <tags>template aspnetcore ddd cqrs efcore aspire vertical-slice clean-architecture azure opentelemetry bdd reqnroll nunit testing</tags>
     <language>en</language>
     <packageTypes>
       <packageType name="Template" />

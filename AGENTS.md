@@ -1,11 +1,11 @@
 # AGENTS.md
 
 ## Scope
-- This repository template is centered on `src/Minimal.ApiEndpoints` and the solution `src/DKNet.Templates.sln`.
+- This repository template is centered on `src/ApiEndpoints` and the solution `src/DKNet.Templates.sln`.
 - Prefer code-verified patterns in this guide over older README statements when they differ.
 
 ## Architecture at a glance
-- API startup is in `src/Minimal.ApiEndpoints/Minimal.Api/Program.cs`: bind `FeatureOptions`, then `AddLogConfig` -> `AddAzureAppConfig` -> `AddFluentValidationConfig` -> `RunMigrationAsync` -> `AddAppConfig`.
+- API startup is in `src/ApiEndpoints/Minimal.Api/Program.cs`: bind `FeatureOptions`, then `AddLogConfig` -> `AddAzureAppConfig` -> `AddFluentValidationConfig` -> `RunMigrationAsync` -> `AddAppConfig`.
 - Middleware/service composition is orchestrated by `Minimal.Api/Configs/AppConfig.cs` and `Minimal.Api/Configs/ServiceConfigs.cs`.
 - Layer boundaries are strict: `Api` -> `AppServices` -> `Domains`, with infra wiring from `Minimal.Infra/Extensions/InfraSetup.cs`.
 - `Minimal.AppHost/AppHost.cs` is Aspire host orchestration (Redis + SQL Server + API project), not business logic.
@@ -37,16 +37,31 @@
   - `dotnet build src/DKNet.Templates.sln -c Release`
   - `dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage"`
 - Local host options:
-  - API only: `dotnet run --project src/Minimal.ApiEndpoints/Minimal.Api`
-  - Aspire host: `dotnet run --project src/Minimal.ApiEndpoints/Minimal.AppHost`
-- EF migrations scripts from `src/Minimal.ApiEndpoints`: `./add-migration.sh <Name>` and `./remove-migration.sh <Name>`.
+  - API only: `dotnet run --project src/ApiEndpoints/Minimal.Api`
+  - Aspire host: `dotnet run --project src/ApiEndpoints/Minimal.AppHost`
+- EF migrations scripts from `src/ApiEndpoints`: `./add-migration.sh <Name>` and `./remove-migration.sh <Name>`.
 
 ## Testing and quality constraints
-- Tests currently live mainly under `src/Minimal.ApiEndpoints/Minimal.App.Tests/Unit` (Shouldly + xUnit patterns).
+- Tests currently live mainly under `src/ApiEndpoints/Minimal.App.Tests/` (Shouldly + xUnit patterns) and `src/ApiEndpoints/Minimal.App.BDDTests/` (Reqnroll + NUnit).
 - `Minimal.App.Tests.csproj` disables analyzers for tests; production projects enforce strict warnings-as-errors from `Directory.Packages.props`.
 - Coverage filters are defined in `src/coverage.runsettings`; avoid placing real logic in excluded paths (`bin/`, `obj/`, `*Test*.cs`).
 
+## BDD Testing (Reqnroll + NUnit)
+- BDD tests live in `src/ApiEndpoints/Minimal.App.BDDTests/`.
+- `Support/BddApiFactory.cs` boots `WebApplicationFactory<Program>` once per test run using Reqnroll `[BeforeTestRun]` hook in `ApiHooks.cs`.
+- In-memory EF Core + disabled migrations/AzureAppConfig — no external services required.
+- Each scenario resets the DB in `[BeforeScenario(Order=0)]`; `HttpClient` and `ScenarioState` are injected into step defs via Reqnroll's BoDi `IObjectContainer`.
+- Add new scenarios: create `.feature` under `Features/<Domain>/` and matching `[Binding]` step class under `Features/<Domain>/Steps/`.
+- POST endpoints require `X-Idempotency-Key: {Guid}` header — generate `Guid.NewGuid()` per request in `[When]` steps.
+
 ## Project-specific gotchas
 - `FeatureOptions` section name is `FeatureManagement`; keep JSON keys aligned with `Minimal.Share/Options/FeatureOptions.cs`.
+- `appsettings*.json` currently contains mixed key names (`EnableServiceBusProcess`, `EnableAzureAppConfiguration`, `EnableAzureAppConfig`). Prefer the keys in `Minimal.Share/Options/FeatureOptions.cs` as source of truth when changing configuration.
 - Prefer adding new feature slices by mirroring existing `Profiles/V1` structure across Domains -> Infra -> AppServices -> Api.
 - When adding repos/services in Infra, keep classes `sealed` and under `.Repos` or `.Services` namespaces so Scrutor scanning picks them up.
+
+## Reference docs (link-first)
+- Feature exemplar (full docs set): `docs/features/customer-profiles/README.md`
+- API/docs architecture details: `docs/features/customer-profiles/architecture.md`, `docs/features/customer-profiles/api-reference.md`
+- BDD workflow and expected assertions: `specs/004-bdd-reqnroll-nunit-setup/quickstart.md`, `specs/004-bdd-reqnroll-nunit-setup/contracts/customer-profile-bdd.md`
+- Skill catalog for guided implementation: `.github/skills/README.md`
