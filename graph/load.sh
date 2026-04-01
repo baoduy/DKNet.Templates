@@ -39,8 +39,8 @@ warn()    { echo -e "${YELLOW}⚠ $*${RESET}"; }
 if ! command -v docker &>/dev/null; then
   echo "ERROR: docker is not installed or not in PATH." >&2; exit 1
 fi
-if [[ ! -f "${REPO_ROOT}/docker-compose.yml" ]]; then
-  echo "ERROR: docker-compose.yml not found in ${REPO_ROOT}" >&2; exit 1
+if [[ ! -f "${SCRIPT_DIR}/docker-compose.yml" ]]; then
+  echo "ERROR: docker-compose.yml not found in ${SCRIPT_DIR}" >&2; exit 1
 fi
 if [[ ! -f "${CYPHER_FILE}" ]]; then
   echo "ERROR: Cypher file not found: ${CYPHER_FILE}" >&2; exit 1
