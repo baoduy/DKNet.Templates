@@ -76,8 +76,8 @@ async function cypherBatch(statements) {
 async function ensureSchema() {
   const constraints = [
     `CREATE CONSTRAINT sf_path_unique   IF NOT EXISTS FOR (n:SourceFile)   REQUIRE n.path     IS UNIQUE`,
-    `CREATE CONSTRAINT cls_key_unique   IF NOT EXISTS FOR (n:ClassSymbol)  REQUIRE n.classKey IS UNIQUE`,
-    `CREATE CONSTRAINT mth_key_unique   IF NOT EXISTS FOR (n:MethodSymbol) REQUIRE n.methodKey IS UNIQUE`,
+    `CREATE CONSTRAINT cls_key_unique   IF NOT EXISTS FOR (n:Classes)  REQUIRE n.classKey IS UNIQUE`,
+    `CREATE CONSTRAINT mth_key_unique   IF NOT EXISTS FOR (n:Methods) REQUIRE n.methodKey IS UNIQUE`,
     `CREATE CONSTRAINT run_id_unique    IF NOT EXISTS FOR (n:IndexRun)     REQUIRE n.runId    IS UNIQUE`,
     `CREATE CONSTRAINT pkg_name_unique  IF NOT EXISTS FOR (n:NugetPackage) REQUIRE n.name     IS UNIQUE`,
     `CREATE CONSTRAINT proj_name_unique IF NOT EXISTS FOR (n:Project)      REQUIRE n.name     IS UNIQUE`,
@@ -89,10 +89,10 @@ async function ensureSchema() {
     // Older Neo4j versions: fall back to indexes
     const indexes = [
       `CREATE INDEX sf_path    IF NOT EXISTS FOR (n:SourceFile)   ON (n.path)`,
-      `CREATE INDEX cls_key    IF NOT EXISTS FOR (n:ClassSymbol)  ON (n.classKey)`,
-      `CREATE INDEX mth_key    IF NOT EXISTS FOR (n:MethodSymbol) ON (n.methodKey)`,
-      `CREATE INDEX cls_name   IF NOT EXISTS FOR (n:ClassSymbol)  ON (n.name)`,
-      `CREATE INDEX mth_name   IF NOT EXISTS FOR (n:MethodSymbol) ON (n.name)`,
+      `CREATE INDEX cls_key    IF NOT EXISTS FOR (n:Classes)  ON (n.classKey)`,
+      `CREATE INDEX mth_key    IF NOT EXISTS FOR (n:Methods) ON (n.methodKey)`,
+      `CREATE INDEX cls_name   IF NOT EXISTS FOR (n:Classes)  ON (n.name)`,
+      `CREATE INDEX mth_name   IF NOT EXISTS FOR (n:Methods) ON (n.name)`,
     ];
     for (const s of indexes) { try { await cypher(s); } catch { /* skip */ } }
   }
@@ -464,7 +464,7 @@ async function upsertClasses(classes, allClassKeys) {
     // Node upsert — metadata only, no body
     await cypher({
       statement: `
-        MERGE (c:ClassSymbol {classKey: $classKey})
+        MERGE (c:Classes {classKey: $classKey})
         SET c.name = $name, c.kind = $kind, c.namespace = $ns,
             c.project = $project, c.filePath = $filePath, c.fileName = $fileName,
             c.genericSignature = $generic, c.isSealed = $isSealed,
@@ -488,7 +488,7 @@ async function upsertClasses(classes, allClassKeys) {
     // Class -> SourceFile
     rels.push({
       statement: `
-        MATCH (c:ClassSymbol {classKey: $ck}), (f:SourceFile {path: $fp})
+        MATCH (c:Classes {classKey: $ck}), (f:SourceFile {path: $fp})
         MERGE (c)-[:DECLARED_IN]->(f)
       `,
       parameters: { ck: cls.classKey, fp: cls.filePath },
@@ -497,7 +497,7 @@ async function upsertClasses(classes, allClassKeys) {
     // Class -> Project
     rels.push({
       statement: `
-        MATCH (c:ClassSymbol {classKey: $ck}), (p:Project {name: $proj})
+        MATCH (c:Classes {classKey: $ck}), (p:Project {name: $proj})
         MERGE (c)-[:IN_PROJECT]->(p)
       `,
       parameters: { ck: cls.classKey, proj: cls.project },
@@ -508,7 +508,7 @@ async function upsertClasses(classes, allClassKeys) {
       const nsKey = `${cls.project}::${cls.namespace}`;
       rels.push({
         statement: `
-          MATCH (c:ClassSymbol {classKey: $ck}), (n:Namespace {nsKey: $nsKey})
+          MATCH (c:Classes {classKey: $ck}), (n:Namespace {nsKey: $nsKey})
           MERGE (c)-[:IN_NAMESPACE]->(n)
         `,
         parameters: { ck: cls.classKey, nsKey },
@@ -519,8 +519,8 @@ async function upsertClasses(classes, allClassKeys) {
     for (const base of cls.inherits) {
       rels.push({
         statement: `
-          MATCH (child:ClassSymbol {classKey: $ck})
-          MATCH (parent:ClassSymbol {name: $base})
+          MATCH (child:Classes {classKey: $ck})
+          MATCH (parent:Classes {name: $base})
           MERGE (child)-[:INHERITS]->(parent)
         `,
         parameters: { ck: cls.classKey, base },
@@ -529,8 +529,8 @@ async function upsertClasses(classes, allClassKeys) {
     for (const iface of cls.implements) {
       rels.push({
         statement: `
-          MATCH (cls:ClassSymbol {classKey: $ck})
-          MATCH (iface:ClassSymbol {name: $iface})
+          MATCH (cls:Classes {classKey: $ck})
+          MATCH (iface:Classes {name: $iface})
           MERGE (cls)-[:IMPLEMENTS]->(iface)
         `,
         parameters: { ck: cls.classKey, iface },
@@ -542,8 +542,8 @@ async function upsertClasses(classes, allClassKeys) {
       if (allClassKeys.has(dep)) {
         rels.push({
           statement: `
-            MATCH (cls:ClassSymbol {classKey: $ck})
-            MATCH (dep:ClassSymbol {name: $dep})
+            MATCH (cls:Classes {classKey: $ck})
+            MATCH (dep:Classes {name: $dep})
             MERGE (cls)-[:DEPENDS_ON]->(dep)
           `,
           parameters: { ck: cls.classKey, dep },
@@ -552,7 +552,7 @@ async function upsertClasses(classes, allClassKeys) {
         rels.push({
           statement: `
             MERGE (t:TypeReference {name: $dep})
-            WITH t MATCH (cls:ClassSymbol {classKey: $ck})
+            WITH t MATCH (cls:Classes {classKey: $ck})
             MERGE (cls)-[:DEPENDS_ON_TYPE]->(t)
           `,
           parameters: { ck: cls.classKey, dep },
@@ -569,7 +569,7 @@ async function upsertMethods(methods, allClassKeys) {
     // Method node — metadata only
     await cypher({
       statement: `
-        MERGE (m:MethodSymbol {methodKey: $methodKey})
+        MERGE (m:Methods {methodKey: $methodKey})
         SET m.name = $name, m.classKey = $classKey, m.className = $className,
             m.project = $project, m.filePath = $filePath,
             m.visibility = $vis, m.returnType = $ret,
@@ -593,7 +593,7 @@ async function upsertMethods(methods, allClassKeys) {
     // Method -> Class
     rels.push({
       statement: `
-        MATCH (m:MethodSymbol {methodKey: $mk}), (c:ClassSymbol {classKey: $ck})
+        MATCH (m:Methods {methodKey: $mk}), (c:Classes {classKey: $ck})
         MERGE (m)-[:BELONGS_TO]->(c)
       `,
       parameters: { mk: mth.methodKey, ck: mth.classKey },
@@ -602,7 +602,7 @@ async function upsertMethods(methods, allClassKeys) {
     // Method -> SourceFile
     rels.push({
       statement: `
-        MATCH (m:MethodSymbol {methodKey: $mk}), (f:SourceFile {path: $fp})
+        MATCH (m:Methods {methodKey: $mk}), (f:SourceFile {path: $fp})
         MERGE (m)-[:DECLARED_IN]->(f)
       `,
       parameters: { mk: mth.methodKey, fp: mth.filePath },
@@ -616,7 +616,7 @@ async function upsertMethods(methods, allClassKeys) {
           MERGE (p:MethodParameter {paramKey: $pk})
           SET p.name = $name, p.position = $pos, p.typeName = $type,
               p.methodKey = $mk
-          WITH p MATCH (m:MethodSymbol {methodKey: $mk})
+          WITH p MATCH (m:Methods {methodKey: $mk})
           MERGE (m)-[:HAS_PARAMETER]->(p)
         `,
         parameters: { pk: paramKey, name: param.name, pos: param.position, type: param.typeName, mk: mth.methodKey },
@@ -628,7 +628,7 @@ async function upsertMethods(methods, allClassKeys) {
         if (allClassKeys.has(cleanType)) {
           rels.push({
             statement: `
-              MATCH (p:MethodParameter {paramKey: $pk}), (t:ClassSymbol {name: $tn})
+              MATCH (p:MethodParameter {paramKey: $pk}), (t:Classes {name: $tn})
               MERGE (p)-[:TYPE_REFERENCE]->(t)
             `,
             parameters: { pk: paramKey, tn: cleanType },
@@ -656,7 +656,7 @@ async function upsertMethods(methods, allClassKeys) {
       rels.push({
         statement: `
           MERGE (ref:MethodReference {name: $mname, receiverHint: $recv})
-          WITH ref MATCH (m:MethodSymbol {methodKey: $mk})
+          WITH ref MATCH (m:Methods {methodKey: $mk})
           MERGE (m)-[:CALLS_REFERENCE]->(ref)
         `,
         parameters: { mname: call.methodName, recv: call.receiverHint, mk: mth.methodKey },
@@ -678,7 +678,7 @@ async function upsertFieldsAndProps(fields, props) {
             fd.project = $proj, fd.filePath = $fp,
             fd.visibility = $vis, fd.isStatic = $isStatic,
             fd.isReadonly = $isReadonly, fd.isConst = $isConst, fd.lineStart = $ls
-        WITH fd MATCH (c:ClassSymbol {classKey: $ck})
+        WITH fd MATCH (c:Classes {classKey: $ck})
         MERGE (c)-[:HAS_FIELD]->(fd)
       `,
       parameters: {
@@ -698,7 +698,7 @@ async function upsertFieldsAndProps(fields, props) {
             pr.project = $proj, pr.filePath = $fp,
             pr.visibility = $vis, pr.isStatic = $isStatic,
             pr.isReadonly = $isReadonly, pr.lineStart = $ls
-        WITH pr MATCH (c:ClassSymbol {classKey: $ck})
+        WITH pr MATCH (c:Classes {classKey: $ck})
         MERGE (c)-[:HAS_PROPERTY]->(pr)
       `,
       parameters: {
