@@ -32,7 +32,7 @@ const NEO4J_USER = args.user     ?? process.env.NEO4J_USER     ?? 'neo4j';
 const NEO4J_PASS = args.password ?? process.env.NEO4J_PASS     ?? 'codegraph123';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SRC_ROOT  = join(__dirname, '..', 'src', 'ApiEndpoints');
+const SRC_ROOT  = join(__dirname, '..', 'src');
 
 // ---------------------------------------------------------------------------
 // Neo4j HTTP API  (no driver needed — just fetch)
@@ -299,7 +299,6 @@ async function main() {
   }
   console.log('\nDone.');
   console.log('  Browser  → http://localhost:7474');
-  console.log('  NeoDash  → http://localhost:5005');
 }
 
 main().catch(err => { console.error(err.message); process.exit(1); });

@@ -47,7 +47,7 @@ if [[ ! -f "${CYPHER_FILE}" ]]; then
 fi
 
 # ── 2. Start docker compose ──────────────────────────────────────────────────
-cd "${REPO_ROOT}"
+cd "${SCRIPT_DIR}"
 
 RUNNING=$(docker ps --format '{{.Names}}' | grep -c "^${CONTAINER}$" || true)
 if [[ "${RUNNING}" -eq 0 ]]; then
