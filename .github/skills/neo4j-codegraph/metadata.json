@@ -1,5 +1,5 @@
 {
-  "id": "neo4j-codegraph-qa",
+  "id": "neo4j-codegraph",
   "title": "Neo4j Codegraph Q&A with Source Fallback",
   "category": "Architecture & Discovery",
   "difficulty": "Intermediate",
@@ -41,5 +41,5 @@
   "relatedSkills": [
     "dknet-feature-documentation"
   ],
-  "folderPath": ".github/skills/neo4j-codegraph-qa"
+  "folderPath": ".github/skills/neo4j-codegraph"
 }

@@ -125,7 +125,7 @@
 
 ### 6. Neo4j Codegraph Q&A with Source Fallback
 
-- **ID**: `neo4j-codegraph-qa`
+- **ID**: `neo4j-codegraph`
 - **Category**: Architecture & Discovery
 - **Difficulty**: Intermediate
 - **Duration**: 10-25 minutes
@@ -139,9 +139,9 @@
    - Final answer reconciles graph and source evidence
    - Confidence and evidence gaps explicitly stated
 - **Related Skills**: dknet-feature-documentation
-- **Folder**: [`.github/skills/neo4j-codegraph-qa/`](./neo4j-codegraph-qa/)
+- **Folder**: [`.github/skills/neo4j-codegraph/`](./neo4j-codegraph/)
 
-**Start Here**: Read [Neo4j Codegraph Q&A SKILL.md](./neo4j-codegraph-qa/SKILL.md)
+**Start Here**: Read [Neo4j Codegraph Q&A SKILL.md](./neo4j-codegraph/SKILL.md)
 
 ---
 
@@ -163,7 +163,7 @@
 - [dknet-bdd-tests](./dknet-bdd-tests/skill.md) - 25-45 min
 
 ### Architecture & Discovery
-- [neo4j-codegraph-qa](./neo4j-codegraph-qa/SKILL.md) - 10-25 min
+- [neo4j-codegraph](./neo4j-codegraph/SKILL.md) - 10-25 min
 
 ---
 
@@ -177,7 +177,7 @@
 - dknet-crud-operations (45-60 min)
 - dknet-api-endpoints (30-40 min)
 - dknet-bdd-tests (25-45 min)
-- neo4j-codegraph-qa (10-25 min)
+- neo4j-codegraph (10-25 min)
 
 ---
 
