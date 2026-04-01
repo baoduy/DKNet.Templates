@@ -39,3 +39,4 @@ Thumbs.db
 .vscode/
 **/logs
 graph/data
+.neo4j
