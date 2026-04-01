@@ -1,0 +1,302 @@
+{
+  "title": "DKNet Code Graph",
+  "version": "2.4",
+  "settings": {
+    "pagenumber": 0,
+    "editable": true,
+    "fullscreenEnabled": false,
+    "parameters": {},
+    "theme": "light"
+  },
+  "pages": [
+    {
+      "title": "Architecture Overview",
+      "reports": [
+        {
+          "id": "arch-1",
+          "title": "Project Dependency Graph",
+          "query": "MATCH (p1:Project)-[r:DEPENDS_ON]->(p2:Project) RETURN p1, r, p2",
+          "width": 6,
+          "height": 4,
+          "x": 0,
+          "y": 0,
+          "type": "graph",
+          "selection": { "Project": "name" },
+          "settings": { "nodeColorScheme": "neodash" }
+        },
+        {
+          "id": "arch-2",
+          "title": "Classes by Layer",
+          "query": "MATCH (c:Class) WHERE c.layer IS NOT NULL RETURN c.layer AS layer, count(c) AS count ORDER BY count DESC",
+          "width": 3,
+          "height": 4,
+          "x": 6,
+          "y": 0,
+          "type": "bar",
+          "selection": { "index": "layer", "value": "count" },
+          "settings": {}
+        },
+        {
+          "id": "arch-3",
+          "title": "Node Type Counts",
+          "query": "MATCH (n) RETURN labels(n)[0] AS label, count(n) AS count ORDER BY count DESC",
+          "width": 3,
+          "height": 4,
+          "x": 9,
+          "y": 0,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "arch-4",
+          "title": "Layer → Class Count",
+          "query": "MATCH (c:Class)-[:IN_PROJECT]->(p:Project)-[:IN_LAYER]->(l:Layer) RETURN l.name AS layer, count(c) AS classes ORDER BY l.order",
+          "width": 6,
+          "height": 3,
+          "x": 0,
+          "y": 4,
+          "type": "bar",
+          "selection": { "index": "layer", "value": "classes" },
+          "settings": {}
+        },
+        {
+          "id": "arch-5",
+          "title": "DKNet vs Microsoft vs Community Packages",
+          "query": "MATCH (pkg:NugetPackage) RETURN pkg.group AS vendor, count(pkg) AS packages ORDER BY packages DESC",
+          "width": 3,
+          "height": 3,
+          "x": 6,
+          "y": 4,
+          "type": "pie",
+          "selection": { "index": "vendor", "value": "packages" },
+          "settings": {}
+        },
+        {
+          "id": "arch-6",
+          "title": "Top NuGet Packages (by project usage)",
+          "query": "MATCH (p:Project)-[:USES_PACKAGE]->(pkg:NugetPackage) RETURN pkg.name AS package, count(p) AS usedBy ORDER BY usedBy DESC LIMIT 15",
+          "width": 3,
+          "height": 3,
+          "x": 9,
+          "y": 4,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        }
+      ]
+    },
+    {
+      "title": "Feature Slices",
+      "reports": [
+        {
+          "id": "feat-1",
+          "title": "CustomerProfiles — Full Slice Graph",
+          "query": "MATCH (c:Class)-[:PART_OF_FEATURE]->(f:Feature {name: 'CustomerProfiles'}) OPTIONAL MATCH (c)-[r]->(other:Class)-[:PART_OF_FEATURE]->(f) RETURN c, r, other, f",
+          "width": 12,
+          "height": 5,
+          "x": 0,
+          "y": 0,
+          "type": "graph",
+          "selection": { "Class": "name", "Feature": "name" },
+          "settings": { "nodeColorScheme": "neodash" }
+        },
+        {
+          "id": "feat-2",
+          "title": "Classes in CustomerProfiles by Pattern",
+          "query": "MATCH (c:Class)-[:PART_OF_FEATURE]->(f:Feature {name: 'CustomerProfiles'}) RETURN c.name AS class, c.layer AS layer, c.pattern AS pattern, c.kind AS kind ORDER BY c.layer, c.pattern",
+          "width": 6,
+          "height": 4,
+          "x": 0,
+          "y": 5,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "feat-3",
+          "title": "Pattern Distribution",
+          "query": "MATCH (c:Class)-[:PART_OF_FEATURE]->(:Feature) WHERE c.pattern <> '' RETURN c.pattern AS pattern, count(c) AS count ORDER BY count DESC",
+          "width": 3,
+          "height": 4,
+          "x": 6,
+          "y": 5,
+          "type": "pie",
+          "selection": { "index": "pattern", "value": "count" },
+          "settings": {}
+        },
+        {
+          "id": "feat-4",
+          "title": "Sealed Classes (enforcement check)",
+          "query": "MATCH (c:Class)-[:PART_OF_FEATURE]->(:Feature) RETURN c.isSealed AS sealed, count(c) AS count",
+          "width": 3,
+          "height": 4,
+          "x": 9,
+          "y": 5,
+          "type": "pie",
+          "selection": { "index": "sealed", "value": "count" },
+          "settings": {}
+        }
+      ]
+    },
+    {
+      "title": "CQRS Flow",
+      "reports": [
+        {
+          "id": "cqrs-1",
+          "title": "Endpoint → Command → Handler → Entity",
+          "query": "MATCH p=(ep:Class {pattern:'Endpoint'})-[:EXPOSES]->(cmd:Class)-[:HANDLES]-(h:Class)-[op:CREATES|UPDATES|DELETES]->(e:Class) RETURN p",
+          "width": 12,
+          "height": 5,
+          "x": 0,
+          "y": 0,
+          "type": "graph",
+          "selection": { "Class": "name" },
+          "settings": { "nodeColorScheme": "neodash" }
+        },
+        {
+          "id": "cqrs-2",
+          "title": "Commands & Their Handlers",
+          "query": "MATCH (h:Class {pattern:'Handler'})-[:HANDLES]->(cmd:Class {pattern:'Command'}) RETURN cmd.name AS command, cmd.httpMethod AS verb, h.name AS handler ORDER BY cmd.httpMethod",
+          "width": 6,
+          "height": 3,
+          "x": 0,
+          "y": 5,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "cqrs-3",
+          "title": "Validators",
+          "query": "MATCH (v:Class {pattern:'Validator'})-[:VALIDATES]->(cmd:Class) RETURN v.name AS validator, cmd.name AS validates",
+          "width": 6,
+          "height": 3,
+          "x": 6,
+          "y": 5,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "cqrs-4",
+          "title": "Commands without a Validator (gap analysis)",
+          "query": "MATCH (cmd:Class {pattern:'Command'}) WHERE NOT (:Class {pattern:'Validator'})-[:VALIDATES]->(cmd) RETURN cmd.name AS command, cmd.httpMethod AS verb",
+          "width": 6,
+          "height": 3,
+          "x": 0,
+          "y": 8,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "cqrs-5",
+          "title": "Specifications Used",
+          "query": "MATCH (h:Class)-[:USES_SPEC]->(s:Class {pattern:'Specification'})-[:QUERIES]->(e:Class) RETURN h.name AS handler, s.name AS spec, e.name AS entity",
+          "width": 6,
+          "height": 3,
+          "x": 6,
+          "y": 8,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        }
+      ]
+    },
+    {
+      "title": "Events",
+      "reports": [
+        {
+          "id": "ev-1",
+          "title": "Event Fan-out Graph",
+          "query": "MATCH p=(publisher:Class)-[:PUBLISHES]->(ev:Class {pattern:'DomainEvent'})<-[:HANDLES]-(consumer:Class) RETURN p",
+          "width": 8,
+          "height": 5,
+          "x": 0,
+          "y": 0,
+          "type": "graph",
+          "selection": { "Class": "name" },
+          "settings": { "nodeColorScheme": "neodash" }
+        },
+        {
+          "id": "ev-2",
+          "title": "Event Consumers",
+          "query": "MATCH (ev:Class {pattern:'DomainEvent'})<-[:HANDLES]-(h:Class) RETURN ev.name AS event, h.name AS consumer, h.layer AS layer, h.scope AS scope ORDER BY ev.name",
+          "width": 4,
+          "height": 5,
+          "x": 8,
+          "y": 0,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "ev-3",
+          "title": "Events with no consumers (dead events)",
+          "query": "MATCH (ev:Class {pattern:'DomainEvent'}) WHERE NOT (:Class)-[:HANDLES]->(ev) RETURN ev.name AS event, ev.project AS project",
+          "width": 6,
+          "height": 3,
+          "x": 0,
+          "y": 5,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "ev-4",
+          "title": "Publishers with no published events",
+          "query": "MATCH (h:Class {pattern:'Handler'}) WHERE NOT (h)-[:PUBLISHES]->(:Class {pattern:'DomainEvent'}) RETURN h.name AS handler",
+          "width": 6,
+          "height": 3,
+          "x": 6,
+          "y": 5,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        }
+      ]
+    },
+    {
+      "title": "Domain Entities",
+      "reports": [
+        {
+          "id": "dom-1",
+          "title": "Entity Inheritance Graph",
+          "query": "MATCH p=(child:Class)-[:INHERITS*]->(parent:Class) WHERE child.layer = 'Domains' OR parent.layer = 'Domains' RETURN p",
+          "width": 8,
+          "height": 5,
+          "x": 0,
+          "y": 0,
+          "type": "graph",
+          "selection": { "Class": "name" },
+          "settings": {}
+        },
+        {
+          "id": "dom-2",
+          "title": "Entities and Their Properties",
+          "query": "MATCH (c:Class {pattern:'AggregateRoot'})-[:HAS_PROPERTY]->(p:Property) RETURN c.name AS entity, p.name AS property, p.type AS type, p.isRequired AS required, p.maxLength AS maxLength ORDER BY c.name, p.name",
+          "width": 4,
+          "height": 5,
+          "x": 8,
+          "y": 0,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "dom-3",
+          "title": "EF Core Config & Data Seeding",
+          "query": "MATCH (config:Class)-[r:CONFIGURES|SEEDS]->(e:Class) RETURN config.name AS configClass, type(r) AS relationship, e.name AS entity, e.dbTable AS table, e.dbSchema AS schema",
+          "width": 12,
+          "height": 3,
+          "x": 0,
+          "y": 5,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        }
+      ]
+    }
+  ]
+}

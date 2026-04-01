@@ -1,0 +1,45 @@
+{
+  "id": "neo4j-codegraph-qa",
+  "title": "Neo4j Codegraph Q&A with Source Fallback",
+  "category": "Architecture & Discovery",
+  "difficulty": "Intermediate",
+  "estimatedDurationMinutes": {
+    "min": 10,
+    "max": 25
+  },
+  "prerequisites": [
+    "Neo4j MCP server configured in .vscode/mcp.json",
+    "Basic understanding of repository architecture"
+  ],
+  "inputs": {
+    "description": "Information required before running this skill",
+    "items": [
+      "User question and target symbol(s)",
+      "Scope boundaries (feature/folder/layer)",
+      "Desired output format (summary/table/mermaid)"
+    ]
+  },
+  "outputs": {
+    "description": "Artifacts produced by this skill",
+    "items": [
+      "Relationship map between key classes/components",
+      "Flow trace with graph-first evidence and source fallback",
+      "Optional Mermaid diagram for docs"
+    ]
+  },
+  "successCriteria": [
+    "Neo4j graph is queried first for relationship retrieval",
+    "Source fallback is used when graph coverage is incomplete",
+    "Final answer reconciles graph and source without contradictions",
+    "Confidence and evidence gaps are explicitly stated"
+  ],
+  "nonGoals": [
+    "Implementing code changes",
+    "Runtime debugging through logs",
+    "Infrastructure deployment setup"
+  ],
+  "relatedSkills": [
+    "dknet-feature-documentation"
+  ],
+  "folderPath": ".github/skills/neo4j-codegraph-qa"
+}

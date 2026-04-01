@@ -123,6 +123,28 @@
 
 ---
 
+### 6. Neo4j Codegraph Q&A with Source Fallback
+
+- **ID**: `neo4j-codegraph-qa`
+- **Category**: Architecture & Discovery
+- **Difficulty**: Intermediate
+- **Duration**: 10-25 minutes
+- **Purpose**: Answer class relationship and flow questions quickly by querying `neo4j-codegraph` MCP first, then falling back to source scanning when graph coverage is incomplete or stale
+- **Inputs**: target symbols, relation direction, scope boundaries, preferred output format
+- **Outputs**: relationship map, reconciled flow trace, optional Mermaid diagram
+- **Prerequisites**: configured Neo4j MCP server and repository architecture familiarity
+- **Success Criteria**:
+   - Graph queried first for relationship retrieval
+   - Source fallback executed when graph evidence is weak
+   - Final answer reconciles graph and source evidence
+   - Confidence and evidence gaps explicitly stated
+- **Related Skills**: dknet-feature-documentation
+- **Folder**: [`.github/skills/neo4j-codegraph-qa/`](./neo4j-codegraph-qa/)
+
+**Start Here**: Read [Neo4j Codegraph Q&A SKILL.md](./neo4j-codegraph-qa/SKILL.md)
+
+---
+
 ## Skills by Category
 
 ### Persistence & Entities
@@ -140,6 +162,9 @@
 ### Testing & Quality
 - [dknet-bdd-tests](./dknet-bdd-tests/skill.md) - 25-45 min
 
+### Architecture & Discovery
+- [neo4j-codegraph-qa](./neo4j-codegraph-qa/SKILL.md) - 10-25 min
+
 ---
 
 ## Skills by Difficulty
@@ -152,6 +177,7 @@
 - dknet-crud-operations (45-60 min)
 - dknet-api-endpoints (30-40 min)
 - dknet-bdd-tests (25-45 min)
+- neo4j-codegraph-qa (10-25 min)
 
 ---
 

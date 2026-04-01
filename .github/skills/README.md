@@ -26,6 +26,7 @@ You want to build a feature. Pick your starting point:
 - Creating endpoints? → [API Endpoints - Step 4](./api-endpoints/skill.md#step-4-create-endpoint-configuration)
 - Entity mapping issues? → [Domain Modeling - Common Errors](./domain-modeling/skill.md#common-errors--how-to-fix-them)
 - Creating or standardizing BDD scenarios? → [BDD Scenarios Skill](./dknet-bdd-tests/skill.md)
+- Fast class relationship Q&A with graph + fallback scanning? → [Neo4j Codegraph Q&A Skill](./neo4j-codegraph-qa/SKILL.md)
 
 ---
 
@@ -37,6 +38,7 @@ You want to build a feature. Pick your starting point:
 | **CRUD Operations** | 45–60 min | Business Logic | [Read skill.md →](./crud-operations/skill.md) |
 | **API Endpoints**   | 30–40 min | REST API       | [Read skill.md →](./api-endpoints/skill.md)   |
 | **BDD Scenarios**   | 25–45 min | Testing        | [Read skill.md →](./dknet-bdd-tests/skill.md)   |
+| **Neo4j Codegraph Q&A** | 10–25 min | Architecture Discovery | [Read SKILL.md →](./neo4j-codegraph-qa/SKILL.md) |
 
 ---
 

@@ -1,9 +1,7 @@
 {
     "recommendations": [
         "timheuer.nupkg-viewer",
-        "aliasadidev.nugetpackagemanagergui",
         "jetbrains.resharper-code",
-        "github.copilot-chat",
-        "sonarsource.sonarlint-vscode"
+        "github.copilot-chat"
     ]
 }
