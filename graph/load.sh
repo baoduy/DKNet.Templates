@@ -1,30 +1,45 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------
-# Spin up Neo4j via docker compose, load seed.cypher,
-# then optionally run the live code analyzer.
+# Spin up Neo4j via docker compose and build graph index from source.
+#
+# Default behavior:
+#   1) start Neo4j
+#   2) optionally reset graph
+#   3) run analyze.mjs (dynamic index based on current repo structure)
 #
 # Usage:
-#   ./graph/load.sh                   # load graph/seed.cypher
-#   ./graph/load.sh graph/my.cypher   # load a custom Cypher file
-#   ./graph/load.sh --analyze         # seed + re-analyze live source
+#   ./graph/load.sh
+#   ./graph/load.sh --reset
+#   ./graph/load.sh --no-analyze
 # ---------------------------------------------------------------
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-CYPHER_FILE="${REPO_ROOT}/graph/seed.cypher"
-ANALYZE=false
+REPO_NAME="$(basename "${REPO_ROOT}")"
+REPO_SLUG="$(echo "${REPO_NAME}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+ANALYZE=true
+RESET_GRAPH=false
 
 # Parse args
-for arg in "$@"; do
-  case "$arg" in
-    --analyze) ANALYZE=true ;;
-    --*)       echo "Unknown flag: $arg"; exit 1 ;;
-    *)         CYPHER_FILE="$arg" ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --analyze) ANALYZE=true; shift ;;
+    --no-analyze) ANALYZE=false; shift ;;
+    --reset) RESET_GRAPH=true; shift ;;
+    --*)
+      echo "Unknown flag: $1" >&2
+      exit 1
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
   esac
 done
 
-CONTAINER="dknet-neo4j"
+CONTAINER="${REPO_SLUG}-neo4j"
+export NEO4J_CONTAINER_NAME="${CONTAINER}"
 NEO4J_USER="neo4j"
 NEO4J_PASS="codegraph123"
 NEO4J_HTTP="http://localhost:7474"
@@ -42,8 +57,8 @@ fi
 if [[ ! -f "${SCRIPT_DIR}/docker-compose.yml" ]]; then
   echo "ERROR: docker-compose.yml not found in ${SCRIPT_DIR}" >&2; exit 1
 fi
-if [[ ! -f "${CYPHER_FILE}" ]]; then
-  echo "ERROR: Cypher file not found: ${CYPHER_FILE}" >&2; exit 1
+if [[ "${ANALYZE}" == true ]] && ! command -v node &>/dev/null; then
+  echo "ERROR: node not found. Install Node.js >= 18 for analyzer indexing." >&2; exit 1
 fi
 
 # ── 2. Start docker compose ──────────────────────────────────────────────────
@@ -51,10 +66,10 @@ cd "${SCRIPT_DIR}"
 
 RUNNING=$(docker ps --format '{{.Names}}' | grep -c "^${CONTAINER}$" || true)
 if [[ "${RUNNING}" -eq 0 ]]; then
-  info "Starting docker compose (neo4j)..."
+  info "Starting docker compose (neo4j: ${CONTAINER})..."
   docker compose up -d
 else
-  info "Containers already running — skipping docker compose up."
+  info "Container ${CONTAINER} already running — skipping docker compose up."
 fi
 
 # ── 3. Wait for Neo4j to be ready ────────────────────────────────────────────
@@ -77,39 +92,39 @@ done
 echo ""
 success "Neo4j is ready (${ELAPSED}s)"
 
-# ── 4. Load the Cypher seed ───────────────────────────────────────────────────
-info "Loading ${CYPHER_FILE}..."
-docker exec -i "${CONTAINER}" \
-  cypher-shell \
-    -u "${NEO4J_USER}" \
-    -p "${NEO4J_PASS}" \
-    --format plain \
-  < "${CYPHER_FILE}"
-success "Seed loaded."
-
-# ── 5. Optionally run the live analyzer ──────────────────────────────────────
-if [[ "${ANALYZE}" == true ]]; then
-  if ! command -v node &>/dev/null; then
-    warn "node not found — skipping live analysis. Install Node.js >= 18 to use --analyze."
-  else
-    info "Running live source analyzer..."
-    node "${SCRIPT_DIR}/analyze.mjs"
-  fi
+# ── 4. Optional reset + dynamic analyzer ─────────────────────────────────────
+if [[ "${RESET_GRAPH}" == true ]]; then
+  info "Resetting graph (MATCH (n) DETACH DELETE n)..."
+  docker exec -i "${CONTAINER}" \
+    cypher-shell \
+      -u "${NEO4J_USER}" \
+      -p "${NEO4J_PASS}" \
+      --format plain \
+      "MATCH (n) DETACH DELETE n;"
+  success "Graph reset complete."
 fi
 
-# ── 6. Print summary ─────────────────────────────────────────────────────────
+if [[ "${ANALYZE}" == true ]]; then
+  info "Running dynamic source analyzer..."
+  node "${SCRIPT_DIR}/analyze.mjs"
+  success "Dynamic indexing complete."
+else
+  warn "Analyzer skipped (--no-analyze)."
+fi
+
+# ── 5. Print summary ─────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 success "All done!"
 echo ""
 echo -e "  ${CYAN}Neo4j Browser${RESET}  → ${NEO4J_HTTP}  (neo4j / ${NEO4J_PASS})"
 echo ""
-echo "  Re-analyze live source any time:"
+echo "  Rebuild index from live source any time:"
 echo "    node graph/analyze.mjs"
 echo ""
-echo "  Load a custom Cypher file:"
-echo "    ./graph/load.sh path/to/file.cypher"
+echo "  Reset then index:"
+echo "    ./graph/load.sh --reset"
 echo ""
-echo "  Seed + analyze in one step:"
-echo "    ./graph/load.sh --analyze"
+echo "  Start DB only (skip analyzer):"
+echo "    ./graph/load.sh --no-analyze"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
