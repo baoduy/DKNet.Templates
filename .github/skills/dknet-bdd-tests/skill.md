@@ -108,6 +108,7 @@ Implementation rules:
    - HTTP status code
    - response structure (`isSuccess`, `value`, `errors`, required object/array shape)
    - key data fields and values (for example `value.name`, `errors[0].message`, identifiers, totals)
+- For generated response DTO contracts, assert representative entity-derived fields to catch DTO/property drift.
 - Avoid assertion patterns that only check substring existence when contract defines structured fields.
 
 ### Step 5: Validate End-to-End
