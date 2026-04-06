@@ -1,4 +1,4 @@
-# Neo4j Codegraph Q&A Checklist
+# FalkorDB Codegraph Q&A Checklist
 
 Use this checklist before finalizing a relationship/flow answer.
 
@@ -9,7 +9,7 @@ Use this checklist before finalizing a relationship/flow answer.
 
 ## Graph-First Retrieval
 
-- [ ] Queried `neo4j-codegraph` first
+- [ ] Queried `falkordb-codegraph` first
 - [ ] Captured relevant nodes and edge types
 - [ ] Extracted at least one useful relationship path
 

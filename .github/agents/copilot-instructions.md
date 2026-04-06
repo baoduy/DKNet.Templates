@@ -4,7 +4,7 @@ Auto-generated from all feature plans. Last updated: 2026-04-01
 
 ## Active Technologies
 
-- JavaScript (Node.js >= 18) for analyzer tooling; C# parsed as input language + Node.js built-ins (`fs/promises`, `path`, `url`), Neo4j HTTP transactional endpoin (005-graph-metadata-index)
+- JavaScript (Node.js >= 18) for analyzer tooling; C# parsed as input language + Node.js built-ins (`fs/promises`, `path`, `url`), FalkorDB (Redis-based) graph database (005-graph-metadata-index)
 
 ## Project Structure
 
@@ -23,7 +23,7 @@ JavaScript (Node.js >= 18) for analyzer tooling; C# parsed as input language: Fo
 
 ## Recent Changes
 
-- 005-graph-metadata-index: Added JavaScript (Node.js >= 18) for analyzer tooling; C# parsed as input language + Node.js built-ins (`fs/promises`, `path`, `url`), Neo4j HTTP transactional endpoin
+- 005-graph-metadata-index: Added JavaScript (Node.js >= 18) for analyzer tooling; C# parsed as input language + Node.js built-ins (`fs/promises`, `path`, `url`), FalkorDB (Redis-based) graph database
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

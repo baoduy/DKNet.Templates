@@ -1,6 +1,6 @@
 {
-  "id": "neo4j-codegraph",
-  "title": "Neo4j Codegraph Q&A with Source Fallback",
+  "id": "falkordb-codegraph",
+  "title": "FalkorDB Codegraph Q&A with Source Fallback",
   "category": "Architecture & Discovery",
   "difficulty": "Intermediate",
   "estimatedDurationMinutes": {
@@ -8,7 +8,7 @@
     "max": 25
   },
   "prerequisites": [
-    "Neo4j MCP server configured in .vscode/mcp.json",
+    "FalkorDB MCP server configured in .vscode/mcp.json",
     "Basic understanding of repository architecture"
   ],
   "inputs": {
@@ -28,7 +28,7 @@
     ]
   },
   "successCriteria": [
-    "Neo4j graph is queried first for relationship retrieval",
+    "FalkorDB is queried first for relationship retrieval",
     "Source fallback is used when graph coverage is incomplete",
     "Final answer reconciles graph and source without contradictions",
     "Confidence and evidence gaps are explicitly stated"
@@ -41,5 +41,5 @@
   "relatedSkills": [
     "dknet-feature-documentation"
   ],
-  "folderPath": ".github/skills/neo4j-codegraph"
+  "folderPath": ".github/skills/falkordb-codegraph"
 }

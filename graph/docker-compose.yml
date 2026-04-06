@@ -1,21 +1,71 @@
 services:
-  neo4j:
-    image: neo4j:5
-    container_name: ${NEO4J_CONTAINER_NAME:-dknet-templates-neo4j}
+  falkordb:
+    image: falkordb/falkordb-server:edge-alpine
+    container_name: ${FALKORDB_CONTAINER_NAME:-codegraph-falkordb}
     ports:
-      - "7474:7474"   # Neo4j Browser  → http://localhost:7474
-      - "7687:7687"   # Bolt protocol  → bolt://localhost:7687
+      - "6379:6379"
     environment:
-      NEO4J_AUTH: neo4j/codegraph123
-      NEO4J_server_memory_heap_initial__size: 512m
-      NEO4J_server_memory_heap_max__size: 1g
+      - REDIS_ARGS=--requirepass ${FALKORDB_PASSWORD:-codegraph123} --appendonly yes --appendfsync everysec --dir /var/lib/falkordb/data --maxmemory 1gb --maxmemory-policy allkeys-lru
+      - FALKORDB_ARGS=THREAD_COUNT 8 CACHE_SIZE 50 TIMEOUT_MAX 60000 TIMEOUT_DEFAULT 30000 QUERY_MEM_CAPACITY 104857600
     volumes:
-      - ../.neo4j/data:/data:rw
-      - ../.neo4j/logs:/logs:rw
-      - .:/import
+      - type: bind
+        source: ./data/graph-data
+        target: /var/lib/falkordb/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
-      interval: 15s
+      test: ["CMD", "redis-cli", "-a", "$${FALKORDB_PASSWORD:-codegraph123}", "ping"]
+      interval: 30s
       timeout: 10s
-      retries: 8
+      retries: 5
       start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - codegraph-network
+
+  falkordb-browser:
+    image: falkordb/falkordb-browser:v1.9.2
+    container_name: codegraph-browser
+    ports:
+      - "3000:3000"
+    environment:
+      - FALKORDB_URL=redis://falkordb:6379
+      - FALKORDB_PASSWORD=${FALKORDB_PASSWORD:-codegraph123}
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - codegraph-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: docsearch-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - type: bind
+        source: ./data/vector-data
+        target: /qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - codegraph-network
+
+networks:
+  codegraph-network:
+    driver: bridge

@@ -1,14 +1,14 @@
 ---
-name: neo4j-codegraph
-description: "Use when answering architecture or class relationship questions in this repository. Query neo4j-codegraph MCP first for fast dependency and relationship retrieval, then fallback to source code scanning when graph coverage is missing or stale."
+name: falkordb-codegraph
+description: "Use when answering architecture or class relationship questions in this repository. Query falkordb-codegraph MCP first for fast dependency and relationship retrieval, then fallback to source code scanning when graph coverage is missing or stale."
 argument-hint: "Question scope and target symbols. Example: explain CustomerProfile class relationships and call flow"
 ---
 
-# Skill: Neo4j Codegraph Q&A with Source Fallback
+# Skill: FalkorDB Codegraph Q&A with Source Fallback
 
 ## Purpose
 
-Speed up codebase Q&A by using the Neo4j graph first, especially for:
+Speed up codebase Q&A by using the FalkorDB graph first, especially for:
 
 - class relationships
 - dependency chains
@@ -40,7 +40,7 @@ Do not use this skill for:
 
 ## Decision Flow
 
-1. **Graph-first query** via `neo4j-codegraph` MCP.
+1. **Graph-first query** via `falkordb-codegraph` MCP.
 2. If graph evidence is sufficient, build the answer from graph results.
 3. If graph evidence is partial/conflicting/stale, run source scanning fallback.
 4. Merge graph + source findings, prioritize source-of-truth from code.
@@ -56,9 +56,9 @@ Extract:
 - relation type needed (inherits, uses, calls, maps, publishes)
 - direction (incoming, outgoing, both)
 
-### Step 2: Query Neo4j First
+### Step 2: Query FalkorDB First
 
-Use the configured MCP server: `neo4j-codegraph`.
+Use the configured MCP server: `falkordb-codegraph`.
 
 Graph lookup goals:
 
