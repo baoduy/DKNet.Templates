@@ -1,7 +1,6 @@
 {
-    "recommendations": [
-        "timheuer.nupkg-viewer",
-        "jetbrains.resharper-code",
-        "github.copilot-chat"
-    ]
+  "recommendations": [
+    "jetbrains.resharper-code",
+    "ms-dotnettools.csharp"
+  ]
 }

@@ -38,5 +38,3 @@ Thumbs.db
 .env*
 .vscode/
 **/logs
-graph/data
-.neo4j

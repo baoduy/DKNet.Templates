@@ -7,31 +7,47 @@
         "speckit.implement": true
     },
     "chat.tools.terminal.autoApprove": {
-        "dotnet": true,
         ".specify/scripts/bash/": true,
         ".specify/scripts/powershell/": true
     },
-    "editor.formatOnSave": true,
-    "files.autoSave": "onFocusChange",
-    "editor.defaultFormatter": "JetBrains.resharper-code",
-    "chat.agent.maxRequests": 500,
-    "chat.checkpoints.showFileChanges": true,
-    "chat.viewProgressBadge.enabled": true,
-    "chat.agentSessionProjection.enabled": true,
-    "chat.mcp.discovery.enabled": {
-        "claude-desktop": true
-    },
-    "chat.mcp.gallery.enabled": true,
-    "chat.mcp.assisted.nuget.enabled": true,
-    "chat.includeReferencedInstructions": true,
-    "chat.experimental.useSkillAdherencePrompt": true,
-    "chat.useNestedAgentsMdFiles": true,
-    "files.autoSaveWhenNoErrors": true,
-    "files.autoSaveWorkspaceFilesOnly": true,
-    "[reqnroll-feature]": {
-        "editor.formatOnSave": true
-    },
     "cSpell.words": [
+        "arckit",
+        "Fluents",
+        "Monxa",
+        "Reqnroll",
         "speckit"
+    ],
+    "github.copilot.chat.agent.autoFix": true,
+    "github.copilot.chat.customInstructionsInSystemMessage": false,
+    "github.copilot.chat.rateLimitAutoSwitchToAuto": true,
+    "github.copilot.chat.scopeSelection": true,
+    "github.copilot.chat.backgroundCompaction": true,
+    "github.copilot.chat.codesearch.enabled": true,
+    "github.copilot.chat.conversationTranscriptLookup.enabled": true,
+    "github.copilot.chat.copilotMemory.enabled": true,
+    "github.copilot.chat.anthropic.contextEditing.mode": "clear-thinking",
+    "github.copilot.chat.anthropic.tools.websearch.enabled": true,
+    "github.copilot.chat.getSearchViewResultsSkill.enabled": true,
+    "github.copilot.chat.githubMcpServer.enabled": true,
+    "github.copilot.chat.switchAgent.enabled": true,
+    "github.copilot.chat.newWorkspace.useContext7": true,
+    "github.copilot.chat.responsesApiContextManagement.enabled": true,
+    "chat.useClaudeHooks": true,
+    "specflowStepsDefinitionGenerator.needAIAssistant": true,
+    "chat.agent.maxRequests": 500,
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {  // shows *.feature.cs files as nested items
+        "*.feature": "${capture}.feature.cs"
+    },
+    "files.exclude": { // excludes compilation result
+        "**/obj/": true,
+        "**/bin/": true,
+    },
+    "cucumber.glue": [ // sets the location of the step definition classes
+        "src/Mx.Pgw.BDDTests/StepDefinitions/**/*.cs",
+    ],
+    "cucumber.features": [ // sets the location of the feature files
+        "src/Mx.Pgw.BDDTests/Features/**/*.feature",
     ]
 }
+

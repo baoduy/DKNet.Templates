@@ -160,7 +160,7 @@ if (!collectionIsNew && !config.Purge)
                         Must = { new Condition { Field = new FieldCondition
                         {
                             Key = "file_path",
-                            Match = new Match { Keyword = fp }
+                            Match = new Qdrant.Client.Grpc.Match { Keyword = fp }
                         }}}
                     },
                     payloadSelector: new WithPayloadSelector

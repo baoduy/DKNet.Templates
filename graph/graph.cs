@@ -83,14 +83,30 @@ if (!config.DryRun && ctx.Graph != null)
     Console.WriteLine();
 }
 
-// ── 1. Discover projects from .slnx ─────────────────────────────────────────
-var slnxPath = Path.Combine(ctx.SrcRoot, "Monxa.PaymentGateway.slnx");
-Console.WriteLine("Discovering projects from .slnx...");
-var csprojPaths = ProjectParser.ParseSlnx(slnxPath);
+// ── 1. Discover projects from solution file ────────────────────────────────────
+var solutionPath = ProjectParser.FindSolutionFile(ctx.SrcRoot);
+if (string.IsNullOrEmpty(solutionPath))
+{
+    Console.Error.WriteLine("[ERROR] No .sln or .slnx file found in: " + ctx.SrcRoot);
+    return;
+}
+Console.WriteLine($"Using solution file: {Path.GetFileName(solutionPath)}");
+Console.WriteLine("Discovering projects...");
+var csprojPaths = ProjectParser.ParseSolutionFile(solutionPath);
 Console.WriteLine($"  Found {csprojPaths.Count} project(s)");
 
 var projectInfos = csprojPaths.Select(ProjectParser.ParseCsproj).ToList();
-GraphUpserter.UpsertProjects(ctx, projectInfos);
+var testProjectNames = projectInfos
+    .Where(GraphFilters.IsTestProject)
+    .Select(p => p.Name)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+if (testProjectNames.Count > 0)
+    Console.WriteLine($"  Excluding {testProjectNames.Count} test project(s) from indexing");
+
+var activeProjectInfos = projectInfos
+    .Where(p => !testProjectNames.Contains(p.Name))
+    .ToList();
+GraphUpserter.UpsertProjects(ctx, activeProjectInfos);
 
 // ── 2. Load projects via MSBuild Workspace + Roslyn ──────────────────────────
 Console.WriteLine();
@@ -122,6 +138,12 @@ using (var workspace = MSBuildWorkspace.Create())
     {
         var projectName = Path.GetFileNameWithoutExtension(csprojPath);
         Console.Write($"  Loading {projectName}...");
+
+        if (testProjectNames.Contains(projectName))
+        {
+            Console.WriteLine(" [SKIP: test project]");
+            continue;
+        }
 
         try
         {
@@ -157,7 +179,7 @@ using (var workspace = MSBuildWorkspace.Create())
                     continue;
 
                 // Hash-based skip: compute SHA256 and compare with stored hash
-                var fileHash = ComputeFileSha256(filePath);
+                var fileHash = StringHelpers.ComputeFileSha256(filePath);
                 if (existingHashes.TryGetValue(relPath, out var oldHash) && oldHash == fileHash)
                 {
                     skippedFiles++;
@@ -258,6 +280,13 @@ if (isIncremental)
         foreach (var stale in staleFiles)
             GraphUpserter.DeleteFileSubgraph(ctx, stale);
     }
+}
+
+if (testProjectNames.Count > 0)
+{
+    Console.WriteLine($"Deleting subgraphs for {testProjectNames.Count} test project(s)...");
+    foreach (var testProjectName in testProjectNames)
+        GraphUpserter.DeleteProjectSubgraph(ctx, testProjectName);
 }
 
 // ── 3b. Upsert to FalkorDB ────────────────────────────────────────────────
@@ -433,6 +462,46 @@ static class CypherClient
 
 static class ProjectParser
 {
+    public static string? FindSolutionFile(string srcRoot)
+    {
+        if (!Directory.Exists(srcRoot)) return null;
+        
+        // Prefer .slnx files first, then .sln files
+        var slnxFile = Directory.EnumerateFiles(srcRoot, "*.slnx", SearchOption.TopDirectoryOnly).FirstOrDefault();
+        if (!string.IsNullOrEmpty(slnxFile)) return slnxFile;
+        
+        var slnFile = Directory.EnumerateFiles(srcRoot, "*.sln", SearchOption.TopDirectoryOnly).FirstOrDefault();
+        return slnFile;
+    }
+
+    public static List<string> ParseSolutionFile(string solutionPath)
+    {
+        return solutionPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
+            ? ParseSlnx(solutionPath)
+            : ParseSln(solutionPath);
+    }
+
+    public static List<string> ParseSln(string slnPath)
+    {
+        var lines = File.ReadAllLines(slnPath);
+        var slnDir = Path.GetDirectoryName(slnPath)!;
+        var projects = new List<string>();
+
+        foreach (var line in lines)
+        {
+            // Match: Project("{GUID}") = "ProjectName", "path/to/project.csproj", "{GUID}"
+            var match = Regex.Match(line, @"Project\(.*?\)\s*=\s*""([^""]*)"",\s*""([^""]*\.csproj)""");
+            if (match.Success)
+            {
+                var projectPath = match.Groups[2].Value;
+                var fullPath = Path.GetFullPath(Path.Combine(slnDir, projectPath.Replace('\\', '/')));
+                if (File.Exists(fullPath))
+                    projects.Add(fullPath);
+            }
+        }
+        return projects;
+    }
+
     public static List<string> ParseSlnx(string slnxPath)
     {
         var doc = XDocument.Load(slnxPath);
@@ -546,23 +615,17 @@ static class InferenceEngine
 #endregion
 
 // ─────────────────────────────────────────────────────────────────────────────
-#region File Hashing
-// ─────────────────────────────────────────────────────────────────────────────
-
-static string ComputeFileSha256(string filePath)
-{
-    var bytes = File.ReadAllBytes(filePath);
-    return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-}
-
-#endregion
-
-// ─────────────────────────────────────────────────────────────────────────────
 #region String Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 static class StringHelpers
 {
+    public static string ComputeFileSha256(string filePath)
+    {
+        var bytes = File.ReadAllBytes(filePath);
+        return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    }
+
     public static string ShortTypeNameFromString(string typeName)
     {
         var cleaned = Regex.Replace(typeName, @"<.*>", "");
@@ -597,6 +660,121 @@ static class StringHelpers
         }
         if (current.Length > 0) items.Add(current.ToString().Trim());
         return items;
+    }
+}
+
+static class GraphFilters
+{
+    private static readonly HashSet<string> SystemTypeNames =
+    [
+        "Boolean", "Byte", "SByte", "Int16", "UInt16", "Int32", "UInt32", "Int64", "UInt64",
+        "Single", "Double", "Decimal", "Char", "String", "Object", "Void",
+        "bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong",
+        "float", "double", "decimal", "char", "string", "object", "void",
+        "DateTime", "DateOnly", "TimeOnly", "DateTimeOffset", "TimeSpan", "Guid", "Uri",
+        "Task", "Task`1", "ValueTask", "ValueTask`1", "CancellationToken",
+        "IEnumerable", "IEnumerable`1", "IEnumerator", "IEnumerator`1", "IAsyncEnumerable`1",
+        "ICollection", "ICollection`1", "IList", "IList`1", "IReadOnlyCollection`1", "IReadOnlyList`1",
+        "IDictionary", "IDictionary`2", "IReadOnlyDictionary`2", "ISet`1",
+        "List", "List`1", "Dictionary", "Dictionary`2", "HashSet", "HashSet`1",
+        "KeyValuePair", "KeyValuePair`2", "Nullable", "Nullable`1",
+        "Exception", "AggregateException", "HttpClient", "HttpRequestMessage", "HttpResponseMessage",
+        "HttpStatusCode", "Stream", "MemoryStream", "FileStream",
+    ];
+
+    private static readonly string[] TestProjectNameMarkers =
+    [
+        "test", "tests", "unittest", "unittests", "integratetest", "integratetests",
+        "integrationtest", "integrationtests", "bddtest", "bddtests",
+    ];
+
+    private static readonly string[] TestPackageMarkers =
+    [
+        "xunit", "nunit", "mstest", "reqnroll", "shouldly", "coverlet",
+    ];
+
+    public static bool ShouldTrackType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol == null) return false;
+        if (typeSymbol.SpecialType != SpecialType.None) return false;
+
+        var namedType = typeSymbol as INamedTypeSymbol;
+        if (namedType?.OriginalDefinition?.SpecialType is not null and not SpecialType.None)
+            return false;
+
+        var containingNamespace = namedType?.ContainingNamespace?.ToDisplayString() ?? typeSymbol.ContainingNamespace?.ToDisplayString();
+        if (!string.IsNullOrEmpty(containingNamespace) &&
+            (containingNamespace == "System" || containingNamespace.StartsWith("System.", StringComparison.Ordinal)))
+            return false;
+
+        return ShouldTrackTypeName(typeSymbol.Name);
+    }
+
+    public static bool ShouldTrackTypeName(string? typeName)
+    {
+        var normalized = NormalizeTypeName(typeName);
+        if (string.IsNullOrEmpty(normalized)) return false;
+        if (!char.IsUpper(normalized[0]) && normalized[0] != 'I') return false;
+        return !SystemTypeNames.Contains(normalized);
+    }
+
+    public static string NormalizeTypeName(string? typeName)
+    {
+        if (string.IsNullOrWhiteSpace(typeName)) return "";
+
+        var normalized = typeName.Trim();
+
+        while (normalized.EndsWith("?", StringComparison.Ordinal))
+            normalized = normalized[..^1];
+
+        while (normalized.EndsWith("[]", StringComparison.Ordinal))
+            normalized = normalized[..^2];
+
+        var genericStart = normalized.IndexOf('<');
+        if (genericStart >= 0)
+            normalized = normalized[..genericStart];
+
+        var plusIndex = normalized.LastIndexOf('+');
+        if (plusIndex >= 0 && plusIndex < normalized.Length - 1)
+            normalized = normalized[(plusIndex + 1)..];
+
+        var dotIndex = normalized.LastIndexOf('.');
+        if (dotIndex >= 0 && dotIndex < normalized.Length - 1)
+            normalized = normalized[(dotIndex + 1)..];
+
+        return normalized.Trim();
+    }
+
+    public static bool IsTestProject(ProjectInfo project)
+    {
+        if (string.Equals(project.Type, "Test", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (IsTestProjectName(project.Name) || IsTestProjectPath(project.FilePath))
+            return true;
+
+        return project.PackageRefs.Any(pkg => TestPackageMarkers.Any(marker =>
+            pkg.Name.Contains(marker, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public static bool IsTestProjectName(string projectName)
+    {
+        if (string.IsNullOrWhiteSpace(projectName)) return false;
+        var normalized = projectName.Replace("-", ".", StringComparison.Ordinal)
+            .Replace("_", ".", StringComparison.Ordinal)
+            .ToLowerInvariant();
+        var parts = normalized.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Any(part => TestProjectNameMarkers.Contains(part));
+    }
+
+    public static bool IsTestProjectPath(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return false;
+        var normalized = filePath.Replace('\\', '/').ToLowerInvariant();
+        return normalized.Contains("/test/") ||
+               normalized.Contains("/tests/") ||
+               normalized.Contains(".test") ||
+               normalized.Contains(".tests");
     }
 }
 
@@ -647,6 +825,20 @@ static class GraphUpserter
         ]);
     }
 
+    public static void DeleteProjectSubgraph(AnalyzerContext ctx, string projectName)
+    {
+        CypherClient.CypherBatch(ctx,
+        [
+            $"MATCH (m:Methods {{project: '{E(projectName)}'}}) DETACH DELETE m",
+            $"MATCH (fd:Field {{project: '{E(projectName)}'}}) DETACH DELETE fd",
+            $"MATCH (pr:Property {{project: '{E(projectName)}'}}) DETACH DELETE pr",
+            $"MATCH (c:Classes {{project: '{E(projectName)}'}}) DETACH DELETE c",
+            $"MATCH (f:SourceFile {{project: '{E(projectName)}'}}) DETACH DELETE f",
+            $"MATCH (n:Namespace {{project: '{E(projectName)}'}}) DETACH DELETE n",
+            $"MATCH (p:Project {{name: '{E(projectName)}'}}) DETACH DELETE p",
+        ]);
+    }
+
     public static void UpsertNamespace(AnalyzerContext ctx, string? ns, string projectName)
     {
         if (string.IsNullOrEmpty(ns)) return;
@@ -659,6 +851,9 @@ static class GraphUpserter
     {
         foreach (var cls in classes)
         {
+            if (GraphFilters.IsTestProjectName(cls.Project))
+                continue;
+
             var classLayer = InferenceEngine.InferLayer(cls.Project);
             var bc = InferenceEngine.InferBoundedContext(cls.Namespace, cls.Project);
             var concepts = InferenceEngine.InferArchitectureConcepts(cls);
@@ -694,20 +889,23 @@ static class GraphUpserter
                     var contractArgs = StringHelpers.ExtractGenericArgs(contract);
                     if (contractArgs.Count >= 2)
                     {
-                        var handledType = StringHelpers.ShortTypeNameFromString(contractArgs[0]);
-                        var returnedType = StringHelpers.ShortTypeNameFromString(contractArgs[1]);
-                        rels.Add($"MERGE (t:TypeReference {{name: '{E(handledType)}'}}) WITH t MATCH (cls:Classes {{classKey: '{E(cls.ClassKey)}'}}) MERGE (cls)-[:HANDLES]->(t)");
-                        rels.Add($"MERGE (t:TypeReference {{name: '{E(returnedType)}'}}) WITH t MATCH (cls:Classes {{classKey: '{E(cls.ClassKey)}'}}) MERGE (cls)-[:RETURNS]->(t)");
+                        var handledType = GraphFilters.NormalizeTypeName(StringHelpers.ShortTypeNameFromString(contractArgs[0]));
+                        var returnedType = GraphFilters.NormalizeTypeName(StringHelpers.ShortTypeNameFromString(contractArgs[1]));
+                        if (GraphFilters.ShouldTrackTypeName(handledType))
+                            rels.Add($"MERGE (t:TypeReference {{name: '{E(handledType)}'}}) WITH t MATCH (cls:Classes {{classKey: '{E(cls.ClassKey)}'}}) MERGE (cls)-[:HANDLES]->(t)");
+                        if (GraphFilters.ShouldTrackTypeName(returnedType))
+                            rels.Add($"MERGE (t:TypeReference {{name: '{E(returnedType)}'}}) WITH t MATCH (cls:Classes {{classKey: '{E(cls.ClassKey)}'}}) MERGE (cls)-[:RETURNS]->(t)");
                     }
                     else if (contractArgs.Count == 1)
                     {
-                        var eventType = StringHelpers.ShortTypeNameFromString(contractArgs[0]);
-                        rels.Add($"MERGE (t:TypeReference {{name: '{E(eventType)}'}}) WITH t MATCH (cls:Classes {{classKey: '{E(cls.ClassKey)}'}}) MERGE (cls)-[:SUBSCRIBES_TO_EVENT]->(t)");
+                        var eventType = GraphFilters.NormalizeTypeName(StringHelpers.ShortTypeNameFromString(contractArgs[0]));
+                        if (GraphFilters.ShouldTrackTypeName(eventType))
+                            rels.Add($"MERGE (t:TypeReference {{name: '{E(eventType)}'}}) WITH t MATCH (cls:Classes {{classKey: '{E(cls.ClassKey)}'}}) MERGE (cls)-[:SUBSCRIBES_TO_EVENT]->(t)");
                     }
                 }
             }
 
-            if (cls.SpecTargetType != null)
+            if (GraphFilters.ShouldTrackTypeName(cls.SpecTargetType))
                 rels.Add($"MERGE (t:TypeReference {{name: '{E(cls.SpecTargetType)}'}}) WITH t MATCH (cls:Classes {{classKey: '{E(cls.ClassKey)}'}}) MERGE (cls)-[:SPECIALIZES_SPEC_FOR]->(t)");
 
             foreach (var dep in cls.DependsOn.Distinct())
@@ -726,6 +924,9 @@ static class GraphUpserter
     {
         foreach (var mth in methods)
         {
+            if (GraphFilters.IsTestProjectName(mth.Project))
+                continue;
+
             var methodLayer = InferenceEngine.InferLayer(mth.Project);
             var bc = InferenceEngine.InferBoundedContext("", mth.Project);
 
@@ -749,8 +950,8 @@ static class GraphUpserter
                 var paramKey = $"{mth.MethodKey}::p{param.Position}";
                 rels.Add($"MERGE (p:MethodParameter {{paramKey: '{E(paramKey)}'}}) SET p.name = '{E(param.Name)}', p.position = {param.Position}, p.typeName = '{E(param.TypeName)}', p.methodKey = '{E(mth.MethodKey)}' WITH p MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:HAS_PARAMETER]->(p)");
 
-                var cleanType = StringHelpers.ShortTypeNameFromString(param.TypeName);
-                if (!string.IsNullOrEmpty(cleanType) && char.IsUpper(cleanType[0]))
+                var cleanType = GraphFilters.NormalizeTypeName(StringHelpers.ShortTypeNameFromString(param.TypeName));
+                if (GraphFilters.ShouldTrackTypeName(cleanType))
                 {
                     if (allClassNames.Contains(cleanType))
                         rels.Add($"MATCH (p:MethodParameter {{paramKey: '{E(paramKey)}'}}), (t:Classes {{name: '{E(cleanType)}'}}) MERGE (p)-[:TYPE_REFERENCE]->(t)");
@@ -767,7 +968,7 @@ static class GraphUpserter
 
                 rels.Add($"MERGE (ref:MethodReference {{name: '{E(call.MethodName)}', receiverHint: '{E(call.ReceiverHint)}'}}) WITH ref MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:CALLS_REFERENCE]->(ref)");
 
-                if (call.ReceiverType != null)
+                if (GraphFilters.ShouldTrackTypeName(call.ReceiverType))
                     rels.Add($"MERGE (t:TypeReference {{name: '{E(call.ReceiverType)}'}}) WITH t MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:CALLS_ON_TYPE]->(t)");
             }
 
@@ -776,21 +977,30 @@ static class GraphUpserter
                 var epKey = $"{mth.MethodKey}::{ep.Verb}:{ep.Route}:{ep.RequestType}";
                 rels.Add($"MERGE (e:Endpoint {{endpointKey: '{E(epKey)}'}}) SET e.httpVerb = '{E(ep.Verb)}', e.route = '{E(ep.Route)}', e.requestType = '{E(ep.RequestType)}', e.responseType = '{E(ep.ResponseType)}', e.filePath = '{E(mth.FilePath)}', e.className = '{E(mth.ClassName)}', e.methodName = '{E(mth.Name)}' WITH e MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:MAPS_ENDPOINT]->(e)");
 
-                if (!string.IsNullOrEmpty(ep.RequestType))
+                if (GraphFilters.ShouldTrackTypeName(ep.RequestType))
                     rels.Add($"MERGE (t:TypeReference {{name: '{E(ep.RequestType)}'}}) WITH t MATCH (e:Endpoint {{endpointKey: '{E(epKey)}'}}) MERGE (e)-[:ACCEPTS]->(t)");
 
-                if (!string.IsNullOrEmpty(ep.ResponseType))
+                if (GraphFilters.ShouldTrackTypeName(ep.ResponseType))
                     rels.Add($"MERGE (t:TypeReference {{name: '{E(ep.ResponseType)}'}}) WITH t MATCH (e:Endpoint {{endpointKey: '{E(epKey)}'}}) MERGE (e)-[:RETURNS]->(t)");
             }
 
             foreach (var dispatch in mth.Dispatches)
-                rels.Add($"MERGE (t:TypeReference {{name: '{E(dispatch.RequestType)}'}}) WITH t MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:DISPATCHES]->(t)");
+            {
+                if (GraphFilters.ShouldTrackTypeName(dispatch.RequestType))
+                    rels.Add($"MERGE (t:TypeReference {{name: '{E(dispatch.RequestType)}'}}) WITH t MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:DISPATCHES]->(t)");
+            }
 
             foreach (var eventType in mth.EmittedEvents.Distinct())
-                rels.Add($"MERGE (t:TypeReference {{name: '{E(eventType)}'}}) WITH t MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:EMITS_EVENT]->(t)");
+            {
+                if (GraphFilters.ShouldTrackTypeName(eventType))
+                    rels.Add($"MERGE (t:TypeReference {{name: '{E(eventType)}'}}) WITH t MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:EMITS_EVENT]->(t)");
+            }
 
             foreach (var ctorType in mth.ConstructedTypes.Distinct())
             {
+                if (!GraphFilters.ShouldTrackTypeName(ctorType))
+                    continue;
+
                 rels.Add($"MERGE (t:TypeReference {{name: '{E(ctorType)}'}}) WITH t MATCH (m:Methods {{methodKey: '{E(mth.MethodKey)}'}}) MERGE (m)-[:CONSTRUCTS_TYPE]->(t)");
 
                 if (specClassNames.Contains(ctorType))
@@ -975,7 +1185,7 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
     private static string ShortTypeName(ITypeSymbol? type)
     {
         if (type == null) return "";
-        return type.Name;
+        return GraphFilters.NormalizeTypeName(type.Name);
     }
 
     public override void VisitClassDeclaration(ClassDeclarationSyntax node) => VisitTypeDeclaration(node, "class");
@@ -1000,13 +1210,13 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
 
         if (symbol.BaseType != null && symbol.BaseType.SpecialType != SpecialType.System_Object)
         {
-            inheritsNames.Add(symbol.BaseType.Name);
+            inheritsNames.Add(ShortTypeName(symbol.BaseType));
             contracts.Add(symbol.BaseType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
 
         foreach (var iface in symbol.Interfaces)
         {
-            implementsNames.Add(iface.Name);
+            implementsNames.Add(ShortTypeName(iface));
             contracts.Add(iface.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
 
@@ -1019,7 +1229,9 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
         {
             if (specBase.Name == "Specification" && specBase.TypeArguments.Length > 0)
             {
-                specTargetType = ShortTypeName(specBase.TypeArguments[0]);
+                specTargetType = GraphFilters.ShouldTrackType(specBase.TypeArguments[0])
+                    ? ShortTypeName(specBase.TypeArguments[0])
+                    : null;
                 break;
             }
             specBase = specBase.BaseType;
@@ -1070,7 +1282,7 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
         foreach (var p in symbol.Parameters)
         {
             var typeName = ShortTypeName(p.Type);
-            if (!string.IsNullOrEmpty(typeName) && char.IsUpper(typeName[0]))
+            if (GraphFilters.ShouldTrackType(p.Type))
                 cls.DependsOn.Add(typeName);
         }
 
@@ -1152,7 +1364,7 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
         if (symbol == null) return;
 
         var typeName = ShortTypeName(symbol.Type);
-        if (!string.IsNullOrEmpty(typeName) && char.IsUpper(typeName[0]))
+        if (GraphFilters.ShouldTrackType(symbol.Type))
             cls.DependsOn.Add(typeName);
 
         Props.Add(new PropInfo
@@ -1181,7 +1393,7 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
             if (symbol == null) continue;
 
             var typeName = ShortTypeName(symbol.Type);
-            if (!string.IsNullOrEmpty(typeName) && char.IsUpper(typeName[0]))
+            if (GraphFilters.ShouldTrackType(symbol.Type))
                 cls.DependsOn.Add(typeName);
 
             Fields.Add(new FieldInfo
@@ -1212,7 +1424,7 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
         foreach (var creation in body.DescendantNodes().OfType<ImplicitObjectCreationExpressionSyntax>())
         {
             var typeInfo = semanticModel.GetTypeInfo(creation);
-            if (typeInfo.Type != null)
+            if (GraphFilters.ShouldTrackType(typeInfo.Type))
                 mth.ConstructedTypes.Add(ShortTypeName(typeInfo.Type));
         }
     }
@@ -1252,8 +1464,8 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
         {
             var verb = methodSymbol.Name[3..];
             var typeArgs = methodSymbol.TypeArguments;
-            var requestType = typeArgs.Length > 0 ? ShortTypeName(typeArgs[0]) : "";
-            var responseType = typeArgs.Length > 1 ? ShortTypeName(typeArgs[1]) : "";
+            var requestType = typeArgs.Length > 0 && GraphFilters.ShouldTrackType(typeArgs[0]) ? ShortTypeName(typeArgs[0]) : "";
+            var responseType = typeArgs.Length > 1 && GraphFilters.ShouldTrackType(typeArgs[1]) ? ShortTypeName(typeArgs[1]) : "";
 
             var route = "/";
             if (invocation.ArgumentList.Arguments.Count > 0)
@@ -1269,8 +1481,8 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
         if (Regex.IsMatch(methodSymbol.Name, @"^Map(GetById|GetPage|GetList)$"))
         {
             var typeArgs = methodSymbol.TypeArguments;
-            var requestType = typeArgs.Length > 0 ? ShortTypeName(typeArgs[0]) : "";
-            var responseType = typeArgs.Length > 1 ? ShortTypeName(typeArgs[1]) : "";
+            var requestType = typeArgs.Length > 0 && GraphFilters.ShouldTrackType(typeArgs[0]) ? ShortTypeName(typeArgs[0]) : "";
+            var responseType = typeArgs.Length > 1 && GraphFilters.ShouldTrackType(typeArgs[1]) ? ShortTypeName(typeArgs[1]) : "";
             mth.EndpointMappings.Add(new EndpointMapping("Get", requestType, responseType, "/"));
         }
 
@@ -1279,7 +1491,7 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var argType = semanticModel.GetTypeInfo(invocation.ArgumentList.Arguments[0].Expression).Type;
-                if (argType != null)
+                if (GraphFilters.ShouldTrackType(argType))
                     mth.Dispatches.Add(new DispatchInfo(ShortTypeName(argType), "semantic"));
             }
         }
@@ -1287,11 +1499,15 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
         if (methodSymbol.Name == "AddEvent")
         {
             if (methodSymbol.TypeArguments.Length > 0)
-                mth.EmittedEvents.Add(ShortTypeName(methodSymbol.TypeArguments[0]));
+            {
+                var eventType = methodSymbol.TypeArguments[0];
+                if (GraphFilters.ShouldTrackType(eventType))
+                    mth.EmittedEvents.Add(ShortTypeName(eventType));
+            }
             else if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var argType = semanticModel.GetTypeInfo(invocation.ArgumentList.Arguments[0].Expression).Type;
-                if (argType != null)
+                if (GraphFilters.ShouldTrackType(argType))
                     mth.EmittedEvents.Add(ShortTypeName(argType));
             }
         }
@@ -1300,7 +1516,7 @@ class AnalyzerWalker(SemanticModel semanticModel, string projectName, string fil
     private void AnalyzeObjectCreation(ObjectCreationExpressionSyntax creation, MethodInfo mth)
     {
         var typeInfo = semanticModel.GetTypeInfo(creation);
-        if (typeInfo.Type != null)
+        if (GraphFilters.ShouldTrackType(typeInfo.Type))
             mth.ConstructedTypes.Add(ShortTypeName(typeInfo.Type));
     }
 }
