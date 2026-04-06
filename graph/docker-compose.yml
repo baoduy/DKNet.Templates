@@ -28,7 +28,7 @@ services:
 
   falkordb-browser:
     image: falkordb/falkordb-browser:v1.9.2
-    container_name: codegraph-browser
+    container_name: ${FALKORDB_BROWSER_CONTAINER_NAME:-codegraph-browser}
     ports:
       - "3000:3000"
     environment:
@@ -43,7 +43,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: docsearch-qdrant
+    container_name: ${QDRANT_CONTAINER_NAME:-docsearch-qdrant}
     ports:
       - "6333:6333"
       - "6334:6334"

@@ -52,18 +52,25 @@ Console.WriteLine("Discovering .md files...");
 List<string> mdFiles;
 if (isIncremental)
 {
-    // Only process the specific changed files (filter to existing .md files)
-    mdFiles = config.ChangedFiles!
+    // Only process changed markdown files inside the indexed roots.
+    var scopedChangedPaths = config.ChangedFiles!
+        .Select(f => f.Replace('\\', '/'))
+        .Where(MarkdownDiscovery.IsIndexableMarkdownPath)
         .Where(f => f.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    mdFiles = scopedChangedPaths
         .Select(f => Path.GetFullPath(Path.Combine(config.RepoRoot, f)))
         .Where(File.Exists)
         .ToList();
-    Console.WriteLine($"  Incremental: {mdFiles.Count} changed .md file(s)");
+
+    var outOfScopeCount = config.ChangedFiles.Count - scopedChangedPaths.Count;
+    Console.WriteLine($"  Incremental: {mdFiles.Count} changed .md file(s) in src/docs/specs ({outOfScopeCount} out-of-scope change(s) ignored)");
 }
 else
 {
     mdFiles = MarkdownDiscovery.FindAll(config.RepoRoot);
-    Console.WriteLine($"  Found {mdFiles.Count} markdown file(s)");
+    Console.WriteLine($"  Found {mdFiles.Count} markdown file(s) in src/docs/specs");
 }
 
 // ── 3. Compute file hashes and chunk (parallel file I/O) ───────────────────
@@ -447,14 +454,33 @@ static class OnnxModelManager
 
 static class MarkdownDiscovery
 {
+    private static readonly string[] IncludedRoots = ["src", "docs", "specs"];
     private static readonly string[] ExcludeDirs =
         [".git", "node_modules", "bin", "obj", "data", "worktrees", "TestResults", ".cache"];
 
     public static List<string> FindAll(string repoRoot)
     {
         var files = new List<string>();
-        WalkDirectory(repoRoot, files);
+        foreach (var root in IncludedRoots)
+        {
+            var rootPath = Path.Combine(repoRoot, root);
+            if (!Directory.Exists(rootPath))
+                continue;
+
+            WalkDirectory(rootPath, files);
+        }
         return files.OrderBy(f => f).ToList();
+    }
+
+    public static bool IsIndexableMarkdownPath(string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+            return false;
+
+        var normalized = relativePath.Replace('\\', '/').TrimStart('/');
+        return normalized.StartsWith("src/", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("docs/", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("specs/", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void WalkDirectory(string dir, List<string> files)
@@ -605,7 +631,6 @@ static class VectorCliConfig
 
         var qdrantHost = GetArg("host", "QDRANT_HOST", "localhost");
         var qdrantPort = int.Parse(GetArg("port", "QDRANT_PORT", "6334"));
-        var collection = GetArg("collection", "QDRANT_COLLECTION", "monxa-docs");
         var dryRun = cliArgs.ContainsKey("dry-run");
         var purge = cliArgs.ContainsKey("purge");
 
@@ -622,6 +647,13 @@ static class VectorCliConfig
                 Environment.GetCommandLineArgs().FirstOrDefault(a => a.EndsWith("vector.cs")) ?? "graph/vector.cs"))!;
             repoRoot = Path.GetFullPath(Path.Combine(scriptDir, ".."));
         }
+
+        var repoName = Path.GetFileName(repoRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        var repoSlug = Regex.Replace(repoName.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(repoSlug))
+            repoSlug = "docs";
+        var defaultCollection = $"{repoSlug}-docs";
+        var collection = GetArg("collection", "QDRANT_COLLECTION", defaultCollection);
 
         // Model cached in ~/.cache/all-minilm-l6-v2/ (standard cache location, outside repo)
         var defaultCacheDir = Path.Combine(

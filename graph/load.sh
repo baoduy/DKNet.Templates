@@ -23,6 +23,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_NAME="$(basename "${REPO_ROOT}")"
+NAME_PREFIX="$(echo "${REPO_NAME}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+if [[ -z "${NAME_PREFIX}" ]]; then
+  NAME_PREFIX="codegraph"
+fi
 
 # Defaults: run both unless one is specified
 RUN_GRAPH=false
@@ -39,13 +44,13 @@ CHANGED_MD_FILES=""
 FALKOR_HOST="localhost"
 FALKOR_PORT="6379"
 FALKOR_PASS="codegraph123"
-GRAPH_NAME="codegraph"
+GRAPH_NAME="${FALKORDB_GRAPH_NAME:-${NAME_PREFIX}-codegraph}"
 
 # Qdrant config
 QDRANT_HOST="localhost"
 QDRANT_PORT="6334"
 QDRANT_HTTP_PORT="6333"
-COLLECTION="monxa-docs"
+COLLECTION="${QDRANT_COLLECTION_NAME:-${NAME_PREFIX}-docs}"
 
 INTERVAL=2
 
@@ -79,9 +84,13 @@ if [[ "${EXPLICIT_MODE}" == false ]]; then
   RUN_VECTOR=true
 fi
 
-FALKOR_CONTAINER="${FALKORDB_CONTAINER_NAME:-codegraph-falkordb}"
-QDRANT_CONTAINER="docsearch-qdrant"
+FALKOR_CONTAINER="${FALKORDB_CONTAINER_NAME:-${NAME_PREFIX}-falkordb}"
+FALKOR_BROWSER_CONTAINER="${FALKORDB_BROWSER_CONTAINER_NAME:-${NAME_PREFIX}-browser}"
+QDRANT_CONTAINER="${QDRANT_CONTAINER_NAME:-${NAME_PREFIX}-qdrant}"
 export FALKORDB_CONTAINER_NAME="${FALKOR_CONTAINER}"
+export FALKORDB_BROWSER_CONTAINER_NAME="${FALKOR_BROWSER_CONTAINER}"
+export QDRANT_CONTAINER_NAME="${QDRANT_CONTAINER}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${NAME_PREFIX}-graph}"
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RED='\033[0;31m'; RESET='\033[0m'
@@ -218,6 +227,7 @@ echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 success "All done!"
 echo ""
+echo -e "  ${CYAN}Prefix${RESET}        → ${NAME_PREFIX}"
 if [[ "${RUN_GRAPH}" == true ]]; then
   echo -e "  ${CYAN}FalkorDB${RESET}      → ${FALKOR_HOST}:${FALKOR_PORT} (graph: ${GRAPH_NAME})"
   echo -e "  ${CYAN}Browser UI${RESET}    → http://localhost:3000"
