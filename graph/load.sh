@@ -15,6 +15,9 @@
 #   ./graph/load.sh --purge --vector   # purge + rebuild vector only
 #   ./graph/load.sh --no-dashboard     # stop containers after indexing
 #   ./graph/load.sh --dry-run          # preview without writing
+#   ./graph/load.sh --skip-if-down     # skip if containers not running
+#   ./graph/load.sh --changed-cs-files=a.cs,b.cs --graph  # incremental graph
+#   ./graph/load.sh --changed-md-files=a.md,b.md --vector  # incremental vector
 # ---------------------------------------------------------------
 set -euo pipefail
 
@@ -28,6 +31,9 @@ EXPLICIT_MODE=false
 PURGE=false
 DRY_RUN=false
 START_DASHBOARD=true
+SKIP_IF_DOWN=false
+CHANGED_CS_FILES=""
+CHANGED_MD_FILES=""
 
 # FalkorDB config
 FALKOR_HOST="localhost"
@@ -51,9 +57,13 @@ while [[ $# -gt 0 ]]; do
     --purge|--reset) PURGE=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
     --no-dashboard) START_DASHBOARD=false; shift ;;
+    --incremental)  shift ;;  # accepted for clarity but no-op here (flags below drive behavior)
+    --skip-if-down) SKIP_IF_DOWN=true; shift ;;
+    --changed-cs-files=*) CHANGED_CS_FILES="${1#*=}"; shift ;;
+    --changed-md-files=*) CHANGED_MD_FILES="${1#*=}"; shift ;;
     --*)
       echo "Unknown flag: $1" >&2
-      echo "Usage: ./graph/load.sh [--graph] [--vector] [--purge] [--dry-run] [--no-dashboard]" >&2
+      echo "Usage: ./graph/load.sh [--graph] [--vector] [--purge] [--dry-run] [--no-dashboard] [--skip-if-down] [--changed-cs-files=...] [--changed-md-files=...]" >&2
       exit 1
       ;;
     *)
@@ -95,8 +105,28 @@ fi
 
 cd "${SCRIPT_DIR}"
 
-info "Starting Docker services..."
-docker compose up -d
+# If --skip-if-down, check if containers are running; exit silently if not
+if [[ "${SKIP_IF_DOWN}" == true ]]; then
+  NEED_FALKOR=$([[ "${RUN_GRAPH}" == true ]] && echo true || echo false)
+  NEED_QDRANT=$([[ "${RUN_VECTOR}" == true ]] && echo true || echo false)
+
+  if [[ "${NEED_FALKOR}" == true ]] && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "${FALKOR_CONTAINER}"; then
+    warn "FalkorDB container not running, skipping (--skip-if-down)."
+    RUN_GRAPH=false
+  fi
+  if [[ "${NEED_QDRANT}" == true ]] && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "${QDRANT_CONTAINER}"; then
+    warn "Qdrant container not running, skipping (--skip-if-down)."
+    RUN_VECTOR=false
+  fi
+
+  if [[ "${RUN_GRAPH}" == false && "${RUN_VECTOR}" == false ]]; then
+    warn "No containers running. Exiting."
+    exit 0
+  fi
+else
+  info "Starting Docker services..."
+  docker compose up -d
+fi
 
 # ── 3. Wait for FalkorDB readiness ──────────────────────────────────────────
 if [[ "${RUN_GRAPH}" == true ]]; then
@@ -143,15 +173,16 @@ fi
 # ── 6. Run graph indexer (Roslyn → FalkorDB) ────────────────────────────────
 if [[ "${RUN_GRAPH}" == true ]]; then
   info "Running Roslyn source analyzer (graph.cs)..."
-  DRY_FLAG=""
-  [[ "${DRY_RUN}" == true ]] && DRY_FLAG="--dry-run"
+  GRAPH_FLAGS=""
+  [[ "${DRY_RUN}" == true ]] && GRAPH_FLAGS="--dry-run"
+  [[ -n "${CHANGED_CS_FILES}" ]] && GRAPH_FLAGS="${GRAPH_FLAGS} --changed-files=${CHANGED_CS_FILES}"
   dotnet run "${SCRIPT_DIR}/graph.cs" -- \
     --host="${FALKOR_HOST}" \
     --port="${FALKOR_PORT}" \
     --password="${FALKOR_PASS}" \
     --graph="${GRAPH_NAME}" \
     --src="${REPO_ROOT}/src" \
-    ${DRY_FLAG}
+    ${GRAPH_FLAGS}
   success "Graph indexing complete."
 else
   warn "Graph indexing skipped."
@@ -161,15 +192,16 @@ fi
 if [[ "${RUN_VECTOR}" == true ]]; then
   info "Running markdown vector indexer (vector.cs)..."
   info "  Embeddings: ONNX all-MiniLM-L6-v2 (local, no external service)"
-  EXTRA_FLAGS=""
-  [[ "${DRY_RUN}" == true ]] && EXTRA_FLAGS="--dry-run"
-  [[ "${PURGE}" == true ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --purge"
+  VECTOR_FLAGS=""
+  [[ "${DRY_RUN}" == true ]] && VECTOR_FLAGS="--dry-run"
+  [[ "${PURGE}" == true ]] && VECTOR_FLAGS="${VECTOR_FLAGS} --purge"
+  [[ -n "${CHANGED_MD_FILES}" ]] && VECTOR_FLAGS="${VECTOR_FLAGS} --changed-files=${CHANGED_MD_FILES}"
   dotnet run "${SCRIPT_DIR}/vector.cs" -- \
     --host="${QDRANT_HOST}" \
     --port="${QDRANT_PORT}" \
     --collection="${COLLECTION}" \
     --src="${REPO_ROOT}" \
-    ${EXTRA_FLAGS}
+    ${VECTOR_FLAGS}
   success "Vector indexing complete."
 else
   warn "Vector indexing skipped."
@@ -204,4 +236,6 @@ echo "    ./graph/load.sh --purge            # purge + full rebuild"
 echo "    ./graph/load.sh --purge --vector   # purge + rebuild vector only"
 echo "    ./graph/load.sh --no-dashboard     # stop containers after indexing"
 echo "    ./graph/load.sh --dry-run          # preview without writing"
+echo "    ./graph/load.sh --skip-if-down     # exit if containers not running"
+echo "    ./graph/load.sh --changed-cs-files=src/a.cs,src/b.cs --graph  # incremental"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"

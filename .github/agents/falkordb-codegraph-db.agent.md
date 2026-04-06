@@ -1,6 +1,6 @@
 ---
 description: "Use when answering architecture, class relationships, dependency chains, or code flow questions about this repository. Queries FalkorDB codegraph for fast class dependencies, usage patterns, endpoint-to-handler flows, and relationship mapping. Falls back to source code verification when graph coverage is incomplete."
-name: "FalkorDB CodeGraph Q&A"
+name: "arckit.falkordb-codegraph-qa"
 tools: ['falkordb-codegraph/*',read, search,]
 user-invocable: false
 ---

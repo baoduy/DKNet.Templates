@@ -16,6 +16,7 @@
 //   dotnet run graph/analyze.cs -- --host=localhost --port=6379 --password=codegraph123
 //   dotnet run graph/analyze.cs -- --dry-run
 
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -32,13 +33,15 @@ using Microsoft.CodeAnalysis.MSBuild;
 // Main entry point (top-level statements)
 // ─────────────────────────────────────────────────────────────────────────────
 var config = CliConfig.Parse(args);
-var ctx = new AnalyzerContext(null, config.GraphName, config.DryRun, config.RepoRoot, config.SrcRoot);
+var ctx = new AnalyzerContext(null, config.GraphName, config.DryRun, config.RepoRoot, config.SrcRoot, config.ChangedFiles);
+var isIncremental = config.ChangedFiles != null;
 
 var runId = Guid.NewGuid().ToString();
 var startedAt = DateTime.UtcNow.ToString("o");
 
 Console.WriteLine("DKNet C# Roslyn Metadata Graph Analyzer (FalkorDB)");
 Console.WriteLine($"Run ID : {runId}");
+Console.WriteLine($"Mode   : {(isIncremental ? $"incremental ({config.ChangedFiles!.Count} file(s))" : "full scan")}");
 Console.WriteLine($"FalkorDB: {config.FalkorHost}:{config.FalkorPort}/{config.GraphName}{(config.DryRun ? " (DRY RUN — no writes)" : "")}");
 Console.WriteLine($"Src    : {config.SrcRoot}");
 Console.WriteLine();
@@ -51,10 +54,33 @@ if (!config.DryRun)
         : $"{config.FalkorHost}:{config.FalkorPort},password={config.FalkorPass}";
     var db = new FalkorDB(connStr);
     ctx = ctx with { Graph = db.SelectGraph(config.GraphName) };
+
     Console.WriteLine("Connected.");
     Console.WriteLine();
     Console.WriteLine("Ensuring schema indexes...");
     CypherClient.EnsureSchema(ctx);
+}
+
+// ── 0. Load existing file hashes for incremental skip ───────────────────────
+var existingHashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+if (!config.DryRun && ctx.Graph != null)
+{
+    try
+    {
+        var hashResult = ctx.Graph.ReadOnlyQuery(
+            "MATCH (f:SourceFile) WHERE f._file_hash IS NOT NULL RETURN f.path, f._file_hash");
+        foreach (var record in hashResult)
+        {
+            var path = record.Values[0]?.ToString() ?? "";
+            var hash = record.Values[1]?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(path) && !string.IsNullOrEmpty(hash))
+                existingHashes[path] = hash;
+        }
+        if (existingHashes.Count > 0)
+            Console.WriteLine($"  Loaded {existingHashes.Count} existing file hash(es) from graph.");
+    }
+    catch { /* first run — no _file_hash property yet */ }
+    Console.WriteLine();
 }
 
 // ── 1. Discover projects from .slnx ─────────────────────────────────────────
@@ -73,7 +99,16 @@ MSBuildLocator.RegisterDefaults();
 
 Console.WriteLine("Loading projects via Roslyn...");
 var allResults = new List<FileAnalysisResult>();
-int scannedFiles = 0, indexedClasses = 0, indexedMethods = 0, failedProjects = 0;
+int scannedFiles = 0, skippedFiles = 0, indexedClasses = 0, indexedMethods = 0, failedProjects = 0;
+
+// Pre-compute changed files set for incremental mode
+HashSet<string>? changedFileSet = null;
+if (isIncremental)
+{
+    changedFileSet = new HashSet<string>(
+        config.ChangedFiles!.Select(f => f.Replace('\\', '/')),
+        StringComparer.OrdinalIgnoreCase);
+}
 
 using (var workspace = MSBuildWorkspace.Create())
 {
@@ -117,6 +152,18 @@ using (var workspace = MSBuildWorkspace.Create())
 
                 if (!filePath.StartsWith(ctx.SrcRoot)) continue;
 
+                // Incremental: skip files not in the changed-files list
+                if (changedFileSet != null && !changedFileSet.Contains(relPath))
+                    continue;
+
+                // Hash-based skip: compute SHA256 and compare with stored hash
+                var fileHash = ComputeFileSha256(filePath);
+                if (existingHashes.TryGetValue(relPath, out var oldHash) && oldHash == fileHash)
+                {
+                    skippedFiles++;
+                    continue;
+                }
+
                 scannedFiles++;
                 var semanticModel = compilation.GetSemanticModel(syntaxTree);
                 var walker = new AnalyzerWalker(semanticModel, projectName, filePath, ctx.RepoRoot);
@@ -144,6 +191,7 @@ using (var workspace = MSBuildWorkspace.Create())
                     FileName = Path.GetFileName(filePath),
                     ProjectName = projectName,
                     Namespace = ns,
+                    FileHash = fileHash,
                     Classes = walker.Classes,
                     Methods = walker.Methods,
                     Fields = walker.Fields,
@@ -173,6 +221,7 @@ var specClassNames = new HashSet<string>(allResults.SelectMany(r => r.Classes)
 
 Console.WriteLine();
 Console.WriteLine($"  Scanned : {scannedFiles} files");
+Console.WriteLine($"  Skipped : {skippedFiles} unchanged files");
 Console.WriteLine($"  Classes : {indexedClasses}");
 Console.WriteLine($"  Methods : {indexedMethods}");
 Console.WriteLine($"  Failed  : {failedProjects} project(s)");
@@ -184,12 +233,39 @@ if (config.DryRun)
     return;
 }
 
-// ── 3. Upsert to FalkorDB ─────────────────────────────────────────────────
+// ── 3a. Delete subgraphs for deleted files (incremental mode) ─────────────
+if (isIncremental)
+{
+    var deletedFiles = config.ChangedFiles!
+        .Where(f => f.EndsWith(".cs") && !File.Exists(Path.Combine(ctx.RepoRoot, f)))
+        .ToList();
+    if (deletedFiles.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"Deleting subgraphs for {deletedFiles.Count} removed file(s)...");
+        foreach (var del in deletedFiles)
+            GraphUpserter.DeleteFileSubgraph(ctx, del);
+    }
+
+    // Also clean up stale files: exist in graph but no longer on disk
+    var staleFiles = existingHashes.Keys
+        .Where(path => !File.Exists(Path.Combine(ctx.RepoRoot, path)))
+        .Except(deletedFiles, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+    if (staleFiles.Count > 0)
+    {
+        Console.WriteLine($"Deleting subgraphs for {staleFiles.Count} stale file(s)...");
+        foreach (var stale in staleFiles)
+            GraphUpserter.DeleteFileSubgraph(ctx, stale);
+    }
+}
+
+// ── 3b. Upsert to FalkorDB ────────────────────────────────────────────────
 Console.WriteLine();
 Console.WriteLine("Upserting source files, namespaces, classes...");
 foreach (var r in allResults)
 {
-    GraphUpserter.UpsertSourceFile(ctx, r.RelPath, r.FileName, r.ProjectName);
+    GraphUpserter.UpsertSourceFile(ctx, r.RelPath, r.FileName, r.ProjectName, r.FileHash);
     GraphUpserter.UpsertNamespace(ctx, r.Namespace, r.ProjectName);
     GraphUpserter.UpsertClasses(ctx, r.Classes, allClassNames);
 }
@@ -204,7 +280,7 @@ foreach (var r in allResults)
 
 // ── 4. Record run metadata ──────────────────────────────────────────────────
 Console.WriteLine("Recording index run...");
-GraphUpserter.RecordIndexRun(ctx, runId, startedAt, scannedFiles, indexedClasses, indexedMethods, failedProjects);
+GraphUpserter.RecordIndexRun(ctx, runId, startedAt, scannedFiles, skippedFiles, indexedClasses, indexedMethods, failedProjects, isIncremental);
 
 // ── 5. Summary ──────────────────────────────────────────────────────────────
 var counts = ctx.Graph!.ReadOnlyQuery("MATCH (n) RETURN labels(n)[0] AS label, count(n) AS cnt ORDER BY cnt DESC");
@@ -231,7 +307,7 @@ Console.WriteLine($"\n  FalkorDB Browser -> http://localhost:3000");
 #region Context
 // ─────────────────────────────────────────────────────────────────────────────
 
-record AnalyzerContext(Graph? Graph, string GraphName, bool DryRun, string RepoRoot, string SrcRoot);
+record AnalyzerContext(Graph? Graph, string GraphName, bool DryRun, string RepoRoot, string SrcRoot, List<string>? ChangedFiles);
 
 #endregion
 
@@ -243,7 +319,8 @@ static class CliConfig
 {
     public record ParseResult(
         string FalkorHost, string FalkorPort, string FalkorPass,
-        string GraphName, bool DryRun, string RepoRoot, string SrcRoot);
+        string GraphName, bool DryRun, string RepoRoot, string SrcRoot,
+        List<string>? ChangedFiles);
 
     public static ParseResult Parse(string[] args)
     {
@@ -281,7 +358,17 @@ static class CliConfig
             ? Path.Combine(repoRoot, "src")
             : repoRoot;
 
-        return new ParseResult(falkorHost, falkorPort, falkorPass, graphName, dryRun, repoRoot, srcRoot);
+        // --changed-files=file1.cs,file2.cs (comma-separated repo-relative paths)
+        List<string>? changedFiles = null;
+        if (cliArgs.TryGetValue("changed-files", out var changedFilesArg) && changedFilesArg != "true")
+        {
+            changedFiles = changedFilesArg
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(f => f.Trim().Replace('\\', '/'))
+                .ToList();
+        }
+
+        return new ParseResult(falkorHost, falkorPort, falkorPass, graphName, dryRun, repoRoot, srcRoot, changedFiles);
     }
 }
 
@@ -459,6 +546,18 @@ static class InferenceEngine
 #endregion
 
 // ─────────────────────────────────────────────────────────────────────────────
+#region File Hashing
+// ─────────────────────────────────────────────────────────────────────────────
+
+static string ComputeFileSha256(string filePath)
+{
+    var bytes = File.ReadAllBytes(filePath);
+    return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+}
+
+#endregion
+
+// ─────────────────────────────────────────────────────────────────────────────
 #region String Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -528,9 +627,24 @@ static class GraphUpserter
         }
     }
 
-    public static void UpsertSourceFile(AnalyzerContext ctx, string relPath, string fileName, string projectName)
+    public static void UpsertSourceFile(AnalyzerContext ctx, string relPath, string fileName, string projectName, string fileHash)
     {
-        CypherClient.Cypher(ctx, $"MERGE (f:SourceFile {{path: '{E(relPath)}'}}) SET f.fileName = '{E(fileName)}', f.project = '{E(projectName)}' WITH f MATCH (proj:Project {{name: '{E(projectName)}'}}) MERGE (f)-[:IN_PROJECT]->(proj)");
+        CypherClient.Cypher(ctx, $"MERGE (f:SourceFile {{path: '{E(relPath)}'}}) SET f.fileName = '{E(fileName)}', f.project = '{E(projectName)}', f._file_hash = '{E(fileHash)}' WITH f MATCH (proj:Project {{name: '{E(projectName)}'}}) MERGE (f)-[:IN_PROJECT]->(proj)");
+    }
+
+    public static void DeleteFileSubgraph(AnalyzerContext ctx, string relPath)
+    {
+        // Delete methods, parameters, fields, properties, endpoints belonging to classes in this file
+        CypherClient.CypherBatch(ctx,
+        [
+            $"MATCH (f:SourceFile {{path: '{E(relPath)}'}})<-[:DECLARED_IN]-(c:Classes)<-[:BELONGS_TO]-(m:Methods)-[:HAS_PARAMETER]->(p:MethodParameter) DETACH DELETE p",
+            $"MATCH (f:SourceFile {{path: '{E(relPath)}'}})<-[:DECLARED_IN]-(c:Classes)<-[:BELONGS_TO]-(m:Methods)-[:MAPS_ENDPOINT]->(e:Endpoint) DETACH DELETE e",
+            $"MATCH (f:SourceFile {{path: '{E(relPath)}'}})<-[:DECLARED_IN]-(c:Classes)<-[:BELONGS_TO]-(m:Methods) DETACH DELETE m",
+            $"MATCH (f:SourceFile {{path: '{E(relPath)}'}})<-[:DECLARED_IN]-(c:Classes)-[:HAS_FIELD]->(fd:Field) DETACH DELETE fd",
+            $"MATCH (f:SourceFile {{path: '{E(relPath)}'}})<-[:DECLARED_IN]-(c:Classes)-[:HAS_PROPERTY]->(pr:Property) DETACH DELETE pr",
+            $"MATCH (f:SourceFile {{path: '{E(relPath)}'}})<-[:DECLARED_IN]-(c:Classes) DETACH DELETE c",
+            $"MATCH (f:SourceFile {{path: '{E(relPath)}'}}) DETACH DELETE f",
+        ]);
     }
 
     public static void UpsertNamespace(AnalyzerContext ctx, string? ns, string projectName)
@@ -706,10 +820,11 @@ static class GraphUpserter
         CypherClient.CypherBatch(ctx, stmts);
     }
 
-    public static void RecordIndexRun(AnalyzerContext ctx, string runId, string startedAt, int scannedFiles, int indexedClasses, int indexedMethods, int failedFiles)
+    public static void RecordIndexRun(AnalyzerContext ctx, string runId, string startedAt, int scannedFiles, int skippedFiles, int indexedClasses, int indexedMethods, int failedFiles, bool incremental)
     {
         var status = failedFiles > 0 && indexedClasses == 0 ? "failed" : failedFiles > 0 ? "partial" : "success";
-        CypherClient.Cypher(ctx, $"MERGE (r:IndexRun {{runId: '{E(runId)}'}}) SET r.startedAtUtc = '{E(startedAt)}', r.completedAtUtc = '{E(DateTime.UtcNow.ToString("o"))}', r.scannedFileCount = {scannedFiles}, r.indexedClassCount = {indexedClasses}, r.indexedMethodCount = {indexedMethods}, r.failedFileCount = {failedFiles}, r.status = '{E(status)}', r.engine = 'roslyn'");
+        var mode = incremental ? "incremental" : "full";
+        CypherClient.Cypher(ctx, $"MERGE (r:IndexRun {{runId: '{E(runId)}'}}) SET r.startedAtUtc = '{E(startedAt)}', r.completedAtUtc = '{E(DateTime.UtcNow.ToString("o"))}', r.scannedFileCount = {scannedFiles}, r.skippedFileCount = {skippedFiles}, r.indexedClassCount = {indexedClasses}, r.indexedMethodCount = {indexedMethods}, r.failedFileCount = {failedFiles}, r.status = '{E(status)}', r.mode = '{E(mode)}', r.engine = 'roslyn'");
     }
 
     // Short aliases for readability inside Cypher string interpolations
@@ -814,6 +929,7 @@ class FileAnalysisResult
     public string FileName { get; set; } = "";
     public string ProjectName { get; set; } = "";
     public string? Namespace { get; set; }
+    public string FileHash { get; set; } = "";
     public List<ClassInfo> Classes { get; set; } = [];
     public List<MethodInfo> Methods { get; set; } = [];
     public List<FieldInfo> Fields { get; set; } = [];

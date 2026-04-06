@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------
+# Git post-commit hook — incremental graph/vector index update.
+#
+# Runs in background so the commit returns immediately.
+# Only triggers if Docker containers are already running.
+#
+# Install: ./graph/setup-hooks.sh
+# Logs:    /tmp/monxa-graph-update.log
+# ---------------------------------------------------------------
+(
+  REPO="$(git rev-parse --show-toplevel)"
+
+  # Get files changed in the commit just made
+  CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
+  [[ -z "$CHANGED" ]] && exit 0
+
+  # Classify by extension (exclude build artifacts and migrations)
+  CS=$(echo "$CHANGED" | grep '\.cs$' | grep -v '/obj/' | grep -v '/bin/' | grep -v '/Migrations/' || true)
+  MD=$(echo "$CHANGED" | grep '\.md$' || true)
+
+  # Nothing relevant changed
+  [[ -z "$CS" && -z "$MD" ]] && exit 0
+
+  # Build flags
+  FLAGS="--skip-if-down"
+
+  if [[ -n "$CS" && -z "$MD" ]]; then
+    FLAGS="$FLAGS --graph"
+  elif [[ -z "$CS" && -n "$MD" ]]; then
+    FLAGS="$FLAGS --vector"
+  fi
+
+  if [[ -n "$CS" ]]; then
+    CS_LIST=$(echo "$CS" | tr '\n' ',' | sed 's/,$//')
+    FLAGS="$FLAGS --changed-cs-files=${CS_LIST}"
+  fi
+
+  if [[ -n "$MD" ]]; then
+    MD_LIST=$(echo "$MD" | tr '\n' ',' | sed 's/,$//')
+    FLAGS="$FLAGS --changed-md-files=${MD_LIST}"
+  fi
+
+  # shellcheck disable=SC2086
+  "$REPO/graph/load.sh" $FLAGS
+
+) &>/tmp/monxa-graph-update.log &

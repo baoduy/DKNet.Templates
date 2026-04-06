@@ -38,39 +38,75 @@ tools that need to understand codebase structure without reading every line of c
 ## Quick Start
 
 ```bash
-# Run Roslyn analyzer + start dashboard
+# Run both graph + vector indexers (full scan)
 ./graph/load.sh
 
-# Reset graph and re-analyze from scratch
-./graph/load.sh --reset
+# Graph only / vector only
+./graph/load.sh --graph
+./graph/load.sh --vector
 
-# Analyze only (no Docker dashboard)
+# Purge all data + full rebuild
+./graph/load.sh --purge
+
+# Preview without writing
+./graph/load.sh --dry-run
+
+# Stop containers after indexing
 ./graph/load.sh --no-dashboard
-
-# Start dashboard only (skip analyzer)
-./graph/load.sh --no-analyze
 ```
 
-## Run Analyzer Directly
+## Incremental Updates
+
+Both indexers track SHA256 file hashes. On re-run, unchanged files are skipped automatically — even without `--changed-files`.
 
 ```bash
-# Full run — writes Cypher to FalkorDB (must be running)
-dotnet run graph/analyze.cs
+# Incremental: only process specific changed files
+./graph/load.sh --graph --changed-cs-files=src/Mx.Pgw.Api/Program.cs,src/Mx.Pgw.Domains/Charge.cs
+./graph/load.sh --vector --changed-md-files=CLAUDE.md,specs/payout.md
 
-# Dry run — parse only, no writes
-dotnet run graph/analyze.cs -- --dry-run
+# Skip silently if Docker containers are not running
+./graph/load.sh --skip-if-down --changed-cs-files=src/Foo.cs
+```
 
-# Custom connection
-dotnet run graph/analyze.cs -- --host=localhost --port=6379 --password=codegraph123 --graph=codegraph
+### Git Post-Commit Hook
 
-# Explicit src path (useful when running from a different directory)
-dotnet run graph/analyze.cs -- --src=./src
+Auto-trigger incremental updates after every commit:
+
+```bash
+# One-time setup (installs .git/hooks/post-commit)
+./graph/setup-hooks.sh
+```
+
+The hook runs in background so commits are not blocked. It:
+- Classifies changed files by extension (`.cs` → graph, `.md` → vector)
+- Only runs if Docker containers are already up (`--skip-if-down`)
+- Logs to `/tmp/monxa-graph-update.log`
+
+## Run Indexers Directly
+
+```bash
+# Graph: Roslyn → FalkorDB
+dotnet run graph/graph.cs
+dotnet run graph/graph.cs -- --dry-run
+dotnet run graph/graph.cs -- --changed-files=src/Mx.Pgw.Api/Program.cs
+
+# Vector: Markdown → ONNX → Qdrant
+dotnet run graph/vector.cs
+dotnet run graph/vector.cs -- --dry-run
+dotnet run graph/vector.cs -- --changed-files=CLAUDE.md,README.md
+
+# Custom connections
+dotnet run graph/graph.cs -- --host=localhost --port=6379 --password=codegraph123 --graph=codegraph
+dotnet run graph/vector.cs -- --host=localhost --port=6334 --collection=monxa-docs
 ```
 
 ## Dashboard
 
-FalkorDB must be running during analysis (it's a server, not an embedded database).
-Start with `docker compose -f graph/docker-compose.yml up -d`, then open http://localhost:3000 for the browser UI.
+FalkorDB and Qdrant must be running during indexing (they're servers, not embedded databases).
+Start with `docker compose -f graph/docker-compose.yml up -d`.
+
+- FalkorDB Browser: http://localhost:3000
+- Qdrant Dashboard: http://localhost:6333/dashboard
 
 ## What Gets Indexed
 

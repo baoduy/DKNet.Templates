@@ -36,8 +36,10 @@ using Qdrant.Client.Grpc;
 // ─────────────────────────────────────────────────────────────────────────────
 var config = VectorCliConfig.Parse(args);
 
+var isIncremental = config.ChangedFiles != null;
 Console.WriteLine("DKNet Markdown Vector Indexer (Qdrant + ONNX all-MiniLM-L6-v2)");
 Console.WriteLine($"Qdrant : {config.QdrantHost}:{config.QdrantPort} (collection: {config.Collection}){(config.DryRun ? " (DRY RUN)" : "")}");
+Console.WriteLine($"Mode   : {(isIncremental ? $"incremental ({config.ChangedFiles!.Count} file(s))" : "full scan")}");
 Console.WriteLine($"Model  : {config.ModelDir}");
 Console.WriteLine($"Source : {config.RepoRoot}");
 Console.WriteLine();
@@ -47,15 +49,29 @@ await OnnxModelManager.EnsureModelAsync(config.ModelDir);
 
 // ── 2. Discover markdown files ──────────────────────────────────────────────
 Console.WriteLine("Discovering .md files...");
-var mdFiles = MarkdownDiscovery.FindAll(config.RepoRoot);
-Console.WriteLine($"  Found {mdFiles.Count} markdown file(s)");
+List<string> mdFiles;
+if (isIncremental)
+{
+    // Only process the specific changed files (filter to existing .md files)
+    mdFiles = config.ChangedFiles!
+        .Where(f => f.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        .Select(f => Path.GetFullPath(Path.Combine(config.RepoRoot, f)))
+        .Where(File.Exists)
+        .ToList();
+    Console.WriteLine($"  Incremental: {mdFiles.Count} changed .md file(s)");
+}
+else
+{
+    mdFiles = MarkdownDiscovery.FindAll(config.RepoRoot);
+    Console.WriteLine($"  Found {mdFiles.Count} markdown file(s)");
+}
 
 // ── 3. Compute file hashes and chunk (parallel file I/O) ───────────────────
 Console.WriteLine("Chunking by headings...");
 var fileChunksBag = new ConcurrentDictionary<string, (string Hash, List<MarkdownChunk> Chunks)>();
 Parallel.ForEach(mdFiles, filePath =>
 {
-    var relPath = Path.GetRelativePath(config.RepoRoot, filePath);
+    var relPath = Path.GetRelativePath(config.RepoRoot, filePath).Replace('\\', '/');
     var category = MarkdownDiscovery.CategorizeFile(relPath);
     var content = File.ReadAllText(filePath);
     var fileHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant();
@@ -129,46 +145,85 @@ var existingPointIds = new Dictionary<string, List<string>>(); // file_path → 
 
 if (!collectionIsNew && !config.Purge)
 {
-    Console.WriteLine("Checking existing index for incremental update...");
-
-    // Scroll through all points to build file hash map
-    PointId? nextOffset = null;
-    bool first = true;
-    do
+    if (isIncremental)
     {
-        var scrollResult = first
-            ? await qdrantClient.ScrollAsync(config.Collection, limit: 100,
-                payloadSelector: new WithPayloadSelector
-                {
-                    Include = new PayloadIncludeSelector { Fields = { "file_path", "file_hash" } }
-                })
-            : await qdrantClient.ScrollAsync(config.Collection, limit: 100,
-                offset: nextOffset,
-                payloadSelector: new WithPayloadSelector
-                {
-                    Include = new PayloadIncludeSelector { Fields = { "file_path", "file_hash" } }
-                });
-        first = false;
-
-        foreach (var point in scrollResult.Result)
+        // Fast-path: only query points for the specific changed/deleted files
+        Console.WriteLine("Querying index for changed files only (incremental fast-path)...");
+        var allChangedPaths = config.ChangedFiles!.Select(f => f.Replace('\\', '/')).ToList();
+        foreach (var fp in allChangedPaths)
         {
-            var fp = point.Payload.GetValueOrDefault("file_path")?.StringValue ?? "";
-            var fh = point.Payload.GetValueOrDefault("file_hash")?.StringValue ?? "";
-            var pid = point.Id.Uuid;
-
-            if (!string.IsNullOrEmpty(fp))
+            try
             {
-                existingFileHashes[fp] = fh;
-                if (!existingPointIds.ContainsKey(fp))
-                    existingPointIds[fp] = [];
-                existingPointIds[fp].Add(pid);
+                var scrollResult = await qdrantClient.ScrollAsync(config.Collection, limit: 500,
+                    filter: new Filter
+                    {
+                        Must = { new Condition { Field = new FieldCondition
+                        {
+                            Key = "file_path",
+                            Match = new Match { Keyword = fp }
+                        }}}
+                    },
+                    payloadSelector: new WithPayloadSelector
+                    {
+                        Include = new PayloadIncludeSelector { Fields = { "file_path", "file_hash" } }
+                    });
+                foreach (var point in scrollResult.Result)
+                {
+                    var fh = point.Payload.GetValueOrDefault("file_hash")?.StringValue ?? "";
+                    var pid = point.Id.Uuid;
+                    existingFileHashes[fp] = fh;
+                    if (!existingPointIds.ContainsKey(fp))
+                        existingPointIds[fp] = [];
+                    existingPointIds[fp].Add(pid);
+                }
             }
+            catch { /* file may not exist in index yet */ }
         }
+        Console.WriteLine($"  Found {existingPointIds.Values.Sum(v => v.Count)} existing point(s) for {allChangedPaths.Count} file(s).");
+    }
+    else
+    {
+        Console.WriteLine("Checking existing index for incremental update...");
 
-        nextOffset = scrollResult.NextPageOffset;
-    } while (nextOffset != null);
+        // Full scroll to build complete hash map
+        PointId? nextOffset = null;
+        bool first = true;
+        do
+        {
+            var scrollResult = first
+                ? await qdrantClient.ScrollAsync(config.Collection, limit: 100,
+                    payloadSelector: new WithPayloadSelector
+                    {
+                        Include = new PayloadIncludeSelector { Fields = { "file_path", "file_hash" } }
+                    })
+                : await qdrantClient.ScrollAsync(config.Collection, limit: 100,
+                    offset: nextOffset,
+                    payloadSelector: new WithPayloadSelector
+                    {
+                        Include = new PayloadIncludeSelector { Fields = { "file_path", "file_hash" } }
+                    });
+            first = false;
 
-    Console.WriteLine($"  Found {existingFileHashes.Count} indexed file(s), {existingPointIds.Values.Sum(v => v.Count)} point(s).");
+            foreach (var point in scrollResult.Result)
+            {
+                var fp = point.Payload.GetValueOrDefault("file_path")?.StringValue ?? "";
+                var fh = point.Payload.GetValueOrDefault("file_hash")?.StringValue ?? "";
+                var pid = point.Id.Uuid;
+
+                if (!string.IsNullOrEmpty(fp))
+                {
+                    existingFileHashes[fp] = fh;
+                    if (!existingPointIds.ContainsKey(fp))
+                        existingPointIds[fp] = [];
+                    existingPointIds[fp].Add(pid);
+                }
+            }
+
+            nextOffset = scrollResult.NextPageOffset;
+        } while (nextOffset != null);
+
+        Console.WriteLine($"  Found {existingFileHashes.Count} indexed file(s), {existingPointIds.Values.Sum(v => v.Count)} point(s).");
+    }
 }
 
 // ── 9. Determine which files need processing ────────────────────────────────
@@ -183,8 +238,23 @@ foreach (var (relPath, (hash, chunks)) in fileChunks)
         filesToProcess.Add(relPath);
 }
 
-// Files that exist in index but not on disk → stale, need deletion
-var staleFiles = existingPointIds.Keys.Where(fp => !fileChunks.ContainsKey(fp)).ToList();
+// Detect deleted files: in changed-files list but not on disk
+var staleFiles = new List<string>();
+if (isIncremental)
+{
+    var deletedFiles = config.ChangedFiles!
+        .Where(f => f.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        .Select(f => f.Replace('\\', '/'))
+        .Where(f => !File.Exists(Path.GetFullPath(Path.Combine(config.RepoRoot, f))))
+        .Where(f => existingPointIds.ContainsKey(f))
+        .ToList();
+    staleFiles.AddRange(deletedFiles);
+}
+else
+{
+    // Full mode: files in index but no longer on disk
+    staleFiles.AddRange(existingPointIds.Keys.Where(fp => !fileChunks.ContainsKey(fp)));
+}
 
 Console.WriteLine($"  Files: {filesToProcess.Count} changed, {filesToSkip} unchanged, {staleFiles.Count} stale");
 
@@ -520,7 +590,8 @@ static class VectorCliConfig
 {
     public record ParseResult(
         string QdrantHost, int QdrantPort, string Collection,
-        string ModelDir, bool DryRun, bool Purge, string RepoRoot);
+        string ModelDir, bool DryRun, bool Purge, string RepoRoot,
+        List<string>? ChangedFiles);
 
     public static ParseResult Parse(string[] args)
     {
@@ -558,7 +629,17 @@ static class VectorCliConfig
             ".cache", "all-minilm-l6-v2");
         var modelDir = GetArg("model-dir", "ONNX_MODEL_DIR", defaultCacheDir);
 
-        return new ParseResult(qdrantHost, qdrantPort, collection, modelDir, dryRun, purge, repoRoot);
+        // --changed-files=file1.md,file2.md (comma-separated repo-relative paths)
+        List<string>? changedFiles = null;
+        if (cliArgs.TryGetValue("changed-files", out var changedFilesArg) && changedFilesArg != "true")
+        {
+            changedFiles = changedFilesArg
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(f => f.Trim().Replace('\\', '/'))
+                .ToList();
+        }
+
+        return new ParseResult(qdrantHost, qdrantPort, collection, modelDir, dryRun, purge, repoRoot, changedFiles);
     }
 }
 
