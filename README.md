@@ -135,6 +135,40 @@ See [AGENTS.md](AGENTS.md) for the full architecture reference.
 
 ---
 
+## AI assistant plugins
+
+The repo ships a Claude Code plugin and a GitHub Copilot plugin that drive vertical-slice features end-to-end. Generated solutions include both folders (`.claude/`, `.claude-plugin/`, `.github/`), so your team gets the same agents, skills, and slash commands the template authors use.
+
+### Claude Code
+
+```text
+/plugin marketplace add baoduy/dknet.templates
+/plugin install dknet-minimal
+```
+
+Once installed, the following slash commands are available:
+
+| Command | Purpose |
+|---|---|
+| `/dknet-feature <Feature> <Entity> [props…]` | Orchestrates a full vertical slice: plan → entity → CRUD → endpoint → tests → BDD → docs |
+| `/dknet-entity <Feature> <Entity> [props…]` | Domain entity + EF mapper + migration |
+| `/dknet-crud <Feature> <Entity>` | AppServices CRUD (DTO + Create/Update/Delete + spec + event) |
+| `/dknet-endpoint <Feature> <Entity>` | Minimal API `IEndpointConfig` with idempotency on POST |
+| `/dknet-unit-tests <Feature> <Entity>` | `ApiFixture` + `IMessageBus` integration tests |
+| `/dknet-docs <Feature>` | Feature documentation under `docs/features/<feature>/` |
+
+Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and seven domain skills back the commands; see `.claude/agents/` and `.claude/skills/`.
+
+### GitHub Copilot
+
+Copilot auto-discovers `.github/agents/` and `.github/skills/` when you open the repo in VS Code. See `.github/skills/CATALOG.md` for the full skill list.
+
+### Embedded in generated solutions
+
+Running `dotnet new dknet-minimal -n MyApp` copies both plugin folders into `MyApp/`. Your team gets the agents, skills, and commands without any extra install step.
+
+---
+
 ## Packaging & Publishing
 
 ### Build the NuGet template pack

@@ -21,6 +21,8 @@ EXPLICIT_VERSION=""
 DRY_RUN=false
 PLUGIN_JSON="plugin.json"
 MARKETPLACE_JSON=".github/plugin/marketplace.json"
+CLAUDE_PLUGIN_JSON=".claude-plugin/plugin.json"
+CLAUDE_MARKETPLACE_JSON=".claude-plugin/marketplace.json"
 
 # ── Parse args ────────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -144,7 +146,55 @@ if [[ $ERRORS -gt 0 ]]; then
   fail "Validation failed with $ERRORS error(s). Fix the issues above and retry."
 fi
 
-ok "Plugin structure valid: $AGENT_COUNT agents, $SKILL_COUNT skills"
+ok "Copilot plugin structure valid: $AGENT_COUNT agents, $SKILL_COUNT skills"
+
+# ── Validate Claude plugin structure ──────────────────────────────────────────
+info "Validating Claude plugin structure..."
+
+validate_file "$CLAUDE_PLUGIN_JSON"
+validate_file "$CLAUDE_MARKETPLACE_JSON"
+validate_dir ".claude/agents"
+validate_dir ".claude/commands"
+validate_dir ".claude/skills"
+
+if [[ -f "$CLAUDE_PLUGIN_JSON" ]]; then
+  jq -e '.name' "$CLAUDE_PLUGIN_JSON" >/dev/null 2>&1 || { err ".claude-plugin/plugin.json: missing 'name' field"; ((ERRORS++)); }
+  jq -e '.version' "$CLAUDE_PLUGIN_JSON" >/dev/null 2>&1 || { err ".claude-plugin/plugin.json: missing 'version' field"; ((ERRORS++)); }
+fi
+
+if [[ -f "$CLAUDE_MARKETPLACE_JSON" ]]; then
+  jq -e '.name' "$CLAUDE_MARKETPLACE_JSON" >/dev/null 2>&1 || { err ".claude-plugin/marketplace.json: missing 'name' field"; ((ERRORS++)); }
+  jq -e '.plugins' "$CLAUDE_MARKETPLACE_JSON" >/dev/null 2>&1 || { err ".claude-plugin/marketplace.json: missing 'plugins' array"; ((ERRORS++)); }
+fi
+
+CLAUDE_AGENT_COUNT=0
+for f in .claude/agents/*.md; do
+  [[ -f "$f" ]] || continue
+  ((CLAUDE_AGENT_COUNT++))
+  head -1 "$f" | grep -q '^---' || { warn "Claude agent missing YAML frontmatter: $f"; }
+done
+
+CLAUDE_COMMAND_COUNT=0
+for f in .claude/commands/*.md; do
+  [[ -f "$f" ]] || continue
+  ((CLAUDE_COMMAND_COUNT++))
+  head -1 "$f" | grep -q '^---' || { warn "Claude command missing YAML frontmatter: $f"; }
+done
+
+CLAUDE_SKILL_COUNT=0
+for d in .claude/skills/*/; do
+  [[ -d "$d" ]] || continue
+  DIRNAME=$(basename "$d")
+  [[ "$DIRNAME" == _* ]] && continue
+  ((CLAUDE_SKILL_COUNT++))
+  [[ -f "${d}SKILL.md" ]] || { err "Claude skill missing SKILL.md: $d"; ((ERRORS++)); }
+done
+
+if [[ $ERRORS -gt 0 ]]; then
+  fail "Validation failed with $ERRORS error(s). Fix the issues above and retry."
+fi
+
+ok "Claude plugin structure valid: $CLAUDE_AGENT_COUNT agents, $CLAUDE_COMMAND_COUNT commands, $CLAUDE_SKILL_COUNT skills"
 
 # ── Version management ────────────────────────────────────────────────────────
 CURRENT_VERSION=$(jq -r '.version' "$PLUGIN_JSON")
@@ -182,13 +232,18 @@ fi
 if [[ "$DRY_RUN" == true ]]; then
   echo ""
   ok "Dry run complete. Summary:"
-  echo "  Plugin:     $PLUGIN_JSON (valid)"
-  echo "  Marketplace: $MARKETPLACE_JSON (valid)"
-  echo "  Agents:     $AGENT_COUNT"
-  echo "  Skills:     $SKILL_COUNT"
-  echo "  Version:    $CURRENT_VERSION → $NEW_VERSION"
-  echo "  Tag:        $TAG"
-  echo "  Repository: $OWNER/$REPO"
+  echo "  Copilot plugin:      $PLUGIN_JSON (valid)"
+  echo "  Copilot marketplace: $MARKETPLACE_JSON (valid)"
+  echo "  Copilot agents:      $AGENT_COUNT"
+  echo "  Copilot skills:      $SKILL_COUNT"
+  echo "  Claude plugin:       $CLAUDE_PLUGIN_JSON (valid)"
+  echo "  Claude marketplace:  $CLAUDE_MARKETPLACE_JSON (valid)"
+  echo "  Claude agents:       $CLAUDE_AGENT_COUNT"
+  echo "  Claude commands:     $CLAUDE_COMMAND_COUNT"
+  echo "  Claude skills:       $CLAUDE_SKILL_COUNT"
+  echo "  Version:             $CURRENT_VERSION → $NEW_VERSION"
+  echo "  Tag:                 $TAG"
+  echo "  Repository:          $OWNER/$REPO"
   exit 0
 fi
 
@@ -206,7 +261,20 @@ jq --arg v "$NEW_VERSION" '
 ' "$MARKETPLACE_JSON" > "${MARKETPLACE_JSON}.tmp" \
   && mv "${MARKETPLACE_JSON}.tmp" "$MARKETPLACE_JSON"
 
-ok "Version updated in plugin.json and marketplace.json"
+# Update Claude plugin manifests if present
+if [[ -f "$CLAUDE_PLUGIN_JSON" ]]; then
+  jq --arg v "$NEW_VERSION" '.version = $v' "$CLAUDE_PLUGIN_JSON" > "${CLAUDE_PLUGIN_JSON}.tmp" \
+    && mv "${CLAUDE_PLUGIN_JSON}.tmp" "$CLAUDE_PLUGIN_JSON"
+fi
+if [[ -f "$CLAUDE_MARKETPLACE_JSON" ]]; then
+  jq --arg v "$NEW_VERSION" '
+    (.metadata.version // empty) |= $v |
+    .plugins[].version = $v
+  ' "$CLAUDE_MARKETPLACE_JSON" > "${CLAUDE_MARKETPLACE_JSON}.tmp" \
+    && mv "${CLAUDE_MARKETPLACE_JSON}.tmp" "$CLAUDE_MARKETPLACE_JSON"
+fi
+
+ok "Version updated in Copilot and Claude plugin manifests"
 
 # ── Build release notes ───────────────────────────────────────────────────────
 info "Building release notes..."
@@ -241,21 +309,29 @@ for d in .github/skills/*/; do
 done
 
 RELEASE_NOTES=$(cat <<EOF
-## DKNet Copilot Plugin v${NEW_VERSION}
+## DKNet Plugin v${NEW_VERSION}
 
-GitHub Copilot skills and agents for scaffolding production-ready .NET 10 microservices using DKNet.Minimal.Template.
+Skills, agents, and slash commands for scaffolding production-ready .NET 10 microservices using DKNet.Minimal.Template — for both GitHub Copilot and Claude Code.
 
-### Agents ($AGENT_COUNT)
+### Copilot agents ($AGENT_COUNT)
 
 ${AGENT_LIST}
-### Skills ($SKILL_COUNT)
+### Copilot skills ($SKILL_COUNT)
 
 ${SKILL_LIST}
+### Claude Code
+
+- Agents: ${CLAUDE_AGENT_COUNT} (\`.claude/agents/\`)
+- Slash commands: ${CLAUDE_COMMAND_COUNT} (\`.claude/commands/\`)
+- Skills: ${CLAUDE_SKILL_COUNT} (\`.claude/skills/\`)
+
 ### Installation
 
-Clone this repository — Copilot automatically discovers agents in \`.github/agents/\` and skills in \`.github/skills/\`.
+**GitHub Copilot:** Clone this repository — Copilot automatically discovers agents in \`.github/agents/\` and skills in \`.github/skills/\`.
 
-For Claude Code, use the slash commands in \`.claude/commands/\` (e.g., \`/project:dknet-developer\`).
+**Claude Code:** Run \`/plugin marketplace add baoduy/dknet.templates\` then \`/plugin install dknet-minimal\`. Or clone the repo and Claude Code will auto-discover \`.claude/\` and \`.claude-plugin/\`.
+
+The plugin is also embedded in the \`DKNet.Minimal.Template\` NuGet template, so generated solutions ship with both plugins preconfigured.
 
 ### Changes since ${LAST_TAG:-initial}
 
@@ -268,6 +344,8 @@ EOF
 # ── Commit, tag, push, release ────────────────────────────────────────────────
 info "Committing version bump..."
 git add "$PLUGIN_JSON" "$MARKETPLACE_JSON"
+[[ -f "$CLAUDE_PLUGIN_JSON" ]] && git add "$CLAUDE_PLUGIN_JSON"
+[[ -f "$CLAUDE_MARKETPLACE_JSON" ]] && git add "$CLAUDE_MARKETPLACE_JSON"
 git commit -m "chore: bump plugin version to ${NEW_VERSION}" || info "Nothing to commit (version files unchanged)"
 
 info "Creating tag $TAG..."
@@ -293,11 +371,14 @@ echo "════════════════════════�
 echo -e " ${GREEN}Plugin published successfully!${NC}"
 echo "══════════════════════════════════════════════════════════"
 echo ""
-echo "  Version:  $NEW_VERSION"
-echo "  Tag:      $TAG"
-echo "  Agents:   $AGENT_COUNT"
-echo "  Skills:   $SKILL_COUNT"
-echo "  Release:  https://github.com/$OWNER/$REPO/releases/tag/$TAG"
+echo "  Version:         $NEW_VERSION"
+echo "  Tag:             $TAG"
+echo "  Copilot agents:  $AGENT_COUNT"
+echo "  Copilot skills:  $SKILL_COUNT"
+echo "  Claude agents:   $CLAUDE_AGENT_COUNT"
+echo "  Claude commands: $CLAUDE_COMMAND_COUNT"
+echo "  Claude skills:   $CLAUDE_SKILL_COUNT"
+echo "  Release:         https://github.com/$OWNER/$REPO/releases/tag/$TAG"
 echo ""
 echo "  Users can access your plugin by cloning/forking:"
 echo "    git clone https://github.com/$OWNER/$REPO.git"

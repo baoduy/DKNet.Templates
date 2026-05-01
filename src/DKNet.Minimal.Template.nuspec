@@ -43,6 +43,10 @@
     <file src="..\.github\agents\**\*" target="content\.github\agents\" />
     <file src="..\.github\prompts\**\*" target="content\.github\prompts\" />
     <file src="..\.github\skills\**\*" target="content\.github\skills\" />
+    <file src="..\.claude\agents\**\*" target="content\.claude\agents\" />
+    <file src="..\.claude\commands\**\*" target="content\.claude\commands\" />
+    <file src="..\.claude\skills\**\*" target="content\.claude\skills\" />
+    <file src="..\.claude-plugin\**\*" target="content\.claude-plugin\" />
     <file src="..\.specify\**\*" target="content\.specify\" />
     <file src="..\.vscode\**\*" target="content\.vscode\" />
 
