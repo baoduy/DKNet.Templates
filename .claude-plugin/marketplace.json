@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace",
+  "name": "dknet-marketplace",
+  "owner": {
+    "name": "baoduy",
+    "email": "baoduy2412@gmail.com",
+    "url": "https://github.com/baoduy"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for the DKNet ecosystem — currently ships the DKNet.Minimal.Template scaffolding plugin.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "dknet-minimal",
+      "source": ".",
+      "description": "Slash commands, subagents, and skills for shipping vertical-slice features end-to-end on the DKNet.Minimal.Template.",
+      "version": "0.1.0",
+      "homepage": "https://github.com/baoduy/DKNet.Templates",
+      "keywords": [
+        "dotnet",
+        "ddd",
+        "cqrs",
+        "efcore",
+        "aspire",
+        "scaffold"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "id": "dknet-bdd-tests",
+  "title": "BDD Scenario Development with Reqnroll + NUnit",
+  "category": "Testing & Quality",
+  "difficulty": "Intermediate",
+  "estimatedDurationMinutes": {
+    "min": 25,
+    "max": 45
+  },
+  "prerequisites": [
+    "Understanding of Gherkin and Reqnroll bindings",
+    "Basic knowledge of Minimal API endpoint behavior",
+    "Ability to read feature docs under docs/features and specs"
+  ],
+  "inputs": {
+    "description": "Information required before authoring BDD scenarios",
+    "items": [
+      "Target feature name and domain",
+      "Feature docs under docs/features/<feature>",
+      "Specification files under specs/<feature>",
+      "API contract details (route, method, headers, payload)",
+      "Expected success and failure behaviors"
+    ]
+  },
+  "outputs": {
+    "description": "Artifacts created by this skill",
+    "items": [
+      "A production-ready .feature file",
+      "Matching step definition class with [Binding] methods",
+      "Passing BDD test scenarios aligned to docs and specs"
+    ]
+  },
+  "successCriteria": [
+    "Scenarios map directly to acceptance criteria from specs",
+    "Step phrases in .feature and [Binding] attributes match exactly",
+    "Assertions are contract-first and validate status code, response structure, and key data fields",
+    "BDD tests pass via dotnet test without external services"
+  ],
+  "nonGoals": [
+    "Implementing new domain entities or appservices logic",
+    "Designing frontend UX workflows",
+    "Replacing integration/unit tests outside BDD scope"
+  ],
+  "relatedSkills": [
+    "dknet-appservices-actions",
+    "dknet-endpoint-config",
+    "dknet-feature-documentation"
+  ],
+  "folderPath": ".github/skills/dknet-bdd-tests"
+}
