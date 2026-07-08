@@ -29,6 +29,7 @@
 - Delete: `.claude/commands/speckit-implement.md`
 - Delete: `.claude/commands/speckit-plan.md`
 - Delete: `.claude/commands/speckit-specify.md`
+- Delete: `.claude/commands/speckit-tasks.md`
 - Delete: `.claude/commands/speckit-taskstoissues.md`
 - Delete: `.claude/commands/dknet-developer.md`
 
@@ -52,6 +53,7 @@ git rm .claude/commands/speckit-analyze.md \
        .claude/commands/speckit-implement.md \
        .claude/commands/speckit-plan.md \
        .claude/commands/speckit-specify.md \
+       .claude/commands/speckit-tasks.md \
        .claude/commands/speckit-taskstoissues.md \
        .claude/commands/dknet-developer.md
 ```
