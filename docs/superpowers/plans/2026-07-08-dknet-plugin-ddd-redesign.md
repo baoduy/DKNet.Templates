@@ -700,7 +700,7 @@ EOF
 ### Task 7: Final consistency verification
 
 **Files:**
-- None modified — verification only.
+- Modify (only if Step 1 finds a leftover reference): the offending file, with a minimal one-line fix.
 
 **Interfaces:**
 - Consumes: final state of all files from Tasks 1–6.
@@ -709,7 +709,7 @@ EOF
 - [ ] **Step 1: Confirm no dangling references to removed commands anywhere in the plugin**
 
 Run: `grep -rln "speckit\|dknet-developer" .claude/ README.md SPEC_KIT.md 2>/dev/null`
-Expected: `SPEC_KIT.md` only (that file documents the standalone Spec-Kit CLI tool, not the plugin, and is out of scope per the spec's non-goals — no other file should match).
+Expected: `SPEC_KIT.md` only (that file documents the standalone Spec-Kit CLI tool, not the plugin, and is out of scope per the spec's non-goals — no other file should match). If any other file matches, fix it before continuing to Step 2 — do not treat this as an informational-only check.
 
 - [ ] **Step 2: Confirm every skill referenced by the two agents actually exists on disk**
 
@@ -731,4 +731,37 @@ Expected: `commands`, `agents`, `skills` keys still point at `./.claude/commands
 Run: `git log --oneline docs/superpowers/plans/2026-07-08-dknet-plugin-ddd-redesign.md..HEAD` (or, if that range is empty because the plan file itself was touched by a correction commit, `git log --oneline` and visually confirm every commit since the plan was first written is one of: a Task 1–6 commit, or a documented plan-correction commit).
 Expected: every commit carries a `Co-Authored-By: Claude Sonnet 5` trailer; no commit is unexplained by a task or a disclosed correction (the plan's Task sections and this file's own edit history note the two known corrections: the missing `speckit-tasks.md` command in Task 1, and the missing `speckit-*` skill directories in Task 6).
 
-No commit for this task — it's verification-only.
+**Correction (found during Step 1):** `.claude/agents/dknet-architect.md:34` still reads:
+
+```markdown
+7. **Risks & open questions** — anything ambiguous; flag for `/speckit-clarify` if Spec-Kit is in use.
+```
+
+Task 5 only touched the architect's "Required reading" section and output-contract item 1 — it missed this Spec-Kit reference in item 7. Since Spec-Kit is fully removed from this plugin (not "used conditionally" — the command no longer exists), fix it:
+
+Change it to:
+
+```markdown
+7. **Risks & open questions** — anything ambiguous; surface it here for the user to resolve before implementation begins.
+```
+
+Verify: `grep -c "speckit\|dknet-developer" .claude/agents/dknet-architect.md`
+Expected: `0`
+
+Commit:
+
+```bash
+git add .claude/agents/dknet-architect.md
+git commit -m "$(cat <<'EOF'
+fix(plugin): remove leftover Spec-Kit reference from dknet-architect
+
+Task 5 updated the architect's required reading and aggregates line
+but missed this Spec-Kit reference in the output contract, caught by
+Task 7's final grep sweep.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+EOF
+)"
+```
+
+If Step 1 finds no other stray references, no further commit is needed for this task.
