@@ -166,9 +166,10 @@ Once installed, the following slash commands are available:
 | `/dknet-crud <Feature> <Entity>` | AppServices CRUD (DTO + Create/Update/Delete + spec + event) |
 | `/dknet-endpoint <Feature> <Entity>` | Minimal API `IEndpointConfig` with idempotency on POST |
 | `/dknet-unit-tests <Feature> <Entity>` | `ApiFixture` + `IMessageBus` integration tests |
+| `/dknet-bdd-test <Feature> <Entity>` | Reqnroll + NUnit BDD scenarios |
 | `/dknet-docs <Feature>` | Feature documentation under `docs/features/<feature>/` |
 
-Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and seven domain skills back the commands; see `.claude/agents/` and `.claude/skills/`.
+Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and nine domain skills back the commands — including `dknet-project-structure` (layer/folder orientation) and `dknet-ddd-principles` (aggregate boundaries, entity vs. value object, invariants, domain events); see `.claude/agents/` and `.claude/skills/`.
 
 ### GitHub Copilot
 
