@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin",
+  "name": "dknet-minimal",
+  "displayName": "DKNet Minimal Template",
+  "description": "Slash commands, subagents, and skills for shipping vertical-slice features end-to-end on the DKNet.Minimal.Template (.NET 10, DDD/CQRS, EF Core, .NET Aspire, SlimMessageBus, FluentValidation, Reqnroll BDD).",
+  "version": "0.1.0",
+  "author": {
+    "name": "baoduy",
+    "email": "baoduy2412@gmail.com",
+    "url": "https://drunkcoding.net"
+  },
+  "homepage": "https://github.com/baoduy/DKNet.Templates",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/baoduy/DKNet.Templates.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dotnet",
+    "csharp",
+    "ddd",
+    "cqrs",
+    "vertical-slice",
+    "efcore",
+    "aspire",
+    "minimal-api",
+    "slimmessagebus",
+    "fluentvalidation",
+    "reqnroll",
+    "bdd",
+    "scaffold"
+  ],
+  "commands": "./.claude/commands",
+  "agents": "./.claude/agents",
+  "skills": "./.claude/skills"
+}

@@ -1,41 +1,29 @@
 {
-  "name": "dknet-plugins",
+  "$schema": "https://json.schemastore.org/claude-code-marketplace",
+  "name": "dknet-marketplace",
   "owner": {
     "name": "baoduy",
-    "email": "baoduy2412@gmail.com"
+    "email": "baoduy2412@gmail.com",
+    "url": "https://github.com/baoduy"
   },
   "metadata": {
-    "description": "Skills and agents for scaffolding production-ready .NET 10 microservices using DKNet.Minimal.Template",
-    "version": "0.0.13"
+    "description": "Claude Code plugins for the DKNet ecosystem — currently ships the DKNet.Minimal.Template scaffolding plugin.",
+    "version": "0.1.0"
   },
   "plugins": [
     {
-      "name": "dknet-plugin",
+      "name": "dknet-minimal",
       "source": ".",
-      "description": "Skills and agents for scaffolding production-ready .NET 10 microservices using DKNet.Minimal.Template with vertical slice DDD/CQRS, EF Core, .NET Aspire, SlimMessageBus, and FluentValidation",
-      "version": "0.0.13",
-      "author": {
-        "name": "baoduy",
-        "email": "baoduy2412@gmail.com"
-      },
-      "license": "MIT",
+      "description": "Slash commands, subagents, and skills for shipping vertical-slice features end-to-end on the DKNet.Minimal.Template.",
+      "version": "0.1.0",
+      "homepage": "https://github.com/baoduy/DKNet.Templates",
       "keywords": [
         "dotnet",
-        "csharp",
         "ddd",
         "cqrs",
-        "vertical-slice",
         "efcore",
         "aspire",
-        "microservices"
-      ],
-      "category": "development-workflows",
-      "tags": [
-        "dotnet",
-        "spec-kit",
-        "ddd",
-        "cqrs",
-        "vertical-slice"
+        "scaffold"
       ]
     }
   ]
