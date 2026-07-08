@@ -585,12 +585,45 @@ EOF
 
 ### Task 6: Update README.md's AI assistant plugins section
 
+**Correction (found during Task 6 execution):** the original plan only removed Spec-Kit *commands* (`.claude/commands/speckit-*.md`, done in Task 1) and never checked `.claude/skills/` for Spec-Kit content. `.claude/skills/` also contains 9 stale `speckit-*` directories (`speckit-analyze`, `speckit-checklist`, `speckit-clarify`, `speckit-constitution`, `speckit-implement`, `speckit-plan`, `speckit-specify`, `speckit-tasks`, `speckit-taskstoissues`) left over from the same Spec-Kit integration. Per the same decision that dropped the Spec-Kit commands (out of scope for this DDD-focused plugin), these must also go — otherwise `.claude/skills/` contains 18 directories instead of the 9 this plan produces, and the README's skill count is wrong. Removing them is folded into this task since that's where the gap was caught.
+
 **Files:**
+- Delete: `.claude/skills/speckit-analyze/`
+- Delete: `.claude/skills/speckit-checklist/`
+- Delete: `.claude/skills/speckit-clarify/`
+- Delete: `.claude/skills/speckit-constitution/`
+- Delete: `.claude/skills/speckit-implement/`
+- Delete: `.claude/skills/speckit-plan/`
+- Delete: `.claude/skills/speckit-specify/`
+- Delete: `.claude/skills/speckit-tasks/`
+- Delete: `.claude/skills/speckit-taskstoissues/`
 - Modify: `README.md:149-171`
 
 **Interfaces:**
 - Consumes: final command list from Task 1, final skill count from Tasks 2–3 (7 existing + 2 new = 9)
 - Produces: nothing consumed by later tasks.
+
+- [ ] **Step 0: Remove stale speckit-* skill directories**
+
+Run: `git rm -r .claude/skills/speckit-analyze .claude/skills/speckit-checklist .claude/skills/speckit-clarify .claude/skills/speckit-constitution .claude/skills/speckit-implement .claude/skills/speckit-plan .claude/skills/speckit-specify .claude/skills/speckit-tasks .claude/skills/speckit-taskstoissues`
+
+Verify: `ls .claude/skills/ | grep -v '.DS_Store'`
+Expected: exactly `dknet-appservices-actions`, `dknet-bdd-tests`, `dknet-ddd-principles`, `dknet-domain-entity`, `dknet-efcore-config`, `dknet-endpoint-config`, `dknet-feature-documentation`, `dknet-project-structure`, `dknet-unit-test` (9 entries).
+
+Commit this removal separately, before the README edit:
+
+```bash
+git commit -m "$(cat <<'EOF'
+chore(plugin): remove stale speckit-* skill directories
+
+Task 1 removed the Spec-Kit commands but missed the corresponding
+skill directories under .claude/skills/, left over from the same
+integration. Same out-of-scope decision applies here.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+EOF
+)"
+```
 
 - [ ] **Step 1: Update the command table and skill/agent count**
 
@@ -708,7 +741,7 @@ Expected: `commands`, `agents`, `skills` keys still point at `./.claude/commands
 
 - [ ] **Step 4: Confirm the git history for this plan is clean**
 
-Run: `git log --oneline -6`
-Expected: 6 commits, one per Task 1–6 above, each with a `Co-Authored-By: Claude Sonnet 5` trailer.
+Run: `git log --oneline docs/superpowers/plans/2026-07-08-dknet-plugin-ddd-redesign.md..HEAD` (or, if that range is empty because the plan file itself was touched by a correction commit, `git log --oneline` and visually confirm every commit since the plan was first written is one of: a Task 1–6 commit, or a documented plan-correction commit).
+Expected: every commit carries a `Co-Authored-By: Claude Sonnet 5` trailer; no commit is unexplained by a task or a disclosed correction (the plan's Task sections and this file's own edit history note the two known corrections: the missing `speckit-tasks.md` command in Task 1, and the missing `speckit-*` skill directories in Task 6).
 
 No commit for this task — it's verification-only.
