@@ -585,7 +585,7 @@ EOF
 
 ### Task 6: Update README.md's AI assistant plugins section
 
-**Correction (found during Task 6 execution):** the original plan only removed Spec-Kit *commands* (`.claude/commands/speckit-*.md`, done in Task 1) and never checked `.claude/skills/` for Spec-Kit content. `.claude/skills/` also contains 9 stale `speckit-*` directories (`speckit-analyze`, `speckit-checklist`, `speckit-clarify`, `speckit-constitution`, `speckit-implement`, `speckit-plan`, `speckit-specify`, `speckit-tasks`, `speckit-taskstoissues`) left over from the same Spec-Kit integration. Per the same decision that dropped the Spec-Kit commands (out of scope for this DDD-focused plugin), these must also go — otherwise `.claude/skills/` contains 18 directories instead of the 9 this plan produces, and the README's skill count is wrong. Removing them is folded into this task since that's where the gap was caught.
+**Correction (found during Task 6 execution):** the original plan only removed Spec-Kit *commands* (`.claude/commands/speckit-*.md`, done in Task 1) and never checked `.claude/skills/` for Spec-Kit content. `.claude/skills/` also contained 9 stray `speckit-*` directories (`speckit-analyze`, `speckit-checklist`, `speckit-clarify`, `speckit-constitution`, `speckit-implement`, `speckit-plan`, `speckit-specify`, `speckit-tasks`, `speckit-taskstoissues`), making `.claude/skills/` show 18 entries instead of the 9 this plan produces and the README's skill count wrong. Verified via `git log --all -- .claude/skills/speckit-*`: these were empty, never git-tracked (no commit ever added a file under those paths) — local filesystem cruft, not shipped plugin content. Removal is therefore a plain `rm -r`, not a `git rm`, and produces no commit of its own (there is nothing for git to record). Folded into this task since that's where the gap was caught.
 
 **Files:**
 - Delete: `.claude/skills/speckit-analyze/`
@@ -605,25 +605,12 @@ EOF
 
 - [ ] **Step 0: Remove stale speckit-* skill directories**
 
-Run: `git rm -r .claude/skills/speckit-analyze .claude/skills/speckit-checklist .claude/skills/speckit-clarify .claude/skills/speckit-constitution .claude/skills/speckit-implement .claude/skills/speckit-plan .claude/skills/speckit-specify .claude/skills/speckit-tasks .claude/skills/speckit-taskstoissues`
+First check whether git tracks anything under these paths: `git log --all --oneline -- ".claude/skills/speckit-*"`. If that produces no output, they were never committed (empty local directories) — remove with plain `rm -r .claude/skills/speckit-analyze .claude/skills/speckit-checklist .claude/skills/speckit-clarify .claude/skills/speckit-constitution .claude/skills/speckit-implement .claude/skills/speckit-plan .claude/skills/speckit-specify .claude/skills/speckit-tasks .claude/skills/speckit-taskstoissues` (no `git rm`, no commit — there is nothing for git to record). If that command DOES produce output, stop and report NEEDS_CONTEXT — the premise that these are untracked cruft would be wrong and the plan needs to be revisited before deleting tracked content.
 
 Verify: `ls .claude/skills/ | grep -v '.DS_Store'`
 Expected: exactly `dknet-appservices-actions`, `dknet-bdd-tests`, `dknet-ddd-principles`, `dknet-domain-entity`, `dknet-efcore-config`, `dknet-endpoint-config`, `dknet-feature-documentation`, `dknet-project-structure`, `dknet-unit-test` (9 entries).
 
-Commit this removal separately, before the README edit:
-
-```bash
-git commit -m "$(cat <<'EOF'
-chore(plugin): remove stale speckit-* skill directories
-
-Task 1 removed the Spec-Kit commands but missed the corresponding
-skill directories under .claude/skills/, left over from the same
-integration. Same out-of-scope decision applies here.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
-```
+No commit for this step (nothing git-tracked changed).
 
 - [ ] **Step 1: Update the command table and skill/agent count**
 
