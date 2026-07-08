@@ -7,6 +7,8 @@ description: Create CRUD actions (Create/Update/Delete), DTOs, validators, specs
 
 Create the application service layer — request/response DTOs, command handlers, validators, query specifications, and domain events — using SlimMessageBus Fluent patterns.
 
+If you're unsure whether a business rule belongs on the entity or in the handler, or whether a mutation warrants a domain event, read **dknet-ddd-principles** first — this skill covers the handler mechanics, not that judgment.
+
 ---
 
 ## When to Use
@@ -409,3 +411,5 @@ global using Minimal.Domains.Features.{Feature}.Entities;
 
 After creating AppServices actions, proceed to:
 → **dknet-endpoint-config** skill to expose these actions as REST API endpoints
+
+For the judgment behind business-rule placement and domain event usage, see **dknet-ddd-principles**.
