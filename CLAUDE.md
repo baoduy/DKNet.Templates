@@ -25,7 +25,7 @@ dotnet test src/ApiEndpoints/Minimal.App.BDDTests/Minimal.App.BDDTests.csproj \
 # Run (API only, no containers)
 dotnet run --project src/ApiEndpoints/Minimal.Api
 
-# Run with Aspire (Redis + SQL Server via Docker)
+# Run with Aspire (Redis + PostgreSQL via Docker)
 dotnet run --project src/ApiEndpoints/Minimal.AppHost
 
 # EF Core migrations (run from src/ApiEndpoints/ — scripts target CoreDbContext in Minimal.Infra)
@@ -51,7 +51,7 @@ Minimal.Infra        → EF Core (CoreDbContext), repos, event publisher, servic
   (wires into Api via InfraSetup.AddInfraServices)
 
 Minimal.Share        → shared constants/options/base types (read by all layers)
-Minimal.AppHost      → Aspire orchestration only (Redis + SqlServer + Minimal.Api), no business logic
+Minimal.AppHost      → Aspire orchestration only (Redis + PostgreSQL + Minimal.Api), no business logic
 ```
 
 `Program.cs` startup order: bind `FeatureOptions` → `AddLogConfig` → `AddAzureAppConfig` → `AddFluentValidationConfig` → `RunMigrationAsync` → `AddOptions` → `AddAppConfig` → `UseAppConfig(a => a.UseEndpointConfigs())`. Middleware/services are composed in `Minimal.Api/Configs/AppConfig.cs` and `ServiceConfigs.cs`.

@@ -16,7 +16,7 @@ internal sealed class DbContextFactory : IDesignTimeDbContextFactory<CoreDbConte
                 new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["ConnectionStrings__AppDb"] =
-                        "Server=localhost;User ID=sa;Password=Pass@word1;Database=SampleDb;TrustServerCertificate=Yes;Encrypt=True;"
+                        "Host=localhost;Username=postgres;Password=postgres;Database=SampleDb"
                 })
             .Build();
 

@@ -5,7 +5,7 @@ internal abstract class SequenceService(DbContext dbContext, Sequences sequence)
     #region Methods
 
     public virtual async ValueTask<string> NextValueAsync() =>
-        dbContext.IsSqlServer()
+        dbContext.IsNpgsql()
             ? await dbContext.NextSeqValueWithFormat(sequence)
             : Guid.NewGuid().ToString();
 

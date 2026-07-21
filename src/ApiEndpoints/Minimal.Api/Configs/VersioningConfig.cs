@@ -14,8 +14,7 @@ internal static class VersioningConfig
                 op.ReportApiVersions = true;
                 op.AssumeDefaultVersionWhenUnspecified = true;
                 op.ApiVersionReader = new UrlSegmentApiVersionReader();
-            })
-            .EnableApiVersionBinding();
+            });
         return services;
     }
 

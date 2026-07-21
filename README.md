@@ -6,7 +6,7 @@
 A production-ready ASP.NET Core solution template built on **vertical slice architecture** combining:
 
 - **DDD / CQRS** — strict layer boundaries (Api → AppServices → Domains → Infra)
-- **.NET Aspire** orchestration (Redis + SQL Server)
+- **.NET Aspire** orchestration (Redis + PostgreSQL)
 - **EF Core** with auto model config and seeding (`UseAutoConfigModel`, `UseAutoDataSeeding`)
 - **SlimMessageBus** — in-memory bus always wired; Azure Service Bus optional
 - **FluentValidation**, **Mapster**, **OpenTelemetry**, **Azure App Configuration**, **JWT Bearer**
@@ -110,7 +110,7 @@ dotnet build <Name>.sln -c Release
 # Run API only
 dotnet run --project <Name>.ApiEndpoints/<Name>.Api
 
-# Run with Aspire (Redis + SQL Server auto-provisioned via Docker)
+# Run with Aspire (Redis + PostgreSQL auto-provisioned via Docker)
 dotnet run --project <Name>.ApiEndpoints/<Name>.AppHost
 
 # Test

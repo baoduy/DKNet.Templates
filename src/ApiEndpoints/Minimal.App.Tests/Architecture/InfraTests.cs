@@ -124,7 +124,7 @@ public class InfraTests
     }
 
     [Fact]
-    public void NoEntityString_ShouldBe_ConfiguredAs_MaxInSqlServer()
+    public void NoEntityString_ShouldBe_ConfiguredAs_Max()
     {
         using var dbContext = new DbContextFactory().CreateDbContext([]);
         var model = dbContext.Model;

@@ -3,10 +3,9 @@ using Projects;
 var builder = DistributedApplication.CreateBuilder(args);
 
 var cache = builder.AddRedis("Redis");
-var sql = builder.AddSqlServer("SqlServer")
-    .WithImageTag("2022-latest");
+var postgres = builder.AddPostgres("Postgres");
 
-var apDb = sql
+var apDb = postgres
     .AddDatabase("AppDb");
 
 builder.AddProject<Minimal_Api>("Api")
