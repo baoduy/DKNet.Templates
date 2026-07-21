@@ -26,9 +26,6 @@ namespace Minimal.Infra.Migrations
                 .HasMax(99999L)
                 .IsCyclic();
 
-            modelBuilder.HasSequence<int>("Seq_None", "seq")
-                .IsCyclic();
-
             modelBuilder.Entity("Minimal.Domains.Features.Profiles.Entities.CustomerProfile", b =>
                 {
                     b.Property<Guid>("Id")

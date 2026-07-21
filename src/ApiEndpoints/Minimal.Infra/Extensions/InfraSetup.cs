@@ -50,7 +50,7 @@ public static class InfraSetup
                 var conn = config.GetConnectionString(SharedConsts.DbConnectionString)!;
 
                 builder.UseNpgsqlWithMigration(conn)
-                    .UseAutoConfigModel([typeof(CoreDbContext).Assembly])
+                    .UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(Sequences).Assembly])
                     .UseAutoDataSeeding([typeof(InfraSetup).Assembly]);
             });
 

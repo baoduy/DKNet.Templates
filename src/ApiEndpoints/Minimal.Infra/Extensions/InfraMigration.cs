@@ -20,7 +20,7 @@ public static class InfraMigration
         //Db migration
         await using var db = new CoreDbContext(
             new DbContextOptionsBuilder<CoreDbContext>()
-                .UseAutoConfigModel()
+                .UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(Sequences).Assembly])
                 .UseNpgsqlWithMigration(connectionString)
                 .Options);
 

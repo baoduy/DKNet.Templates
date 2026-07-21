@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Minimal.Infra.Migrations
 {
     [DbContext(typeof(CoreDbContext))]
-    [Migration("20260721005946_InitDb")]
+    [Migration("20260721131938_InitDb")]
     partial class InitDb
     {
         /// <inheritdoc />
@@ -27,9 +27,6 @@ namespace Minimal.Infra.Migrations
 
             modelBuilder.HasSequence<int>("Seq_Membership", "seq")
                 .HasMax(99999L)
-                .IsCyclic();
-
-            modelBuilder.HasSequence<int>("Seq_None", "seq")
                 .IsCyclic();
 
             modelBuilder.Entity("Minimal.Domains.Features.Profiles.Entities.CustomerProfile", b =>

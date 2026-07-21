@@ -23,11 +23,6 @@ namespace Minimal.Infra.Migrations
                 maxValue: 99999L,
                 cyclic: true);
 
-            migrationBuilder.CreateSequence<int>(
-                name: "Seq_None",
-                schema: "seq",
-                cyclic: true);
-
             migrationBuilder.CreateTable(
                 name: "CustomerProfiles",
                 schema: "pro",
@@ -74,10 +69,6 @@ namespace Minimal.Infra.Migrations
 
             migrationBuilder.DropSequence(
                 name: "Seq_Membership",
-                schema: "seq");
-
-            migrationBuilder.DropSequence(
-                name: "Seq_None",
                 schema: "seq");
         }
     }
