@@ -49,8 +49,8 @@ public static class InfraSetup
                 var config = sp.GetRequiredService<IConfiguration>();
                 var conn = config.GetConnectionString(SharedConsts.DbConnectionString)!;
 
-                builder.UseSqlWithMigration(conn)
-                    .UseAutoConfigModel([typeof(CoreDbContext).Assembly])
+                builder.UseNpgsqlWithMigration(conn)
+                    .UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(Sequences).Assembly])
                     .UseAutoDataSeeding([typeof(InfraSetup).Assembly]);
             });
 
@@ -58,13 +58,13 @@ public static class InfraSetup
     }
 
     /// <summary>
-    /// Configures SQL Server options, migration metadata, query behavior, and retry settings
+    /// Configures PostgreSQL options, migration metadata, query behavior, and retry settings
     /// for the current <see cref="DbContextOptionsBuilder"/>.
     /// </summary>
     /// <param name="builder">The options builder to configure.</param>
-    /// <param name="connectionString">The SQL Server connection string.</param>
+    /// <param name="connectionString">The PostgreSQL connection string.</param>
     /// <returns>The configured <see cref="DbContextOptionsBuilder"/>.</returns>
-    internal static DbContextOptionsBuilder UseSqlWithMigration(
+    internal static DbContextOptionsBuilder UseNpgsqlWithMigration(
         this DbContextOptionsBuilder builder,
         string connectionString)
     {
@@ -77,7 +77,7 @@ public static class InfraSetup
         builder.EnableDetailedErrors().EnableSensitiveDataLogging();
 #endif
 
-        return builder.UseSqlServer(
+        return builder.UseNpgsql(
             connectionString,
             o => o
                 .MinBatchSize(1)
