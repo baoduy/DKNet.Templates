@@ -26,6 +26,7 @@ Use this checklist before considering BDD scenario work complete.
 - [ ] Request serialization uses `SharedConsts.JsonSerializerOptions`
 - [ ] Required headers (for example idempotency) are present
 - [ ] Assertions verify status code, contract-defined JSON structure, and key data fields
+- [ ] For generated response DTO contracts, assertions include representative entity-derived fields
 - [ ] Success assertions validate required `value` fields (not only success flag)
 - [ ] Failure assertions validate `errors` array/object shape and expected messages/codes
 - [ ] No assertion relies only on substring matching when structured contract fields exist

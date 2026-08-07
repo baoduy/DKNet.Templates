@@ -7,6 +7,8 @@ description: Create DDD domain entities following this project's AggregateRoot/D
 
 Create domain entities that integrate with this project's DDD infrastructure — `AggregateRoot`, `DomainEntity`, and owned value objects.
 
+If the aggregate boundary, entity-vs-value-object choice, or invariant placement isn't obvious, read **dknet-ddd-principles** first — this skill covers class mechanics, not those judgment calls.
+
 ---
 
 ## When to Use
@@ -277,3 +279,5 @@ public class CustomerProfile : AggregateRoot
 
 After creating the domain entity, proceed to:
 → **dknet-efcore-config** skill to create the EF Core mapper configuration
+
+For the judgment calls behind this entity's shape (aggregate boundary, entity vs. value object, invariant placement), see **dknet-ddd-principles**.

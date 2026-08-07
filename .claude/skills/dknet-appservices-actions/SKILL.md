@@ -27,6 +27,20 @@ If you're unsure whether a business rule belongs on the entity or in the handler
 5. **Business rules**: duplicate checks, validation constraints
 6. **Events to publish**: what happened notifications?
 
+## DTO Strategy (GenerateDto-First)
+
+Default policy for this repository:
+
+1. **Response DTOs**: use `[GenerateDto(typeof(Entity), Exclude = [...])]` by default.
+2. **Request records**: use generated DTO shapes **when contract shape matches entity fields** (for example, full update payloads), and only hand-write request records when workflow-specific fields diverge.
+3. **Manual request records** are required when any of these apply:
+    - server-side/generated fields must be hidden from clients
+    - request uses different names/types from entity
+    - operation is partial/mutation-specific and not a 1:1 entity projection
+4. Keep `[MapsFrom(typeof(Entity))]` on request/response records to preserve Mapster alignment.
+
+This keeps request/response property names consistent with entities and reduces mapping drift.
+
 ---
 
 ## Project Conventions (from actual codebase)
@@ -105,6 +119,8 @@ public sealed partial record {Entity}Dto;
 ```
 
 `[GenerateDto]` auto-generates all properties from the entity. Use `Exclude = ["InternalProp"]` to hide fields.
+
+If you need operation-specific variants, prefer additional generated DTOs (with `Exclude`) over hand-written duplicated records.
 
 ### Step 2: Create Action — Create.cs
 
@@ -196,6 +212,8 @@ internal sealed class Create{Entity}Handler(
 }
 ```
 
+For `Create*Request`, use a manual record only for the writable subset. Do not duplicate server-generated, audit, or immutable entity fields unless the API contract explicitly requires them.
+
 ### Step 3: Create Action — Update.cs
 
 Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Update.cs`:
@@ -244,6 +262,8 @@ internal sealed class Update{Entity}Handler(
     }
 }
 ```
+
+When update payload is a near 1:1 projection of entity fields, prefer a generated DTO base shape (with excludes) to minimize property drift. Keep manual `Update*Request` only for command-specific constraints (for example required `Id`, partial semantics, workflow flags).
 
 ### Step 4: Create Action — Delete.cs
 
