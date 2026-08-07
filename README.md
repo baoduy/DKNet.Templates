@@ -23,6 +23,8 @@ copilot plugin marketplace add baoduy/DKNet.Templates
 
 **Claude AI**
 ```shell
+/plugin marketplace add baoduy/dknet.templates
+/plugin install dknet-minimal
 ```
 
 ## Installation
