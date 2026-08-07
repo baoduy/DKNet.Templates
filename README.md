@@ -150,6 +150,8 @@ See [AGENTS.md](AGENTS.md) for the full architecture reference.
 
 The repo ships a Claude Code plugin and a GitHub Copilot plugin that drive vertical-slice features end-to-end. Generated solutions include both folders (`.claude/`, `.claude-plugin/`, `.github/`), so your team gets the same agents, skills, and slash commands the template authors use.
 
+> Previously the two sides had separate identities — `dknet-minimal` for Claude Code, `dknet-plugin` for the Copilot-side manifest. Both are now unified under a single `dknet-minimal` name and version.
+
 ### Claude Code
 
 ```text

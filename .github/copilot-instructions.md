@@ -1,219 +1,83 @@
 # Copilot Project Instructions
 
-- 🧠 Read `/memory-bank/memory-bank-instructions.md` first.
-- 🗂 Load all `/memory-bank/*.md` before any task.
-- 🚦 Use the Kiro-Lite workflow: PRD → Design → Tasks → Code.
-- 🔒 Follow security & style rules in `copilot-rules.md`.
-- 📝 On "/update memory bank", refresh activeContext.md & progress.md.
+These guidelines help generate consistent, safe, high-quality code for the **DKNet.Minimal.Template** (.NET 10, vertical-slice DDD/CQRS).
 
-These guidelines help generate consistent, safe, high‑quality code for the Monxa Payment Gateway (.NET 9, modular Clean-ish architecture).
+## What this repo is
+
+A NuGet solution template that scaffolds production-ready .NET 10 microservices. Everything under `src/ApiEndpoints/` is the template source; consumers run `dotnet new dknet-minimal -n <Name>` and the generated output mirrors that structure under their chosen namespace (`Minimal.*` → `<Name>.*`).
 
 ## Solution Architecture (High Level)
-Projects (prefix `Mx.Pgw.*`):
-- Api: Thin startup + endpoint wiring. No business logic.
-- AppServices: Application layer (Features/** folders: Actions, Queries, Services, Specs, EventHandlers). Orchestrates domain + infra.
-- Domains: Core domain models, aggregates, events, value objects, enums, specs (if truly domain-specific).
-- Infra: EF Core DbContexts, Migrations, Repositories, persistence, external impls.
-- AppHost / AppOnlyHost: Composition roots / hosting variants (jobs, workers, app-only runtime scenarios).
-- LogInfra / Share: Cross-cutting concerns, shared constants, options, primitives, converters.
-- Clients (`Durian.*`, `LaunCX.*`, `Mx.Identity.Clients`, `OpenExchange.Clients`): External service integrations.
-- Tests: `*.UnitTests`, `*.IntegrateTests`, `AppServices.Tests`.
 
-Goal: Keep boundaries clear; avoid leaking EF types or external SDKs into Domain or outward through public DTOs.
+Projects (prefix `Minimal.*` in this template, `<Name>.*` in generated solutions):
+
+- **Api**: entry point, endpoints, auth, OpenAPI. No business logic.
+- **AppServices**: application/use-case layer — CQRS handlers (`Features/<Feature>/V1/Actions`), validators, DTOs, domain event handlers, specs.
+- **Domains**: entities, aggregate roots, repo interfaces, domain events. No EF Core types leak in.
+- **Infra**: EF Core (`CoreDbContext`), entity mappers, static data seeding, event publisher, service bus wiring.
+- **Share**: shared constants/options/base types, read by all layers.
+- **AppHost**: .NET Aspire orchestration only (Redis + PostgreSQL + Api project), no business logic.
+- **App.Tests** / **App.BDDTests**: xUnit + Shouldly unit/integration tests; Reqnroll + NUnit BDD scenarios.
+
+Layer boundaries are strict, no skipping: `Api → AppServices → Domains ← Infra` (Infra wires into Api via `InfraSetup.AddInfraServices`).
 
 ## Core Patterns
-1. CQRS-ish Feature Organization
-   - Each logical feature has a folder under `AppServices/Features/<FeatureName>/` with subfolders: `Actions/` (commands), `Queries/`, `Services/`, `EventHandlers/`, `Specs/`.
-   - Use record types for immutable request/response shapes.
-   - Command = state change (inherits `BaseCommand` if auditing needed).
-   - Query = read model (inherits `PageableQuery` etc when paging).
-2. Validation
-   - Use FluentValidation. Place validators in same file (internal sealed class). Naming: `<TypeName>Validator`.
-   - Fail fast; include `.When(...)` for conditional rules.
-3. Handlers
-   - Internal sealed class named `<RequestTypeName>Handler` implementing appropriate Fluents interface: e.g. `Fluents.Requests.IHandler<TRequest, TResponse>` or `Fluents.Queries.IPageHandler<TQuery, TDto>`.
-   - Method: `OnHandle(TRequest request, CancellationToken cancellationToken)`.
-   - Return types: `Task<IResult<T>>` for commands or `Task<IPagedList<TDto>>` for paged queries.
-4. Mapping
-   - Use Mapster (`TypeAdapterConfig`). Add new mappings via scoped partial mapping files if needed; prefer attribute-based or scan assembly.
-5. Repositories & Specs
-   - Use interfaces: `IRepository<T>`, `IReadRepository<T>`, `IRepositoryFactory`.
-   - Specification classes start with `Spec` prefix, are immutable, and encapsulate filtering logic. Keep infra-specific bits (includes, EF expressions) inside specs.
-6. Events
-   - Domain events added via aggregate methods (`AddEvent<...>()`). Event handlers live under `EventHandlers/` folder.
-7. Enums & Constants
-   - UpperCamelCase for enum members (e.g., `ChannelCodes.QrQris`). Provide an `Unknown` or `None` sentinel where appropriate; validators must exclude them.
-8. Error Handling
-   - Use `Result` pattern (e.g., `FluentResults` style) for command failures. Avoid throwing for validation & business rule errors.
-9. Async
-   - All I/O methods async; never block (`.Result` / `.Wait()`). ConfigureAwait not required unless library code.
-10. Logging & Telemetry
-    - Rely on DI-provided logger abstractions; do not instantiate loggers directly.
+
+1. **Feature vertical slice** — mirror the existing `CustomerProfiles/V1` slice: domain entity in `Domains/Features/<Feature>/Entities/`, EF mapper in `Infra/Features/<Feature>/Mappers/` (`IEntityTypeConfiguration<T>` via `DefaultEntityTypeConfiguration<T>`), CQRS actions in `AppServices/<Feature>/V1/Actions/`, endpoint in `Api/ApiEndpoints/<Feature>V1Endpoint.cs` (`IEndpointConfig`).
+2. **Validation** — FluentValidation validators alongside their request record; fail fast, use `.When(...)` for conditional rules.
+3. **Handlers** — sealed `*CommandHandler`/`*QueryHandler` classes; async I/O only, never block on `.Result`/`.Wait()`.
+4. **Mapping** — Mapster, global config in `AppServices/AppSetup.cs`. DTOs use `[GenerateDto(...)]`; `[MapsFrom(typeof(Entity))]` keeps request/response records aligned. Lazy mapping via `mapper.ResultOf<T>(entity)` / `mapper.LazyMap<T>()`.
+5. **EF Core auto-discovery** — `UseAutoConfigModel` + `UseAutoDataSeeding` in `InfraSetup.AddInfraServices`; no manual `DbSet` declarations. Mappers and seed classes must be `internal sealed` to be picked up by assembly scan.
+6. **Repositories** — Scrutor auto-registers classes that are `sealed` and live under a `.Repos` or `.Services` namespace.
+7. **Domain events** — raised via aggregate methods, published by `Infra/Services/EventPublisher.cs` through SlimMessageBus. An in-memory bus is always wired; Azure Service Bus is added only when `ConnectionStrings:AzureBus` is configured.
+8. **`ByUser` auto-fill** — commands inheriting `BaseCommand` get the user ID injected via `SetUserIdPropertyFilter`, added by `EndpointConfig.CreateGroup`.
 
 ## Naming & File Organization
-- One public request/record per file unless small + variant (e.g., base + derived request).
-- Validators & handlers can share the request file if short; otherwise split when > ~200 lines.
-- DTOs end with `Dto` or `ActionsDto` (when representing action outcomes with follow-up steps/links).
-- Factory interfaces: `IFeatureThingFactory` -> implement `FeatureThingFactory`.
 
-## Adding a New Command Example
-1. Create record under `Features/<Feature>/Actions/`: `public sealed record ConfirmSomethingRequest : BaseCommand, IWitResponse<SomethingDto> { ... }`.
-2. Add `ConfirmSomethingValidator` with rules.
-3. Implement `ConfirmSomethingHandler` injecting only needed abstractions (repositories, mapper, provider interfaces).
-4. Map domain -> DTO using Mapster or manual mapping if complex.
-5. Add unit test(s) under `AppServices.Tests/Features/<Feature>/Actions/` verifying validation + success path.
-6. Expose via endpoint (in Api project) using minimal API or endpoint config pattern (see existing `UseEndpointConfigs`). Keep endpoint file small and feature-specific.
-
-## Query Guidance
-- Query records extend `PageableQuery` when pagination needed, implement interface specifying response element type.
-- Validator enforces `enum` validity, string length, optional filters.
-- Handler gets repository, applies `repository.QuerySpecs(new SpecWhatever(...))`, then `.ProjectToType<...>(mapper.Config)` and `.ToPagedListAsync(page, size)`.
+- One public request/record per file unless small + variant.
+- Endpoint fluent helpers: `MapGetList`, `MapGetById`, `MapPost`, `MapPut`, `MapDelete` from `FluentEndpointMapperExtensions.cs`. POST does NOT auto-add idempotency — call `.AddIdempotencyFilter()` explicitly; clients then send `X-Idempotency-Key: {Guid}`.
+- DTOs generated with `[GenerateDto(typeof(Entity), Exclude = [...])]`; hand-write request/response records only when the contract diverges from the entity shape.
 
 ## EF Core / Migrations
-- Migrations live in `Infra/Migrations`. Use provided scripts:
-  - `./add-migration.sh <Name>`: adds migration.
-  - `./remove-migration.sh`: removes last.
+
+- Migrations live in `Infra/Migrations`, targeting `CoreDbContext`. Use the provided scripts from `src/ApiEndpoints/`:
+  - `./add-migration.sh <Name>`
+  - `./remove-migration.sh <Name>`
 - Never hand-edit designer migration code except for safe seed/data adjustments.
-- Schemas: `pgw` (payment), `static` (static data) — use constants `InfraConsts.PaymentSchema`, etc.
-- If adding new entity:
-  1. Define domain model in Domains (avoid EF attributes; use Fluent config in Infra if needed).
-  2. Add EF configuration (if custom) under Infra/Contexts/Configurations.
-  3. Add repository/spec adjustments.
-  4. Add migration script via shell helper.
+- If adding a new entity: domain model in `Domains` (no EF attributes) → `IEntityTypeConfiguration<T>` in `Infra/Features/<Feature>/Mappers/` → optional static seed data → migration via the shell helper.
 
-## Dependency Injection
-- Register new services in `AppSetup.AddAppServices` or feature-specific extension methods under `Extensions/`.
-- Prefer interface per service; scope choices:
-  - Database-related repositories: scoped.
-  - Mappers: singleton for config; mapper service can be scoped.
-  - External API clients: typed HTTP clients with resiliency policies (consider Polly if needed in future).
+## Validation & DTO Checklist
 
-## Validation Rules (Consistency Checklist)
 - For optional strings: `.When(x => !string.IsNullOrEmpty(x.Prop))` + `.Must(...).MaximumLength(n)`.
-- For enums: `.IsInEnum()` AND `.NotEqual(EnumType.Unknown)` when sentinel exists.
-- For dictionary metadata: enforce key/value length constraints.
-
-## DTO & Serialization Conventions
-- Use `JsonPropertyName` where external contract differs from internal naming.
-- Keep enums serialized as their string names (configure globally if needed) — if custom casing required, create converter under Share.
-- Monetary values: `decimal` (never double). Formatting responsibilities delegated to currency services (e.g., `ICurrencyRepository.Format`).
+- For enums: `.IsInEnum()` and exclude sentinel/`Unknown` values when one exists.
+- String properties always get `HasMaxLength()` in EF mappers.
 
 ## Testing Guidance
-- Unit tests: single assertion principle when practical; group by context (Arrange/Act/Assert). Name pattern: `MethodName_StateUnderTest_ExpectedOutcome`.
-- Feature tests for handlers validate:
-  1. Validation failure for bad input.
-  2. Success path returns expected DTO fields.
-  3. Domain events added where expected.
-- Integration tests: exercise persistence + spec queries + migrations.
+
+- Unit/integration tests (`Minimal.App.Tests`): xUnit + Shouldly, Arrange/Act/Assert, `MethodName_StateUnderTest_ExpectedOutcome` naming. Test projects disable analyzers.
+- BDD (`Minimal.App.BDDTests`): Reqnroll + NUnit, `.feature` files under `Features/<Domain>/` with matching `[Binding]` step classes. Each scenario resets the DB in `[BeforeScenario(Order=0)]`. POST steps need a fresh `Guid.NewGuid()` for `X-Idempotency-Key`.
+- Production projects enforce warnings-as-errors (`Directory.Packages.props`); test projects opt out.
 
 ## Performance & Safety
-- Avoid N+1 by projecting queries before enumeration.
-- Use pagination for any collection > potential 100 items.
-- Keep handlers ≤ ~80 lines; extract pure logic into private methods or services.
 
-## Adding External Integrations
-- Create a `*Options` class (bound from configuration) & setup extension method `Add<ProviderName>Client` similar to existing clients.
-- Authentication handlers inherit pattern shown in clients (e.g., `DurianAuthHandler`).
-
-## Jobs / Background Operations
-- Job mode triggered by command-line args (see `Program.cs`: `args.TryGetJobType()`). When writing a new job:
-  - Implement job logic in AppServices/Jobs or a Feature-specific job folder.
-  - Add enumeration value to `JobTypes` (if defined) and wiring in host builder extension (`RunJobAsync`).
-
-## Logging & Observability
-- Use structured logging: `_logger.LogInformation("Charge created {ChargeId}", charge.Id);`
-- Add relevant OpenTelemetry instrumentation only through config (no manual Activity creation unless spanning multi-step processes not auto-instrumented).
+- Avoid N+1 by projecting queries (`ProjectToType<T>`) before enumeration.
+- Paginate any collection that could exceed ~100 items.
+- Keep handlers focused; extract pure logic into private methods or services.
 
 ## Security & Compliance
+
 - No secrets in source. Use configuration + environment variables + Azure App Configuration.
-- Validate all externally provided identifiers (GUID existence, etc.).
-- Normalize/uppercase/lowercase codes early (use custom converters like `UpperCaseConvertor`).
-
-## Prompt Patterns for Copilot
-Provide explicit directions with context and constraints:
-- "Generate a new command + validator + handler in `Features/Orders/Actions` to cancel an order (ensuring status transitions from Pending only). Return an OrderActionsDto with updated status and cancellation timestamp. Follow existing Create charge patterns."
-- "Add a paged query under `Features/Transactions/Queries` to list transactions filtered by MerchantId and optional date range; validate that end date >= start date; return a list of TransactionDto."
-- "Create migration to add TwoFactorEnabled column to Merchant (bit, default false) under `pgw` schema; update domain model, EF config, and validator if needed."
-
-ALWAYS reference existing similar feature before generating code.
+- Validate all externally provided identifiers at the boundary (handler/validator), not deep in domain code.
 
 ## Disallowed / Avoid
-- Adding business logic directly in API endpoints or Program.cs.
-- Exposing EF entities or DbContext in other layers.
-- Using magic strings for schema names — use constants.
+
+- Business logic in API endpoints or `Program.cs`.
+- Exposing EF entities or `CoreDbContext` outside `Infra`.
 - Synchronous I/O or blocking calls.
-- Large multi-purpose handlers or validators (> ~200 lines).
-
-## Definition of Done Checklist (Automate mentally per change)
-- [ ] Follows folder & naming conventions.
-- [ ] Validator covers all input invariants.
-- [ ] Handler uses repositories/specs only; no direct DbContext.
-- [ ] Mapping works (compile-time Mapster validation passes if enabled).
-- [ ] Tests added/updated (unit + integration if persistence affected).
-- [ ] Migration created (if persistence model changed) & builds.
-- [ ] No analyzers warnings introduced (consider Meziantou.Analyzer recommendations).
-- [ ] No secrets/config hardcoded.
-
-## Lightweight Examples
-Command skeleton:
-```csharp
-public sealed record DoSomethingRequest : BaseCommand, Fluents.Requests.IWitResponse<SomethingDto>
-{
-    public Guid MerchantId { get; init; }
-    public decimal Amount { get; init; }
-}
-
-internal sealed class DoSomethingRequestValidator : AbstractValidator<DoSomethingRequest>
-{
-    public DoSomethingRequestValidator(IReadRepository<Merchant> repo)
-    {
-        RuleFor(x => x.MerchantId).NotEmpty();
-        RuleFor(x => x.Amount).GreaterThan(0m);
-    }
-}
-
-internal sealed class DoSomethingRequestHandler(
-    IRepository<Something> somethingRepo,
-    IReadRepository<Merchant> merchantRepo,
-    IMapper mapper)
-    : Fluents.Requests.IHandler<DoSomethingRequest, SomethingDto>
-{
-    public async Task<IResult<SomethingDto>> OnHandle(DoSomethingRequest request, CancellationToken ct)
-    {
-        var merchant = await merchantRepo.SpecsFirstAsync(new SpecGetActiveMerchantOnlyById(request.MerchantId), ct);
-        var entity = Something.Create(merchant, request.Amount, request.ByUser);
-        await somethingRepo.AddAsync(entity, ct);
-        await somethingRepo.SaveChangesAsync(ct);
-        return mapper.ResultOf<SomethingDto>(entity);
-    }
-}
-```
-
-Paged query skeleton:
-```csharp
-public sealed record ListThingsQuery : PageableQuery, Fluents.Queries.IWitResponse<ThingDto>
-{
-    public Guid MerchantId { get; init; }
-}
-
-internal sealed class ListThingsQueryValidator : AbstractValidator<ListThingsQuery>
-{
-    public ListThingsQueryValidator() => RuleFor(x => x.MerchantId).NotEmpty();
-}
-
-internal sealed class ListThingsQueryHandler(IReadRepository<Thing> repo, IMapper mapper)
-    : Fluents.Queries.IPageHandler<ListThingsQuery, ThingDto>
-{
-    public Task<IPagedList<ThingDto>> OnHandle(ListThingsQuery request, CancellationToken ct) =>
-        repo.QuerySpecs(new SpecListThings(request.MerchantId))
-            .ProjectToType<ThingDto>(mapper.Config)
-            .ToPagedListAsync(request.PageNumberValue, request.PageSizeValue);
-}
-```
+- Adding `Version=` attributes to individual `.csproj` files — NuGet versions are centrally managed in `src/Directory.Packages.props`.
 
 ## When Unsure
-Search for an existing closest pattern within the same Feature or a parallel Feature (e.g., Charges/Create) and replicate style with minimal divergence.
+
+Search for the closest existing feature (start with `CustomerProfiles/V1`) and replicate its style with minimal divergence. See `AGENTS.md` and `CLAUDE.md` for the full architecture reference, and `.github/skills/` (`dknet-project-structure`, `dknet-ddd-principles`, and the other `dknet-*` skills) for step-by-step guidance.
 
 ---
 End of Copilot Instructions.
-
