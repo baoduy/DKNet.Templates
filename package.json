@@ -1,0 +1,37 @@
+{
+  "name": "@baoduy/dknet-plugin",
+  "version": "0.1.0",
+  "description": "Claude Code + GitHub Copilot skills, subagents, and slash commands for scaffolding .NET 10 microservices with DKNet.Minimal.Template",
+  "author": "baoduy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/baoduy/DKNet.Templates.git"
+  },
+  "keywords": [
+    "dotnet",
+    "csharp",
+    "ddd",
+    "cqrs",
+    "vertical-slice",
+    "efcore",
+    "aspire",
+    "microservices",
+    "scaffold",
+    "claude-code",
+    "claude-code-plugin",
+    "github-copilot",
+    "dknet",
+    "slimmessagebus",
+    "fluentvalidation",
+    "reqnroll",
+    "bdd"
+  ],
+  "files": [
+    ".claude/",
+    ".claude-plugin/",
+    ".github/",
+    "plugin.json",
+    "extensions/"
+  ]
+}
