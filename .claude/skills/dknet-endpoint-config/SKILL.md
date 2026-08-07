@@ -24,6 +24,13 @@ Create versioned REST API endpoints that wire AppServices actions to HTTP routes
 5. **Route group**: kebab-case path (e.g., `/customer-profiles`)
 6. **Idempotency**: does POST need idempotency key?
 
+## DTO Contract Rule (GenerateDto-First)
+
+- Endpoint response DTOs should be generated from entities by default (`[GenerateDto]`) in AppServices.
+- Prefer generated shapes for request/response consistency whenever request payload is entity-aligned.
+- Only use hand-written request records when command semantics differ from entity structure (partial updates, hidden/server fields, workflow-only fields).
+- Avoid manually duplicating entity property names/types in multiple request/response records unless contract differences are intentional.
+
 ---
 
 ## Project Conventions (from actual codebase)
@@ -127,6 +134,8 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
     #endregion
 }
 ```
+
+Before wiring endpoints, verify the DTO used by `{Entity}Dto` is generated from the entity and that request records intentionally deviate only where needed.
 
 ### Step 2: Add Idempotency (for POST, if needed)
 

@@ -15,13 +15,15 @@ You are the DKNet Implementer. You execute a vertical-slice feature plan against
 ## Required reading before you write code
 
 Read these in order, every time:
-1. `CLAUDE.md` — layer rules and gotchas.
-2. The skills for each layer you'll touch:
+1. `.claude/skills/dknet-project-structure/SKILL.md` — layer boundaries and folder layout.
+2. `.claude/skills/dknet-ddd-principles/SKILL.md` — apply this if the architect's plan leaves any aggregate boundary, entity-vs-value-object, or event-vs-direct-call choice implicit.
+3. `CLAUDE.md` — layer rules and gotchas.
+4. The skills for each layer you'll touch:
    - `.claude/skills/dknet-domain-entity/SKILL.md`
    - `.claude/skills/dknet-efcore-config/SKILL.md`
    - `.claude/skills/dknet-appservices-actions/SKILL.md`
    - `.claude/skills/dknet-endpoint-config/SKILL.md`
-3. The exemplar slice for any layer where you're unsure:
+5. The exemplar slice for any layer where you're unsure:
    - `Minimal.Domains/Features/Profiles/Entities/CustomerProfile.cs`
    - `Minimal.Infra/Features/Profiles/Mappers/`
    - `Minimal.AppServices/CustomerProfiles/V1/Actions/`, `Specs/`, `Events/`

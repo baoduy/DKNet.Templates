@@ -4,7 +4,7 @@ This document outlines the enhanced integration tests for Azure App Configuratio
 
 ## Overview
 
-The Minimal API integration tests have been improved to leverage .NET Aspire host for testing Azure App Configuration scenarios. This provides more realistic testing with proper infrastructure orchestration including Redis cache, SQL Server database, and Azure App Configuration resources.
+The Minimal API integration tests have been improved to leverage .NET Aspire host for testing Azure App Configuration scenarios. This provides more realistic testing with proper infrastructure orchestration including Redis cache, PostgreSQL database, and Azure App Configuration resources.
 
 ## Test Structure
 
@@ -24,7 +24,7 @@ This contains enhanced Azure App Configuration integration tests using the .NET 
 
 **File:** `Integration/AzureAppConfigTests.cs`
 
-The existing tests have been updated to use the `ShareInfraFixture` which provides proper Redis and SQL Server infrastructure, fixing the previous issues with missing `IDistributedCache` dependencies.
+The existing tests have been updated to use the `ShareInfraFixture` which provides proper Redis and PostgreSQL infrastructure, fixing the previous issues with missing `IDistributedCache` dependencies.
 
 ## Infrastructure Setup
 
@@ -34,7 +34,7 @@ The existing tests have been updated to use the `ShareInfraFixture` which provid
 
 This fixture creates a complete Aspire application with:
 - Redis cache resource
-- SQL Server database resource
+- PostgreSQL database resource
 - Azure App Configuration resource (for testing)
 
 The fixture provides connection strings for all resources and ensures they are properly started before tests run.
@@ -52,7 +52,7 @@ The following NuGet packages have been added to the test project:
 ### Prerequisites
 
 1. .NET 9.0 SDK
-2. Docker (for running Redis and SQL Server containers in Aspire)
+2. Docker (for running Redis and PostgreSQL containers in Aspire)
 
 ### Local Development
 
@@ -78,7 +78,7 @@ The tests verify various Azure App Configuration scenarios:
 
 ## Benefits of Aspire Integration
 
-1. **Realistic Testing**: Tests run against actual Redis and SQL Server instances (via containers)
+1. **Realistic Testing**: Tests run against actual Redis and PostgreSQL instances (via containers)
 2. **Infrastructure Orchestration**: Aspire handles the setup and teardown of required infrastructure
 3. **Improved Reliability**: Tests are more stable with proper dependency management
 4. **Better Coverage**: More realistic scenarios are tested, including health checks

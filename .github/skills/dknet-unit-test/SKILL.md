@@ -32,6 +32,10 @@ Because tests run through the full DI container and a real EF Core context, each
 | Domain events | Event handlers run in the same scope; side-effects can be asserted |
 | SlimMessageBus middleware | All registered behaviors execute in the pipeline |
 
+Additionally, tests should include at least one DTO consistency check when the feature uses generated DTOs:
+- verify key response fields expected from the entity mapping are present and correctly populated
+- catch request/response drift introduced by manual record edits
+
 ## Inputs Required
 
 1. **Feature name** and entity class (e.g., `CustomerProfiles` / `CustomerProfile`)
@@ -175,6 +179,11 @@ public async Task Create{Entity}ShouldPersistSuccessfully()
     created.ShouldNotBeNull();
     created.{Field1}.ShouldBe(request.{Field1});
     created.{Field2}.ShouldBe(request.{Field2});
+
+    // Optional but recommended when using [GenerateDto]:
+    // var dto = result.Value;
+    // dto.ShouldNotBeNull();
+    // dto.{Field1}.ShouldBe(created.{Field1});
 }
 ```
 

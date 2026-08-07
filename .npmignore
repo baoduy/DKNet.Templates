@@ -1,0 +1,11 @@
+src/
+docs/
+specs/
+*.sh
+AGENTS.md
+CLAUDE.md
+README.md
+SPEC_KIT.md
+.gitignore
+.vscode/
+.specify/

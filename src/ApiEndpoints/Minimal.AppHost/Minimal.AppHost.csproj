@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.1.2">
+<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -24,7 +24,7 @@
     <ItemGroup>
         <PackageReference Include="Aspire.Hosting.AppHost" />
         <PackageReference Include="Aspire.Hosting.Redis" />
-        <PackageReference Include="Aspire.Hosting.SqlServer" />
+        <PackageReference Include="Aspire.Hosting.PostgreSQL" />
         <PackageReference Update="Meziantou.Analyzer">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

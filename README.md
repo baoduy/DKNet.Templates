@@ -6,13 +6,26 @@
 A production-ready ASP.NET Core solution template built on **vertical slice architecture** combining:
 
 - **DDD / CQRS** — strict layer boundaries (Api → AppServices → Domains → Infra)
-- **.NET Aspire** orchestration (Redis + SQL Server)
+- **.NET Aspire** orchestration (Redis + PostgreSQL)
 - **EF Core** with auto model config and seeding (`UseAutoConfigModel`, `UseAutoDataSeeding`)
 - **SlimMessageBus** — in-memory bus always wired; Azure Service Bus optional
 - **FluentValidation**, **Mapster**, **OpenTelemetry**, **Azure App Configuration**, **JWT Bearer**
 - **xUnit + Shouldly** test project scaffolded out-of-the-box
 
 ---
+
+## AI Plugin
+
+**Copilot**
+```shell
+copilot plugin marketplace add baoduy/DKNet.Templates
+```
+
+**Claude AI**
+```shell
+/plugin marketplace add baoduy/dknet.templates
+/plugin install dknet-minimal
+```
 
 ## Installation
 
@@ -99,7 +112,7 @@ dotnet build <Name>.sln -c Release
 # Run API only
 dotnet run --project <Name>.ApiEndpoints/<Name>.Api
 
-# Run with Aspire (Redis + SQL Server auto-provisioned via Docker)
+# Run with Aspire (Redis + PostgreSQL auto-provisioned via Docker)
 dotnet run --project <Name>.ApiEndpoints/<Name>.AppHost
 
 # Test
@@ -139,6 +152,8 @@ See [AGENTS.md](AGENTS.md) for the full architecture reference.
 
 The repo ships a Claude Code plugin and a GitHub Copilot plugin that drive vertical-slice features end-to-end. Generated solutions include both folders (`.claude/`, `.claude-plugin/`, `.github/`), so your team gets the same agents, skills, and slash commands the template authors use.
 
+> Previously the two sides had separate identities — `dknet-minimal` for Claude Code, `dknet-plugin` for the Copilot-side manifest. Both are now unified under a single `dknet-minimal` name and version.
+
 ### Claude Code
 
 ```text
@@ -155,9 +170,10 @@ Once installed, the following slash commands are available:
 | `/dknet-crud <Feature> <Entity>` | AppServices CRUD (DTO + Create/Update/Delete + spec + event) |
 | `/dknet-endpoint <Feature> <Entity>` | Minimal API `IEndpointConfig` with idempotency on POST |
 | `/dknet-unit-tests <Feature> <Entity>` | `ApiFixture` + `IMessageBus` integration tests |
+| `/dknet-bdd-test <Feature> <Entity>` | Reqnroll + NUnit BDD scenarios |
 | `/dknet-docs <Feature>` | Feature documentation under `docs/features/<feature>/` |
 
-Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and seven domain skills back the commands; see `.claude/agents/` and `.claude/skills/`.
+Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and nine domain skills back the commands — including `dknet-project-structure` (layer/folder orientation) and `dknet-ddd-principles` (aggregate boundaries, entity vs. value object, invariants, domain events); see `.claude/agents/` and `.claude/skills/`.
 
 ### GitHub Copilot
 

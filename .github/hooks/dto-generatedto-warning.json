@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "bash .github/hooks/scripts/warn-manual-dto-without-generatedto.sh",
+        "timeout": 20
+      }
+    ]
+  }
+}
