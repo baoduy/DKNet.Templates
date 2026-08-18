@@ -43,6 +43,7 @@ public sealed class ApiHooks(IObjectContainer objectContainer)
     public async Task BeforeScenarioAsync()
     {
         await _factory.ResetDatabaseAsync();
+        _factory.LogCapture.Clear();
         objectContainer.RegisterInstanceAs<HttpClient>(_client);
         objectContainer.RegisterInstanceAs(_factory);
         objectContainer.RegisterInstanceAs(new ScenarioState());

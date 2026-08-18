@@ -58,6 +58,43 @@ public class MigrationSchemaTests
     }
 
     [Fact]
+    public void Migration_ShouldCreate_LoyaltyMembershipsTable()
+    {
+        using var dbContext = new DbContextFactory().CreateDbContext([]);
+        var loyaltyMembershipType = dbContext.Model.GetEntityTypes()
+            .FirstOrDefault(e => e.GetTableName() == "LoyaltyMemberships");
+
+        loyaltyMembershipType.ShouldNotBeNull();
+        loyaltyMembershipType!.FindProperty("Id").ShouldNotBeNull();
+        loyaltyMembershipType.FindProperty("MemberName").ShouldNotBeNull();
+        loyaltyMembershipType.FindProperty("Tier").ShouldNotBeNull();
+        loyaltyMembershipType.FindProperty("Points").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void MemberName_ShouldHave_UniqueIndex()
+    {
+        using var dbContext = new DbContextFactory().CreateDbContext([]);
+        var loyaltyMembershipType = dbContext.Model.GetEntityTypes()
+            .First(e => e.GetTableName() == "LoyaltyMemberships");
+        var memberNameProp = loyaltyMembershipType.FindProperty("MemberName")!;
+        var isUnique = loyaltyMembershipType.GetIndexes()
+            .Any(i => i.Properties.Count == 1
+                      && i.Properties[0] == memberNameProp
+                      && i.IsUnique);
+        isUnique.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Migration_ShouldHaveNoPendingModelChanges()
+    {
+        // Mirrors what `dotnet ef migrations has-pending-model-changes` checks at the CLI —
+        // covers the acceptance criterion "no pending model changes remain for the loyalty membership".
+        using var dbContext = new DbContextFactory().CreateDbContext([]);
+        dbContext.Database.HasPendingModelChanges().ShouldBeFalse();
+    }
+
+    [Fact]
     public void EfCoreModelSnapshot_ShouldReferenceNpgsql()
     {
         var srcDir = Path.GetFullPath(

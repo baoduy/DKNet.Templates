@@ -1,8 +1,10 @@
+using DKNet.EfCore.Hooks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Minimal.Domains.Services;
 
@@ -12,9 +14,13 @@ public sealed class BddApiFactory : WebApplicationFactory<Minimal.Api.Program>
 {
     private readonly string _dbName = "bdd-tests";
 
+    /// <summary>Captures log lines written by the app during a scenario, for asserting on log output.</summary>
+    public TestLogCapture LogCapture { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.ConfigureLogging(logging => logging.AddProvider(LogCapture));
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -35,7 +41,10 @@ public sealed class BddApiFactory : WebApplicationFactory<Minimal.Api.Program>
             services.RemoveAll<IPostConfigureOptions<DbContextOptions<CoreDbContext>>>();
             services.RemoveAll<DbContextOptions<CoreDbContext>>();
             services.RemoveAll<CoreDbContext>();
-            services.AddDbContext<CoreDbContext>(options => options
+
+            // AddDbContext (rather than AddDbContextWithHook) here would silently drop the DKNet events hook —
+            // AddEvent-raised and [RaisesEvent]-declared domain events would never publish under this fixture.
+            services.AddDbContextWithHook<CoreDbContext>((_, options) => options
                 .UseInMemoryDatabase(_dbName)
                 .UseAutoConfigModel([typeof(CoreDbContext).Assembly]));
 
