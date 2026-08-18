@@ -1,4 +1,4 @@
-using Minimal.Api.Configs.Idempotency;
+using DKNet.AspCore.Idempotency;
 using Minimal.AppServices.CustomerProfiles.V1.Actions;
 using Minimal.Domains.Features.Profiles.Entities;
 using CustomerProfileDto = Minimal.AppServices.CustomerProfiles.V1.CustomerProfileDto;
@@ -25,7 +25,7 @@ internal sealed class CustomerProfileV1Endpoint : IEndpointConfig
             .WithDescription("Get profile by id");
 
         group.MapPost<CreateProfileRequest, CustomerProfileDto>()
-            .AddIdempotencyFilter()
+            .RequiredIdempotentKey()
             .WithDescription(
                 "Create profile. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
                 "X-Idempotency-Key: {IdempotencyKey} <br/>");

@@ -1,6 +1,7 @@
-﻿using Minimal.Api.Configs.Auth;
+﻿using DKNet.AspCore.Idempotency;
+using DKNet.AspCore.Idempotency.RedisStore;
+using Minimal.Api.Configs.Auth;
 using Minimal.Api.Configs.GlobalExceptions;
-using Minimal.Api.Configs.Idempotency;
 using Minimal.Api.Configs.RateLimits;
 using Minimal.Api.Configs.Swagger;
 
@@ -44,8 +45,21 @@ internal static class AppConfig
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
 
-        services.CacheConfig(configuration)
-            .AddIdempotency();
+        services.CacheConfig(configuration);
+
+        var redisConnectionString = configuration.GetConnectionString(SharedConsts.RedisConnectionString);
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            services.AddIdempotencyWithRedisStore(
+                redisConnectionString,
+                o => o.ConflictHandling = IdempotentConflictHandling.CachedResult);
+        }
+        else
+        {
+#pragma warning disable CS0618 // AddIdempotentKey() (non-generic) is obsolete; accepted fallback when Redis is not configured.
+            services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.CachedResult);
+#pragma warning restore CS0618
+        }
 
         return services
             .AddCrosConfig()

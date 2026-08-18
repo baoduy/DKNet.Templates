@@ -10,6 +10,10 @@
     <ItemGroup>
         <PackageReference Include="DKNet.EfCore.Abstractions"/>
         <PackageReference Include="DKNet.EfCore.DataAuthorization"/>
+        <PackageReference Include="DKNet.EfCore.DtoGenerator">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Update="Meziantou.Analyzer">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
