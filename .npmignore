@@ -9,3 +9,4 @@ SPEC_KIT.md
 .gitignore
 .vscode/
 .specify/
+.github/workflows/
