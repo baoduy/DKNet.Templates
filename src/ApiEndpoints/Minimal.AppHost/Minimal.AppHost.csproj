@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsAspireHost>true</IsAspireHost>
+        <AspireUseCliBundle>true</AspireUseCliBundle>
         <UserSecretsId>9515a45c-a957-41d7-81af-508ff22d218d</UserSecretsId>
         <!-- Disable code analysis for test entities -->
         <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
