@@ -9,15 +9,6 @@ namespace Minimal.Api.Configs.Auth;
 [ExcludeFromCodeCoverage]
 internal static class AuthConfig
 {
-    #region Properties
-
-    /// <summary>
-    ///     Indicates whether the authentication configuration has been added to the services.
-    /// </summary>
-    public static bool IsAuthConfigAdded { get; private set; }
-
-    #endregion
-
     #region Methods
 
     /// <summary>
@@ -32,7 +23,7 @@ internal static class AuthConfig
     /// </remarks>
     public static IServiceCollection AddAuthConfig(this IServiceCollection services)
     {
-        IsAuthConfigAdded = true;
+        services.MarkConfigAdded(nameof(AuthConfig));
 
         services.AddAuthentication()
             .AddJwtBearer(c =>
@@ -75,7 +66,7 @@ internal static class AuthConfig
     /// </remarks>
     public static WebApplication UseAuthConfig(this WebApplication app)
     {
-        if (IsAuthConfigAdded)
+        if (app.Services.IsConfigAdded(nameof(AuthConfig)))
         {
             app.UseAuthentication();
             app.UseAuthorization();

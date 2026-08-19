@@ -20,7 +20,11 @@ builder.Services
     .AddAppConfig(feature, builder.Configuration);
 
 await builder.Build()
-    .UseAppConfig(a => a.UseEndpointConfigs());
+    .UseAppConfig(a => a.UseEndpointConfigs(o =>
+    {
+        o.RequireAuthorization = feature.RequireAuthorization;
+        o.SystemAccountName = SharedConsts.SystemAccount;
+    }, typeof(Program).Assembly));
 
 //This Startup endpoint for Unit Tests
 namespace Minimal.Api

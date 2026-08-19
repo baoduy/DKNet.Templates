@@ -3,13 +3,6 @@ namespace Minimal.Api.Configs.GlobalExceptions;
 [ExcludeFromCodeCoverage]
 internal static class GlobalExceptionConfigs
 {
-    #region Fields
-
-    // A flag to check if the global exception configuration has been added
-    private static bool _configAdded;
-
-    #endregion
-
     #region Methods
 
     /// <summary>
@@ -35,8 +28,8 @@ internal static class GlobalExceptionConfigs
         // Add the global exception handler middleware
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
-        // Set the flag to indicate that the configuration has been added
-        _configAdded = true;
+        // Mark the configuration as added on this host
+        services.MarkConfigAdded(nameof(GlobalExceptionConfigs));
 
         // Return the service collection
         return services;
@@ -49,8 +42,8 @@ internal static class GlobalExceptionConfigs
     /// <returns>The web application with the global exception handler applied.</returns>
     public static WebApplication UseGlobalException(this WebApplication app)
     {
-        // Check if the global exception configuration has been added
-        if (!_configAdded)
+        // Check if the global exception configuration has been added on this host
+        if (!app.Services.IsConfigAdded(nameof(GlobalExceptionConfigs)))
         {
             return app;
         }

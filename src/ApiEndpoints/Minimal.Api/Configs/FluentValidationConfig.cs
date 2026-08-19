@@ -6,12 +6,6 @@ namespace Minimal.Api.Configs;
 [ExcludeFromCodeCoverage]
 internal static class FluentValidationConfig
 {
-    #region Properties
-
-    public static bool ConfigAdded { get; private set; }
-
-    #endregion
-
     #region Methods
 
     public static WebApplicationBuilder AddFluentValidationConfig(this WebApplicationBuilder builder)
@@ -19,7 +13,6 @@ internal static class FluentValidationConfig
         builder.Services.AddFluentValidationAutoValidation();
         builder.Services.AddValidatorsFromAssembly(typeof(AppSetup).Assembly, includeInternalTypes: true);
 
-        ConfigAdded = true;
         return builder;
     }
 

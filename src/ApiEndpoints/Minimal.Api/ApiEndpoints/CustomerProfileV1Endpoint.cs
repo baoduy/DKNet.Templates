@@ -19,21 +19,21 @@ internal sealed class CustomerProfileV1Endpoint : IEndpointConfig
 
     public void Map(RouteGroupBuilder group)
     {
-        group.MapGetList<CustomerProfile, CustomerProfileDto>()
+        group.MapGetList<CustomerProfile, CustomerProfileDto>("/")
             .WithDescription("Get all profiles");
-        group.MapGetById<CustomerProfile, CustomerProfileDto>()
+        group.MapGetById<CustomerProfile, CustomerProfileDto>("{id:guid}")
             .WithDescription("Get profile by id");
 
-        group.MapPost<CreateProfileRequest, CustomerProfileDto>()
+        group.MapPost<CreateProfileRequest, CustomerProfileDto>("/")
             .RequiredIdempotentKey()
             .WithDescription(
                 "Create profile. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
                 "X-Idempotency-Key: {IdempotencyKey} <br/>");
 
-        group.MapPut<UpdateProfileRequest, CustomerProfileDto>()
+        group.MapPut<UpdateProfileRequest, CustomerProfileDto>("/")
             .WithDescription("Update profile by id");
 
-        group.MapDelete<DeleteProfileRequest>()
+        group.MapDelete<DeleteProfileRequest>("/")
             .WithDescription("Delete profile by id");
     }
 

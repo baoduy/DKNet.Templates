@@ -8,12 +8,6 @@ namespace Minimal.Api.Configs.RateLimits;
 [ExcludeFromCodeCoverage]
 internal static class RateLimitConfig
 {
-    #region Fields
-
-    private static bool _configAdded;
-
-    #endregion
-
     #region Methods
 
     /// <summary>
@@ -24,8 +18,6 @@ internal static class RateLimitConfig
     /// <returns>The service collection with rate limiting configured</returns>
     public static IServiceCollection AddRateLimitConfig(this IServiceCollection services, IConfiguration configuration)
     {
-        _configAdded = false;
-
         services.Configure<RateLimitOptions>(configuration.GetSection(RateLimitOptions.Name));
         services.AddSingleton<IRateLimitKeyProvider, RateLimitKeyProvider>();
 
@@ -56,7 +48,7 @@ internal static class RateLimitConfig
                 }));
         });
 
-        _configAdded = true;
+        services.MarkConfigAdded(nameof(RateLimitConfig));
         Console.WriteLine("Rate Limiting enabled.");
         return services;
     }
@@ -68,7 +60,7 @@ internal static class RateLimitConfig
     /// <returns>The web application with rate limiting applied</returns>
     public static WebApplication UseRateLimitConfig(this WebApplication app)
     {
-        if (!_configAdded)
+        if (!app.Services.IsConfigAdded(nameof(RateLimitConfig)))
         {
             return app;
         }

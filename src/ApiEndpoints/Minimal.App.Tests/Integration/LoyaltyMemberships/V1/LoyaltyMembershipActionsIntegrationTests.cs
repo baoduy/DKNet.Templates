@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Text;
 using DKNet.EfCore.Specifications;
 using DKNet.EfCore.Specifications.Extensions;
+using Minimal.App.TestSupport;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.LoyaltyMemberships.V1;
 using Minimal.AppServices.LoyaltyMemberships.V1.Actions;

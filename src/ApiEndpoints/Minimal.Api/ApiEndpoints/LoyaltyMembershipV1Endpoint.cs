@@ -17,13 +17,13 @@ internal sealed class LoyaltyMembershipV1Endpoint : IEndpointConfig
 
     public void Map(RouteGroupBuilder group)
     {
-        group.MapPost<EnrollMembershipRequest, LoyaltyMembershipDto>()
+        group.MapPost<EnrollMembershipRequest, LoyaltyMembershipDto>("/")
             .WithDescription("Enrol a new loyalty membership");
 
-        group.MapPut<ChangeMembershipRequest, LoyaltyMembershipDto>()
+        group.MapPut<ChangeMembershipRequest, LoyaltyMembershipDto>("/")
             .WithDescription("Change a loyalty membership's tier and/or points");
 
-        group.MapDelete<WithdrawMembershipRequest>()
+        group.MapDelete<WithdrawMembershipRequest>("/")
             .WithDescription("Withdraw a loyalty membership");
     }
 

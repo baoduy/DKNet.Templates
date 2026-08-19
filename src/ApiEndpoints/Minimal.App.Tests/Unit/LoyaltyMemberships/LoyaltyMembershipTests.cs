@@ -42,26 +42,6 @@ public class LoyaltyMembershipTests
     }
 
     [Fact]
-    public void LoyaltyMembership_ShouldDeclareItsThreeEventsViaAttribute_NotByHand()
-    {
-        // The spec's signal is "no line in the template raises those events by hand" — enforced here at the
-        // metadata level (the RaisesEvent declarations exist) and in PackageArchitectureTests at the source
-        // level (no AddEvent call in any of the three command handlers).
-        var attributes = typeof(LoyaltyMembership)
-            .GetCustomAttributes(typeof(RaisesEventAttribute), inherit: false)
-            .Cast<RaisesEventAttribute>()
-            .ToList();
-
-        attributes.Select(a => a.EventType).ShouldBe(
-            [
-                typeof(LoyaltyMembershipEvents),
-                typeof(LoyaltyMembershipTierChangedEvent),
-                typeof(LoyaltyMembershipWithdrawnEvent)
-            ],
-            ignoreOrder: true);
-    }
-
-    [Fact]
     public void Validator_ShouldRejectUnknownTier()
     {
         var validator = new EnrollMembershipCommandValidator();

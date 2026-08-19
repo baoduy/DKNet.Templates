@@ -3,12 +3,6 @@ namespace Minimal.Api.Configs;
 [ExcludeFromCodeCoverage]
 internal static class HttpsConfig
 {
-    #region Fields
-
-    private static bool _configAdded;
-
-    #endregion
-
     #region Methods
 
     public static IServiceCollection AddHttpsConfig(
@@ -29,13 +23,13 @@ internal static class HttpsConfig
             });
         }
 
-        _configAdded = true;
+        services.MarkConfigAdded(nameof(HttpsConfig));
         return services;
     }
 
     public static WebApplication UseHttpsConfig(this WebApplication app)
     {
-        if (_configAdded)
+        if (app.Services.IsConfigAdded(nameof(HttpsConfig)))
         {
             app.UseHsts()
                 .UseHttpsRedirection();
