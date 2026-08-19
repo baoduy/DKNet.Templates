@@ -90,10 +90,14 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
 
         var results = await repository.GetStatusCounts<LoyaltyMembership>(
             new StatusPropertyInfo(nameof(LoyaltyMembership.Tier), typeof(MembershipTier)),
-            new GenericStatusCountsParameters { From = DateTimeOffset.UtcNow.AddDays(-7) });
+            new GenericStatusCountsParameters
+            {
+                From = DateTimeOffset.UtcNow.AddDays(-7),
+                To = DateTimeOffset.UtcNow.AddDays(1)
+            });
 
         results.ShouldContain(r =>
             r.Type == nameof(MembershipTier) && r.Status == "GOLD" && r.Count == 1,
-            "the 90-day-old record must be excluded once an explicit From narrows the window to the last 7 days.");
+            "the 90-day-old record must be excluded once an explicit From/To range narrows the window to the last 7 days.");
     }
 }
