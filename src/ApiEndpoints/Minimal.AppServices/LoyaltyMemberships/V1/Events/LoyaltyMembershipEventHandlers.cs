@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Minimal.Domains.Features.LoyaltyMemberships.Entities;
 using Minimal.Domains.Features.LoyaltyMemberships.Events;
 
 namespace Minimal.AppServices.LoyaltyMemberships.V1.Events;
