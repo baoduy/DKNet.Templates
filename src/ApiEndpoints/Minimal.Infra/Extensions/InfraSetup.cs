@@ -57,6 +57,7 @@ public static class InfraSetup
         builder.ConfigureWarnings(warnings =>
         {
             warnings.Log(RelationalEventId.PendingModelChangesWarning);
+            //warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
         });
 #if DEBUG
         builder.EnableDetailedErrors().EnableSensitiveDataLogging();
