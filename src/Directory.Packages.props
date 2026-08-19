@@ -126,7 +126,7 @@
     <PackageVersion Include="SlimMessageBus.Host.Interceptor" Version="3.0.0" />
     <PackageVersion Include="SlimMessageBus.Host.Memory" Version="3.5.0" />
     <PackageVersion Include="SlimMessageBus.Host.Serialization.SystemTextJson" Version="3.5.0" />
-    <PackageVersion Include="StackExchange.Redis" Version="2.7.27" />
+    <PackageVersion Include="StackExchange.Redis" Version="2.8.58" />
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.19.2" />
     <PackageVersion Include="System.Memory.Data" Version="10.0.10" />

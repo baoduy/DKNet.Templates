@@ -16,10 +16,15 @@
         <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
         <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
-        <!-- NU1903: Testcontainers pulls in SSH.NET (for remote Docker daemon support this project never uses)
-             which carries a known advisory; test-only, build-time-only dependency, so accepted here. -->
-        <NoWarn>$(NoWarn);CS1591;SA1600;NU1903</NoWarn>
+        <NoWarn>$(NoWarn);CS1591;SA1600</NoWarn>
     </PropertyGroup>
+
+    <ItemGroup>
+        <!-- SSH.NET via Testcontainers (remote Docker daemon support, unused here); test-only,
+             build-time-only. Targeted suppression instead of blanket NU1903 so future advisories
+             in this project still surface. -->
+        <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-q939-rpr3-3284" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector">
