@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+<Project Sdk="Aspire.AppHost.Sdk/13.5.0">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -14,7 +14,10 @@
         <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
         <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);CS1591;SA1600</NoWarn>
+        <!-- ASPIRE010: dashboard/DCP deprecation warning, understood and deliberately deferred —
+             AspireUseCliBundle requires the Aspire CLI on PATH, which breaks a bare `dotnet build`
+             on a clean scaffolded machine. NoWarn keeps the template buildable everywhere. -->
+        <NoWarn>$(NoWarn);CS1591;SA1600;ASPIRE010</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,7 +25,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Aspire.Hosting.AppHost" />
         <PackageReference Include="Aspire.Hosting.Redis" />
         <PackageReference Include="Aspire.Hosting.PostgreSQL" />
         <PackageReference Update="Meziantou.Analyzer">
