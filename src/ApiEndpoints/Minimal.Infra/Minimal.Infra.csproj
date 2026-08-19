@@ -37,6 +37,7 @@
     <ItemGroup>
         <InternalsVisibleTo Include="Minimal.App.Tests"/>
         <InternalsVisibleTo Include="Minimal.App.BDDTests"/>
+        <InternalsVisibleTo Include="Minimal.App.TestSupport"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -5,12 +5,6 @@ namespace Minimal.Api.Configs.Healthz;
 [ExcludeFromCodeCoverage]
 internal static class HealthzConfig
 {
-    #region Fields
-
-    private static bool _configAdded;
-
-    #endregion
-
     #region Methods
 
     public static IServiceCollection AddHealthzConfig(this IServiceCollection services, FeatureOptions features)
@@ -23,7 +17,7 @@ internal static class HealthzConfig
         services.AddHealthChecks()
             .AddDbContextCheck<DbContext>()
             .AddCheck<HealthCheckHandler>(SharedConsts.ApiName);
-        _configAdded = true;
+        services.MarkConfigAdded(nameof(HealthzConfig));
         return services;
     }
 
@@ -34,7 +28,7 @@ internal static class HealthzConfig
     /// <returns></returns>
     public static WebApplication UseHealthzConfig(this WebApplication endpoints)
     {
-        if (!_configAdded)
+        if (!endpoints.Services.IsConfigAdded(nameof(HealthzConfig)))
         {
             return endpoints;
         }
