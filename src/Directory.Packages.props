@@ -117,7 +117,6 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
     <PackageVersion Include="Reqnroll.NUnit" Version="3.3.4" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.16.20" />
-    <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="2.0.0" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="SlimMessageBus" Version="3.0.0" />
