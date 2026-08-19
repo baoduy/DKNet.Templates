@@ -50,7 +50,7 @@ public class ModelSpecStatusCounts<TEntity> : Specification<TEntity>
     /// <param name="parameters">The date range parameters used to build the filter.</param>
     public ModelSpecStatusCounts(GenericStatusCountsParameters parameters)
     {
-        var predicate = CreatePredicate();
+        var predicate = CreatePredicate(x => true);
 
         if (parameters.From is { } from)
         {
