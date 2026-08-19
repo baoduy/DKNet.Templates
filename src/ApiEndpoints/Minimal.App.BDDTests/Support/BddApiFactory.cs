@@ -1,3 +1,6 @@
+using DKNet.AspCore.Idempotency;
+using DKNet.AspCore.Idempotency.RedisStore;
+using DKNet.AspCore.Idempotency.Store;
 using DKNet.EfCore.Hooks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,7 +13,7 @@ using Minimal.Domains.Services;
 
 namespace Minimal.App.BDDTests.Support;
 
-public sealed class BddApiFactory : WebApplicationFactory<Minimal.Api.Program>
+public sealed class BddApiFactory(string? redisConnectionString = null) : WebApplicationFactory<Minimal.Api.Program>
 {
     private readonly string _dbName = "bdd-tests";
 
@@ -24,14 +27,26 @@ public sealed class BddApiFactory : WebApplicationFactory<Minimal.Api.Program>
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
+            var settings = new Dictionary<string, string?>
             {
                 ["FeatureManagement:RunDbMigrationWhenAppStart"] = "false",
                 ["FeatureManagement:EnableSwagger"] = "false",
                 ["FeatureManagement:EnableAzureAppConfig"] = "false",
                 ["FeatureManagement:RequireAuthorization"] = "false",
                 ["ConnectionStrings:AppDb"] = "UseInMemory"
-            });
+            };
+
+            // Only the @redis scenario passes this. Setting it alone isn't enough to flip AppConfig.AddAppConfig's
+            // redis-vs-fallback branch — WebApplicationFactory merges this config in after Program.cs's own
+            // startup code already read it, so the ConfigureServices override below does the actual swap. Kept
+            // here too so anything else that reads ConnectionStrings:Redis at runtime (rather than at startup)
+            // sees the real value.
+            if (!string.IsNullOrWhiteSpace(redisConnectionString))
+            {
+                settings["ConnectionStrings:Redis"] = redisConnectionString;
+            }
+
+            config.AddInMemoryCollection(settings);
         });
 
         builder.ConfigureServices(services =>
@@ -50,6 +65,17 @@ public sealed class BddApiFactory : WebApplicationFactory<Minimal.Api.Program>
 
             services.RemoveAll<IMembershipService>();
             services.AddSingleton<IMembershipService, TestMembershipService>();
+
+            if (!string.IsNullOrWhiteSpace(redisConnectionString))
+            {
+                // Program.cs's own AddAppConfig already chose the in-memory idempotency fallback (it ran before
+                // the config above was merged in), so replace that choice directly instead.
+                services.RemoveAll<IIdempotencyKeyStore>();
+                services.RemoveAll<IOptions<IdempotencyOptions>>();
+                services.AddIdempotencyWithRedisStore(
+                    redisConnectionString,
+                    o => o.ConflictHandling = IdempotentConflictHandling.CachedResult);
+            }
         });
     }
 

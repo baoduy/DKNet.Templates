@@ -126,12 +126,14 @@
     <PackageVersion Include="SlimMessageBus.Host.Interceptor" Version="3.0.0" />
     <PackageVersion Include="SlimMessageBus.Host.Memory" Version="3.5.0" />
     <PackageVersion Include="SlimMessageBus.Host.Serialization.SystemTextJson" Version="3.5.0" />
+    <PackageVersion Include="StackExchange.Redis" Version="2.7.27" />
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.19.2" />
     <PackageVersion Include="System.Memory.Data" Version="10.0.10" />
     <PackageVersion Include="Testcontainers.Azurite" Version="4.13.0" />
     <PackageVersion Include="Testcontainers.Minio" Version="4.13.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.13.0" />
+    <PackageVersion Include="Testcontainers.Redis" Version="4.13.0" />
     <PackageVersion Include="X.PagedList.EF" Version="10.5.9" />
     <PackageVersion Include="NUnit" Version="4.6.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.14.0" />

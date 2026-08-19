@@ -2,6 +2,9 @@
 
     <PropertyGroup>
         <IsPackable>false</IsPackable>
+        <!-- The @redis scenario needs Docker; keep it out of a bare "dotnet test" run (still runnable via an
+             explicit filter targeting TestCategory=redis). -->
+        <VSTestTestCaseFilter>TestCategory!=redis</VSTestTestCaseFilter>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -13,7 +16,9 @@
         <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
         <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);CS1591;SA1600</NoWarn>
+        <!-- NU1903: Testcontainers pulls in SSH.NET (for remote Docker daemon support this project never uses)
+             which carries a known advisory; test-only, build-time-only dependency, so accepted here. -->
+        <NoWarn>$(NoWarn);CS1591;SA1600;NU1903</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -32,6 +37,8 @@
         <PackageReference Include="NUnit3TestAdapter"/>
         <PackageReference Include="Reqnroll.NUnit" />
         <PackageReference Include="Shouldly" />
+        <PackageReference Include="StackExchange.Redis" />
+        <PackageReference Include="Testcontainers.Redis" />
     </ItemGroup>
 
     <ItemGroup>

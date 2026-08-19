@@ -17,3 +17,11 @@ Feature: Customer Profile Create Idempotency
     When a customer profile is requested for Bao Duy without an idempotency key
     Then the request is rejected
     And no customer profile exists for Bao Duy
+
+  @integration @redis
+  Scenario: With Redis configured, deduplication keys are held in Redis
+    Given the service is running with a Redis connection configured
+    And a customer profile has been created for Bao Duy with idempotency key "6f1c2a90-0002-4a3b-9d2e-1f0b7c5ad002"
+    When the same create request is sent again with idempotency key "6f1c2a90-0002-4a3b-9d2e-1f0b7c5ad002"
+    Then the first request's result is returned
+    And the configured Redis instance holds an entry for that idempotency key

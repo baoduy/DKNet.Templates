@@ -1,3 +1,5 @@
+using System.Net.Http;
+using System.Text;
 using DKNet.EfCore.Specifications;
 using DKNet.EfCore.Specifications.Extensions;
 using Minimal.App.Tests.Integration.Support;
@@ -187,6 +189,36 @@ public sealed class LoyaltyMembershipActionsIntegrationTests(ApiFixture fixture)
 
         fixture.LogCapture.Messages.ShouldNotContain(m =>
             m.Contains("enrolled", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task PutWithOutOfEnumTierIsRejectedAndPersistsNothing()
+    {
+        await fixture.ResetDatabaseAsync();
+
+        using var scope = fixture.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
+
+        var membership = new LoyaltyMembership("Alice Nguyen", MembershipTier.Silver, 0, "seed");
+        await repository.AddAsync(membership, CancellationToken.None);
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        // A string tier (e.g. "platinum") would fail JSON model binding before ChangeMembershipCommandValidator
+        // ever runs, since JsonStringEnumConverter rejects unknown names outright. The numeric form binds fine
+        // (JsonStringEnumConverter allows integer values) and is what actually reaches the validator's IsInEnum().
+        using var client = fixture.CreateClient();
+        var payload = $$"""{"id":"{{membership.Id}}","tier":99}""";
+        var response = await client.PutAsync(
+            "/v1/loyalty-memberships",
+            new StringContent(payload, Encoding.UTF8, "application/json"));
+
+        response.IsSuccessStatusCode.ShouldBeFalse();
+
+        var stored = await repository.FirstOrDefaultAsync(
+            new SpecGetLoyaltyMembership(membership.Id),
+            CancellationToken.None);
+        stored.ShouldNotBeNull();
+        stored.Tier.ShouldBe(MembershipTier.Silver);
     }
 
     [Fact]

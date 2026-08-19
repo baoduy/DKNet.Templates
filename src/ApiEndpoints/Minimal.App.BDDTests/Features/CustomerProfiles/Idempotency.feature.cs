@@ -106,7 +106,7 @@ namespace Minimal.App.BDDTests.Features.CustomerProfiles
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CustomerProfiles/Idempotency.feature.ndjson", 4);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CustomerProfiles/Idempotency.feature.ndjson", 5);
         }
         
         [global::NUnit.Framework.TestAttribute()]
@@ -187,6 +187,51 @@ namespace Minimal.App.BDDTests.Features.CustomerProfiles
 #line hidden
 #line 19
     await testRunner.AndAsync("no customer profile exists for Bao Duy", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::NUnit.Framework.TestAttribute()]
+        [global::NUnit.Framework.DescriptionAttribute("With Redis configured, deduplication keys are held in Redis")]
+        [global::NUnit.Framework.CategoryAttribute("integration")]
+        [global::NUnit.Framework.CategoryAttribute("redis")]
+        public async global::System.Threading.Tasks.Task WithRedisConfiguredDeduplicationKeysAreHeldInRedis()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "integration",
+                    "redis"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "2";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("With Redis configured, deduplication keys are held in Redis", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 22
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 23
+    await testRunner.GivenAsync("the service is running with a Redis connection configured", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 24
+    await testRunner.AndAsync("a customer profile has been created for Bao Duy with idempotency key \"6f1c2a90-00" +
+                        "02-4a3b-9d2e-1f0b7c5ad002\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 25
+    await testRunner.WhenAsync("the same create request is sent again with idempotency key \"6f1c2a90-0002-4a3b-9d" +
+                        "2e-1f0b7c5ad002\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 26
+    await testRunner.ThenAsync("the first request\'s result is returned", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 27
+    await testRunner.AndAsync("the configured Redis instance holds an entry for that idempotency key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
