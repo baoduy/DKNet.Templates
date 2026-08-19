@@ -8,11 +8,11 @@ namespace Minimal.AppServices.LoyaltyMemberships.V1.Events;
 ///     <see cref="DKNet.EfCore.Abstractions.Events.RaisesEventAttribute" /> — no persistence, no outbound call.
 /// </summary>
 internal sealed class LoyaltyMembershipEnrolledEventHandler(ILogger<LoyaltyMembershipEnrolledEventHandler> logger)
-    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipEnrolledEvent>
+    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipEvents>
 {
     #region Methods
 
-    public Task OnHandle(LoyaltyMembershipEnrolledEvent notification, CancellationToken cancellationToken)
+    public Task OnHandle(LoyaltyMembershipEvents notification, CancellationToken cancellationToken)
     {
         if (logger.IsEnabled(LogLevel.Information))
         {
