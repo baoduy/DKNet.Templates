@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+<Project Sdk="Aspire.AppHost.Sdk/13.5.0">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -14,7 +14,7 @@
         <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
         <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);CS1591;SA1600</NoWarn>
+        <NoWarn>$(NoWarn);CS1591;SA1600;ASPIRE010</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,7 +22,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Aspire.Hosting.AppHost" />
         <PackageReference Include="Aspire.Hosting.Redis" />
         <PackageReference Include="Aspire.Hosting.PostgreSQL" />
         <PackageReference Update="Meziantou.Analyzer">

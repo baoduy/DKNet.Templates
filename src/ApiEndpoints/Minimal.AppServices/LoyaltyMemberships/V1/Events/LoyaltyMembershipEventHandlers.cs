@@ -14,7 +14,11 @@ internal sealed class LoyaltyMembershipEnrolledEventHandler(ILogger<LoyaltyMembe
 
     public Task OnHandle(LoyaltyMembershipEnrolledEvent notification, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Loyalty membership enrolled for member {MemberName}.", notification.MemberName);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("Loyalty membership enrolled for member {MemberName}.", notification.MemberName);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -33,10 +37,14 @@ internal sealed class LoyaltyMembershipTierChangedEventHandler(
 
     public Task OnHandle(LoyaltyMembershipTierChangedEvent notification, CancellationToken cancellationToken)
     {
-        logger.LogInformation(
-            "Loyalty membership {MemberName} tier changed to {Tier}.",
-            notification.MemberName,
-            notification.Tier);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Loyalty membership {MemberName} tier changed to {Tier}.",
+                notification.MemberName,
+                notification.Tier);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -53,11 +61,15 @@ internal sealed class LoyaltyMembershipWithdrawnEventHandler(ILogger<LoyaltyMemb
 
     public Task OnHandle(LoyaltyMembershipWithdrawnEvent notification, CancellationToken cancellationToken)
     {
-        logger.LogInformation(
-            "Loyalty membership {MemberName} withdrawn at tier {Tier} with {Points} points.",
-            notification.MemberName,
-            notification.Tier,
-            notification.Points);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Loyalty membership {MemberName} withdrawn at tier {Tier} with {Points} points.",
+                notification.MemberName,
+                notification.Tier,
+                notification.Points);
+        }
+
         return Task.CompletedTask;
     }
 
