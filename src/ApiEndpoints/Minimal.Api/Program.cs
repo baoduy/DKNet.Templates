@@ -24,7 +24,7 @@ await builder.Build()
     {
         o.RequireAuthorization = feature.RequireAuthorization;
         o.SystemAccountName = SharedConsts.SystemAccount;
-    }));
+    }, typeof(Program).Assembly));
 
 //This Startup endpoint for Unit Tests
 namespace Minimal.Api

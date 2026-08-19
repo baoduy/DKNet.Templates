@@ -20,40 +20,52 @@ Base URL: `/api/v1/customer-profiles`
 
 Returns a paginated list of all active (non-deleted) profiles.
 
+> **Behavior change (DRK-500):** since adopting `DKNet.AspCore.Extensions`' `MapGetList`, both query
+> parameters below are **required** — a paramless call that used to return `200 OK` with 100 items now
+> returns `400 Bad Request`. The default page size also dropped from 100 to 20 (applied only when
+> `pageSize` is supplied as `0` or negative, since the parameter itself has no default).
+
 **Query Parameters**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `page` | `int` | No | Page number (default: 1) |
-| `pageSize` | `int` | No | Items per page (default: 20, max: 100) |
+| `pageNumber` | `int` | **Yes** | Page number (values `< 1` are clamped to `1`) |
+| `pageSize` | `int` | **Yes** | Items per page (values `< 1` are clamped to `20`) |
 
 **Response: 200 OK**
 
 ```json
-[
-  {
-    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "name": "Jane Smith",
-    "email": "jane.smith@example.com",
-    "membershipNo": "MEM-2025-00001",
-    "phone": "+61412345678",
-    "status": "Approved",
-    "createdAt": "2025-01-01T10:00:00Z",
-    "createdBy": "user-abc123"
-  }
-]
+{
+  "items": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "membershipNo": "MEM-2025-00001",
+      "phone": "+61412345678",
+      "status": "Approved",
+      "createdAt": "2025-01-01T10:00:00Z",
+      "createdBy": "user-abc123"
+    }
+  ],
+  "pageNumber": 1,
+  "pageSize": 20,
+  "pageCount": 1,
+  "totalItemCount": 1
+}
 ```
 
 **Error Responses**
 
 | Status | Code | Description |
 |--------|------|-------------|
+| `400` | `Bad Request` | `pageNumber` or `pageSize` missing from the query string |
 | `401` | `Unauthorized` | Missing or invalid bearer token |
 
 **curl**
 
 ```bash
-curl -X GET "https://localhost:7001/api/v1/customer-profiles" \
+curl -X GET "https://localhost:7001/api/v1/customer-profiles?pageNumber=1&pageSize=20" \
   -H "Authorization: Bearer {token}"
 ```
 
