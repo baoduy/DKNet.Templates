@@ -21,7 +21,7 @@ public enum MembershipTier
 /// Enrolment, tier changes, and withdrawal are declared via <see cref="RaisesEventAttribute"/> and raised
 /// automatically by the DKNet events hook on save — no method here calls <c>AddEvent</c>.
 /// </remarks>
-[RaisesEvent(typeof(LoyaltyMembershipEvents), EventOperations.Created)]
+[RaisesEvent(typeof(LoyaltyMembershipEnrolledEvent), EventOperations.Created)]
 [RaisesEvent(typeof(LoyaltyMembershipTierChangedEvent), EventOperations.Updated, nameof(Tier))]
 [RaisesEvent(typeof(LoyaltyMembershipWithdrawnEvent), EventOperations.Deleted)]
 public class LoyaltyMembership : AggregateRoot

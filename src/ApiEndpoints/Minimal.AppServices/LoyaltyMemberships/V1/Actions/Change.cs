@@ -32,6 +32,21 @@ public record ChangeMembershipRequest : RequestBase, Fluents.Requests.IWitRespon
     #endregion
 }
 
+/// <summary>
+///     FluentValidation validator for <see cref="ChangeMembershipRequest" />.
+/// </summary>
+internal sealed class ChangeMembershipCommandValidator : AbstractValidator<ChangeMembershipRequest>
+{
+    #region Constructors
+
+    public ChangeMembershipCommandValidator()
+    {
+        RuleFor(a => a.Tier).IsInEnum().When(a => a.Tier is not null);
+    }
+
+    #endregion
+}
+
 internal sealed class ChangeMembershipCommandHandler(
     IMapper mapper,
     IRepositorySpec repo) : Fluents.Requests.IHandler<ChangeMembershipRequest, LoyaltyMembershipDto>

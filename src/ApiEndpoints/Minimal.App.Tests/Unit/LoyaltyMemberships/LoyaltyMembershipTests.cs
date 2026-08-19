@@ -54,7 +54,7 @@ public class LoyaltyMembershipTests
 
         attributes.Select(a => a.EventType).ShouldBe(
             [
-                typeof(LoyaltyMembershipEvents),
+                typeof(LoyaltyMembershipEnrolledEvent),
                 typeof(LoyaltyMembershipTierChangedEvent),
                 typeof(LoyaltyMembershipWithdrawnEvent)
             ],

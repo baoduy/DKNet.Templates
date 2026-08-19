@@ -7,7 +7,7 @@ namespace Minimal.Domains.Features.LoyaltyMemberships.Events;
 /// Declared domain event raised when a <see cref="LoyaltyMembership"/> is enrolled.
 /// </summary>
 [GenerateDto(typeof(LoyaltyMembership))]
-public partial record LoyaltyMembershipEvents;
+public partial record LoyaltyMembershipEnrolledEvent;
 
 
 /// <summary>
