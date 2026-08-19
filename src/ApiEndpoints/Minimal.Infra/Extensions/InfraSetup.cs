@@ -3,6 +3,7 @@ using DKNet.EfCore.Extensions.Extensions;
 using DKNet.EfCore.Hooks;
 using DKNet.EfCore.Specifications;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Minimal.Domains.Services;
 using Minimal.Infra.Contexts;
 using Minimal.Infra.Services;
 
@@ -17,23 +18,8 @@ public static class InfraSetup
 {
     #region Methods
 
-    private static IServiceCollection AddImplementations(this IServiceCollection services)
-    {
-        services.Scan(s => s.FromAssemblies(typeof(InfraSetup).Assembly)
-            .AddClasses(
-                c => c.Where(t =>
-                    t is { IsSealed: true, Namespace: not null }
-                    && (t.Namespace!.Contains(".Repos", StringComparison.Ordinal)
-                        || t.Namespace!.Contains(".Services", StringComparison.Ordinal))),
-                false)
-            .AsImplementedInterfaces()
-            .WithScopedLifetime());
-
-        return services;
-    }
-
     /// <summary>
-    /// Adds infrastructure dependencies, including scanned implementations,
+    /// Adds infrastructure dependencies, including infra services,
     /// domain event publishing, and the EF Core <see cref="CoreDbContext"/> setup.
     /// </summary>
     /// <param name="service">The service collection used to register dependencies.</param>
@@ -41,7 +27,7 @@ public static class InfraSetup
     public static IServiceCollection AddInfraServices(this IServiceCollection service)
     {
         service
-            .AddImplementations()
+            .AddScoped<IMembershipService, MembershipService>()
             .AddSpecRepo<CoreDbContext>()
             .AddEventPublisher<CoreDbContext, EventPublisher>()
             .AddDbContextWithHook<CoreDbContext>((sp, builder) =>
@@ -71,7 +57,7 @@ public static class InfraSetup
         builder.ConfigureWarnings(warnings =>
         {
             warnings.Log(RelationalEventId.PendingModelChangesWarning);
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            //warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
         });
 #if DEBUG
         builder.EnableDetailedErrors().EnableSensitiveDataLogging();
