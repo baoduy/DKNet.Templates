@@ -78,7 +78,6 @@ src/ApiEndpoints/Minimal.AppServices/
 │           └── {Event}Handlers.cs          ← Event record + handlers
 ├── Share/
 │   ├── RequestBase.cs                      ← DO NOT MODIFY
-│   ├── PageableQuery.cs                    ← DO NOT MODIFY
 │   ├── IPrincipalProvider.cs               ← DO NOT MODIFY
 │   └── Generics/                           ← Generic list/paged specs
 ├── Extensions/
