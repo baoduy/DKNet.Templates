@@ -16,7 +16,7 @@ internal static class SwaggerConfig
 
     public static WebApplication UseOpenApiDoc(this WebApplication app)
     {
-        if (!ConfigAdded) return app;
+        if (!app.Services.IsConfigAdded(nameof(SwaggerConfig))) return app;
 
         app.MapOpenApi();
         app.MapScalarApiReference("/docs", c =>
@@ -39,7 +39,7 @@ internal static class SwaggerConfig
         {
             services.AddOpenApiDocVersion("v1", features.RequireAuthorization, true);
 
-            ConfigAdded = true;
+            services.MarkConfigAdded(nameof(SwaggerConfig));
             return services;
         }
 
@@ -84,6 +84,4 @@ internal static class SwaggerConfig
                 });
         }
     }
-
-    public static bool ConfigAdded;
 }

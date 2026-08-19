@@ -3,12 +3,6 @@ namespace Minimal.Api.Configs.Antiforgery;
 [ExcludeFromCodeCoverage]
 internal static class AntiforgeryConfig
 {
-    #region Fields
-
-    private static bool _configAdded;
-
-    #endregion
-
     #region Methods
 
     public static IServiceCollection AddAntiforgeryConfig(
@@ -28,13 +22,13 @@ internal static class AntiforgeryConfig
             config.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             config.SuppressXFrameOptionsHeader = false;
         });
-        _configAdded = true;
+        services.MarkConfigAdded(nameof(AntiforgeryConfig));
         return services;
     }
 
     public static WebApplication UseAntiforgeryConfig(this WebApplication app)
     {
-        if (_configAdded)
+        if (app.Services.IsConfigAdded(nameof(AntiforgeryConfig)))
         {
             app.UseMiddleware<AntiforgeryCookieMiddleware>();
             app.UseCookiePolicy();

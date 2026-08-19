@@ -1,8 +1,8 @@
 using Minimal.Domains.Services;
 
-namespace Minimal.App.BDDTests.Support;
+namespace Minimal.App.TestSupport;
 
-internal sealed class TestMembershipService : IMembershipService
+public sealed class TestMembershipService : IMembershipService
 {
     private int _current;
 

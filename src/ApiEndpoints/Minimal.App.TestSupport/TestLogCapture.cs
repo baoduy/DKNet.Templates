@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 
-namespace Minimal.App.BDDTests.Support;
+namespace Minimal.App.TestSupport;
 
 /// <summary>
 /// Captures log lines written through <see cref="ILogger"/> during a scenario, so a step can assert on
 /// observable log output instead of on internal call order. Registered as an additional <see cref="ILoggerProvider"/>
-/// in the BDD test host — it does not replace the console/other providers already configured.
+/// in a test host — it does not replace the console/other providers already configured.
 /// </summary>
 public sealed class TestLogCapture : ILoggerProvider
 {

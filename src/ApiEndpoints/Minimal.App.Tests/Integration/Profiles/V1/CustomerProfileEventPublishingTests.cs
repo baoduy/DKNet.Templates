@@ -1,5 +1,6 @@
 using DKNet.EfCore.Specifications;
 using DKNet.EfCore.Specifications.Extensions;
+using Minimal.App.TestSupport;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.CustomerProfiles.V1.Actions;
 using Minimal.AppServices.CustomerProfiles.V1.Events;

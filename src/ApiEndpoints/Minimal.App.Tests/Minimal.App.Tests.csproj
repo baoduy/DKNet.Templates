@@ -42,6 +42,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Minimal.Api\Minimal.Api.csproj" />
+        <ProjectReference Include="..\Minimal.App.TestSupport\Minimal.App.TestSupport.csproj" />
     </ItemGroup>
 
     <ItemGroup>
