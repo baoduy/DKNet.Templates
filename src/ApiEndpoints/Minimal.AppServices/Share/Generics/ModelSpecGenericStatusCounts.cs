@@ -10,26 +10,14 @@ namespace Minimal.AppServices.Share.Generics;
 public sealed record GenericStatusCountsParameters
 {
     /// <summary>
-    ///     Start date for filtering (defaults to 30 days ago if not provided)
+    ///     Start date for filtering (no lower bound if not provided)
     /// </summary>
     public DateTimeOffset? From { get; init; }
 
     /// <summary>
-    ///     End date for filtering (defaults to now if not provided)
+    ///     End date for filtering (no upper bound if not provided)
     /// </summary>
     public DateTimeOffset? To { get; init; }
-
-    /// <summary>
-    ///     Gets the effective From date (30 days ago if not specified)
-    /// </summary>
-    [JsonIgnore]
-    public DateTimeOffset FromValue => From ?? DateTimeOffset.Now.AddDays(-30);
-
-    /// <summary>
-    ///     Gets the effective To date (now if not specified)
-    /// </summary>
-    [JsonIgnore]
-    public DateTimeOffset ToValue => To ?? DateTimeOffset.Now;
 }
 
 /// <summary>
@@ -62,7 +50,18 @@ public class ModelSpecStatusCounts<TEntity> : Specification<TEntity>
     /// <param name="parameters">The date range parameters used to build the filter.</param>
     public ModelSpecStatusCounts(GenericStatusCountsParameters parameters)
     {
-        var predicate = CreatePredicate(x => x.CreatedOn >= parameters.FromValue && x.CreatedOn <= parameters.ToValue);
+        var predicate = CreatePredicate(x => true);
+
+        if (parameters.From is { } from)
+        {
+            predicate = predicate.And(x => x.CreatedOn >= from);
+        }
+
+        if (parameters.To is { } to)
+        {
+            predicate = predicate.And(x => x.CreatedOn <= to);
+        }
+
         WithFilter(predicate);
     }
 

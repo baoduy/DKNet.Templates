@@ -124,7 +124,7 @@ Define:
 - **Request DTOs**: immutable records, validation rules.
 - **Response DTOs**: naming (Dto, ActionsDto), serialization contracts.
 - **Error format**: error codes, messages, details.
-- **Pagination**: if applicable, use PageableQuery / ToPagedListAsync pattern.
+- **Pagination**: if applicable, use `DKNet.AspCore.Extensions`' `MapGetList` (pageNumber/pageSize, defaults 1/20, ceiling 100).
 - **Versioning**: v1, v2 routes or backwards-compatible?
 - **OpenAPI**: what tags, summaries, descriptions?
 
@@ -383,7 +383,7 @@ internal sealed class CreateThingRequestHandler(
 
 ### Query Slot (Paged)
 ```csharp
-public sealed record ListThingsQuery : PageableQuery, IWitResponse<ThingDto>
+public sealed record ListThingsQuery : IWitResponse<ThingDto>
 {
     public Guid TenantId { get; init; }
     public string? FilterByName { get; init; }
