@@ -216,6 +216,12 @@ dotnet nuget push ./nupkgs/DKNet.Minimal.Template.1.0.0.nupkg \
 
 ---
 
+## Release Notes
+
+### Breaking change — status-counts default window (DRK-521)
+
+Status-counts endpoints (`GET .../status-counts`) no longer default to the last 30 days when no `from`/`to` bounds are supplied. An unbounded call now reports counts over the **entire history**. Explicit `from`/`to` bounds behave as before and are unaffected. Callers relying on the old 30-day default will see larger counts after upgrading — pass explicit `from`/`to` to preserve a bounded window.
+
 ## License
 
 MIT © [Steven Hoang](https://drunkcoding.net)

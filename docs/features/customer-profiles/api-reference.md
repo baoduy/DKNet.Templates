@@ -20,17 +20,16 @@ Base URL: `/api/v1/customer-profiles`
 
 Returns a paginated list of all active (non-deleted) profiles.
 
-> **Behavior change (DRK-500):** since adopting `DKNet.AspCore.Extensions`' `MapGetList`, both query
-> parameters below are **required** — a paramless call that used to return `200 OK` with 100 items now
-> returns `400 Bad Request`. The default page size also dropped from 100 to 20 (applied only when
-> `pageSize` is supplied as `0` or negative, since the parameter itself has no default).
+> **Behavior change (DRK-521):** `DKNet.AspCore.Extensions` 10.1.3 reverses the DRK-500 change —
+> both query parameters below are **optional** again. A paramless call returns `200 OK` with the
+> first page of 20 items instead of `400 Bad Request`.
 
 **Query Parameters**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `pageNumber` | `int` | **Yes** | Page number (values `< 1` are clamped to `1`) |
-| `pageSize` | `int` | **Yes** | Items per page (values `< 1` are clamped to `20`) |
+| `pageNumber` | `int` | No | Page number (default `1`; values `< 1` are clamped to `1`) |
+| `pageSize` | `int` | No | Items per page (default `20`; values `< 1` are clamped to `20`; values `> 100` are clamped to `100`) |
 
 **Response: 200 OK**
 
@@ -59,12 +58,15 @@ Returns a paginated list of all active (non-deleted) profiles.
 
 | Status | Code | Description |
 |--------|------|-------------|
-| `400` | `Bad Request` | `pageNumber` or `pageSize` missing from the query string |
 | `401` | `Unauthorized` | Missing or invalid bearer token |
 
 **curl**
 
 ```bash
+# Paramless call returns page 1 of 20 items
+curl -X GET "https://localhost:7001/api/v1/customer-profiles" \
+  -H "Authorization: Bearer {token}"
+
 curl -X GET "https://localhost:7001/api/v1/customer-profiles?pageNumber=1&pageSize=20" \
   -H "Authorization: Bearer {token}"
 ```

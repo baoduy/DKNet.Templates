@@ -3,23 +3,29 @@ using Minimal.App.Tests.Integration.Support;
 namespace Minimal.App.Tests.Integration.HostFeatureState;
 
 /// <summary>
-/// DRK-500 §3 review round 1, finding 3: pins the customer-profile list endpoint's contract against
-/// <c>DKNet.AspCore.Extensions</c> 10.1.2's <c>MapGetList</c> handler, which binds non-nullable
-/// <c>int pageNumber, int pageSize</c> with no defaults — a paramless call fails parameter binding before the
-/// handler body runs, and a call with both query parameters supplied succeeds and returns a
-/// <c>PagedResponse&lt;T&gt;</c>-shaped body.
+/// DRK-521 re-pin (reverses the DRK-500/DRK-513 review-round-1 finding 3 decision): as of
+/// <c>DKNet.AspCore.Extensions</c> 10.1.3, <c>MapGetList</c>'s handler binds <c>pageNumber</c>/<c>pageSize</c> as
+/// optional <c>int</c> parameters defaulting to 1 and 20, so a paramless call now succeeds and returns the first
+/// page (page size 20) rather than failing parameter binding. A call with both query parameters supplied still
+/// succeeds and returns a <c>PagedResponse&lt;T&gt;</c>-shaped body.
 /// </summary>
 public sealed class CustomerProfileListContractTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 {
     #region Methods
 
     [Fact]
-    public async Task ListWithoutQueryStringFailsParameterBinding()
+    public async Task ListWithoutQueryStringReturnsFirstPageOfTwenty()
     {
         var response = await fixture.CreateClient().GetAsync("/v1/customer-profiles");
 
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest,
-            "pageNumber/pageSize are bound as non-nullable int with no defaults, so a paramless call must fail binding.");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK,
+            "pageNumber/pageSize now default to 1/20, so a paramless call must bind successfully.");
+
+        using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var root = body.RootElement;
+
+        root.GetProperty("pageNumber").GetInt32().ShouldBe(1);
+        root.GetProperty("pageSize").GetInt32().ShouldBe(20);
     }
 
     [Fact]
