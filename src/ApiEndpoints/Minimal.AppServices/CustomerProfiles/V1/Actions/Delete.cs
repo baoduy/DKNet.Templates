@@ -7,9 +7,16 @@ namespace Minimal.AppServices.CustomerProfiles.V1.Actions;
 /// <summary>
 ///     Command to delete an existing customer profile by its unique identifier.
 /// </summary>
-public record DeleteProfileRequest : RequestBase, Fluents.Requests.INoResponse
+public record DeleteProfileRequest : Fluents.Requests.INoResponse
 {
     #region Properties
+
+    /// <summary>
+    ///     Gets or sets the identity of the acting user. Populated from the caller's claims — never settable by
+    ///     the caller — via <see cref="FromClaimAttribute" />.
+    /// </summary>
+    [FromClaim(ClaimTypes.Name)]
+    public string? ByUser { get; set; }
 
     /// <summary>
     ///     Gets the unique identifier of the customer profile to delete.

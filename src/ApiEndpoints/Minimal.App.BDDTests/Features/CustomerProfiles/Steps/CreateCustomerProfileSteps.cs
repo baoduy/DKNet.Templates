@@ -39,6 +39,27 @@ public sealed class CreateCustomerProfileSteps(HttpClient client, ScenarioState 
         state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
     }
 
+    /// <summary>
+    /// Non-forgeability: <c>ByUser</c> carries no <c>[JsonIgnore]</c>, so a caller can include its own
+    /// <c>byUser</c> value in the request body. Proves that value is overwritten by the population filter
+    /// before persistence, rather than trusted.
+    /// </summary>
+    [When("I send a create profile request with byUser {string} and the following data:")]
+    public async Task WhenISendACreateProfileRequestWithByUserAndTheFollowingData(string byUser, DataTable table)
+    {
+        var row = table.Rows[0];
+        var payload = new
+        {
+            name = row["Name"],
+            email = row["Email"],
+            phone = row["Phone"],
+            byUser
+        };
+
+        state.Response = await SendCreateRequest(payload);
+        state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
+    }
+
     [Then("the response should be successful")]
     public void ThenTheResponseShouldBeSuccessful()
     {
@@ -77,6 +98,21 @@ public sealed class CreateCustomerProfileSteps(HttpClient client, ScenarioState 
     {
         state.Response.ShouldNotBeNull();
         state.Response!.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Then("the persisted profile for email {string} should be attributed to the system account, not {string}")]
+    public async Task ThenThePersistedProfileForEmailShouldBeAttributedToTheSystemAccountNot(
+        string email, string forgedByUser)
+    {
+        using var scope = factory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+        var profile = await dbContext.Set<CustomerProfile>().FirstOrDefaultAsync(x => x.Email == email);
+
+        profile.ShouldNotBeNull();
+        profile.LastModifiedBy.ShouldNotBe(forgedByUser);
+        // BddApiFactory always runs with RequireAuthorization=false (see BddApiFactory.AddFeatureOverrides),
+        // so the population filter's fallback is the template's stand-in system account.
+        profile.LastModifiedBy.ShouldBe(SharedConsts.SystemAccount);
     }
 
     private Task<HttpResponseMessage> SendCreateRequest(object payload)

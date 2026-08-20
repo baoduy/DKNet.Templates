@@ -8,9 +8,16 @@ namespace Minimal.AppServices.CustomerProfiles.V1.Actions;
 /// Command that updates editable fields for an existing customer profile.
 /// </summary>
 [MapsFrom(typeof(CustomerProfile))]
-public record UpdateProfileRequest : RequestBase, Fluents.Requests.IWitResponse<CustomerProfileDto>
+public record UpdateProfileRequest : Fluents.Requests.IWitResponse<CustomerProfileDto>
 {
     #region Properties
+
+    /// <summary>
+    ///     Gets or sets the identity of the acting user. Populated from the caller's claims — never settable by
+    ///     the caller — via <see cref="FromClaimAttribute" />.
+    /// </summary>
+    [FromClaim(ClaimTypes.Name)]
+    public string? ByUser { get; set; }
 
     /// <summary>
     /// Gets the unique identifier of the profile to update.
