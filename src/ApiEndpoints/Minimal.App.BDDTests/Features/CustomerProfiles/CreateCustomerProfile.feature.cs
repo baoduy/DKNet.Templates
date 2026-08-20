@@ -115,7 +115,7 @@ namespace Minimal.App.BDDTests.Features.CustomerProfiles
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CustomerProfiles/CreateCustomerProfile.feature.ndjson", 5);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CustomerProfiles/CreateCustomerProfile.feature.ndjson", 6);
         }
         
         [global::NUnit.Framework.TestAttribute()]
@@ -246,6 +246,52 @@ namespace Minimal.App.BDDTests.Features.CustomerProfiles
 #line hidden
 #line 28
     await testRunner.ThenAsync("the response should indicate a validation error", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::NUnit.Framework.TestAttribute()]
+        [global::NUnit.Framework.DescriptionAttribute("Non-forgeable attribution — a caller-supplied byUser is never persisted")]
+        public async global::System.Threading.Tasks.Task Non_ForgeableAttributionACaller_SuppliedByUserIsNeverPersisted()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "3";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Non-forgeable attribution — a caller-supplied byUser is never persisted", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 30
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 6
+  await this.FeatureBackgroundAsync();
+#line hidden
+                global::Reqnroll.Table table4 = new global::Reqnroll.Table(new string[] {
+                            "Name",
+                            "Email",
+                            "Phone"});
+                table4.AddRow(new string[] {
+                            "Forged Attribution",
+                            "bdd.forged@example.com",
+                            "+6500000055"});
+#line 31
+    await testRunner.WhenAsync("I send a create profile request with byUser \"attacker-supplied-value\" and the fol" +
+                        "lowing data:", ((string)(null)), table4, "When ");
+#line hidden
+#line 34
+    await testRunner.ThenAsync("the response should be successful", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 35
+    await testRunner.AndAsync("the persisted profile for email \"bdd.forged@example.com\" should be attributed to " +
+                        "the system account, not \"attacker-supplied-value\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
