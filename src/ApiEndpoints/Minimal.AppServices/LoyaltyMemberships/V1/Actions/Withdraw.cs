@@ -8,9 +8,16 @@ namespace Minimal.AppServices.LoyaltyMemberships.V1.Actions;
 ///     Command to withdraw an existing loyalty membership by its unique identifier. This is a hard delete;
 ///     no history is retained.
 /// </summary>
-public record WithdrawMembershipRequest : RequestBase, Fluents.Requests.INoResponse
+public record WithdrawMembershipRequest : Fluents.Requests.INoResponse
 {
     #region Properties
+
+    /// <summary>
+    ///     Gets or sets the identity of the acting user. Populated from the caller's claims — never settable by
+    ///     the caller — via <see cref="FromClaimAttribute" />.
+    /// </summary>
+    [FromClaim(ClaimTypes.Name)]
+    public string? ByUser { get; set; }
 
     /// <summary>
     ///     Gets the unique identifier of the membership to withdraw.

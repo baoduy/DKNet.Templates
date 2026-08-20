@@ -18,30 +18,17 @@ await builder.RunMigrationAsync(feature, args);
 // Add services to the container.
 builder.Services
     .AddOptions(builder.Configuration)
-    .AddAppConfig(feature, builder.Configuration);
+    .AddAppConfig(feature, builder.Configuration)
+    // Populates [FromClaim] members (e.g. ByUser) before validation and before the handler; the fallback below
+    // only applies when RequireAuthorization is off, never per-caller.
+    .AddContextualRequestPopulation(o => o.SystemAccountFallback = SharedConsts.SystemAccount);
 
 await builder.Build()
     .UseAppConfig(a => a.UseEndpointConfigs(o =>
     {
         o.RequireAuthorization = feature.RequireAuthorization;
         o.EnableVersioning = feature.EnableVersioning;
-        o.ConfigureGroup = (group, _) =>
-        {
-            group.AddEndpointFilter(async (context, next) =>
-            {
-                var identity = context.HttpContext.User.Identity;
-                var userName = feature.RequireAuthorization
-                    ? identity is { IsAuthenticated: true } ? identity.Name : null
-                    : SharedConsts.SystemAccount;
-
-                foreach (var argument in context.Arguments)
-                    if (argument is RequestBase requestBase)
-                        requestBase.ByUser = userName;
-
-                return await next(context);
-            });
-            group.AddFluentValidationAutoValidation();
-        };
+        o.ConfigureGroup = (group, _) => group.AddFluentValidationAutoValidation();
     }, typeof(Program).Assembly));
 
 //This Startup endpoint for Unit Tests

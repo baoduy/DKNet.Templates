@@ -11,9 +11,16 @@ namespace Minimal.AppServices.LoyaltyMemberships.V1.Actions;
 ///     Command to enrol a new loyalty membership.
 /// </summary>
 [MapsFrom(typeof(LoyaltyMembership))]
-public sealed record EnrollMembershipRequest : RequestBase, Fluents.Requests.IWitResponse<LoyaltyMembershipDto>
+public sealed record EnrollMembershipRequest : Fluents.Requests.IWitResponse<LoyaltyMembershipDto>
 {
     #region Properties
+
+    /// <summary>
+    ///     Gets or sets the identity of the acting user. Populated from the caller's claims — never settable by
+    ///     the caller — via <see cref="FromClaimAttribute" />.
+    /// </summary>
+    [FromClaim(ClaimTypes.Name)]
+    public string? ByUser { get; set; }
 
     /// <summary>
     ///     Gets or sets the member's full name. Required; unique per membership.
