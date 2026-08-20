@@ -42,6 +42,11 @@ internal static class AppConfig
             services.AddRateLimitConfig(configuration);
         }
 
+        if (features.EnableVersioning)
+        {
+            services.AddAppVersioning();
+        }
+
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
 
@@ -63,7 +68,6 @@ internal static class AppConfig
 
         return services
             .AddCrosConfig()
-            .AddAppVersioning()
             .AddGlobalException()
             .AddAllAppServices(configuration, features)
             .AddHealthzConfig(features);

@@ -45,21 +45,21 @@
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.1" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
-    <PackageVersion Include="DKNet.AspCore.Extensions" Version="10.1.3" />
-    <PackageVersion Include="DKNet.AspCore.Idempotency" Version="10.1.3" />
-    <PackageVersion Include="DKNet.AspCore.Idempotency.RedisStore" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.Abstractions" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.Events" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.Extensions" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.Relational.Helpers" Version="10.1.3" />
-    <PackageVersion Include="DKNet.EfCore.Specifications" Version="10.1.3" />
-    <PackageVersion Include="DKNet.Fw.Extensions" Version="10.1.3" />
-    <PackageVersion Include="DKNet.RandomCreator" Version="10.1.3" />
-    <PackageVersion Include="DKNet.SlimBus.Extensions" Version="10.1.3" />
-    <PackageVersion Include="DKNet.Svc.Encryption" Version="10.1.3" />
+    <PackageVersion Include="DKNet.AspCore.Extensions" Version="10.1.4" />
+    <PackageVersion Include="DKNet.AspCore.Idempotency" Version="10.1.4" />
+    <PackageVersion Include="DKNet.AspCore.Idempotency.RedisStore" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.Abstractions" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.Events" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.Extensions" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.Relational.Helpers" Version="10.1.4" />
+    <PackageVersion Include="DKNet.EfCore.Specifications" Version="10.1.4" />
+    <PackageVersion Include="DKNet.Fw.Extensions" Version="10.1.4" />
+    <PackageVersion Include="DKNet.RandomCreator" Version="10.1.4" />
+    <PackageVersion Include="DKNet.SlimBus.Extensions" Version="10.1.4" />
+    <PackageVersion Include="DKNet.Svc.Encryption" Version="10.1.4" />
     <PackageVersion Include="FluentResults" Version="4.0.0" />
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
