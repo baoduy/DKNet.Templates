@@ -46,11 +46,10 @@ Create versioned REST API endpoints that wire AppServices actions to HTTP routes
 
 ### Auto-Wiring (EndpointConfig.cs)
 
-`UseEndpointConfigs()` scans the assembly for all `IEndpointConfig` implementations, creates versioned groups with:
-- `SetUserIdPropertyFilter` → fills `RequestBase.ByUser` from JWT
-- `FluentValidation` auto-validation (if configured)
+`UseEndpointConfigs()` scans the assembly for all `IEndpointConfig` implementations and creates route groups with:
 - `RequireAuthorization()` (if auth is configured)
-- API versioning via `{version:apiVersion}` path segment
+- API versioning via `{version:apiVersion}` path segment — switchable with the `EnableVersioning` feature flag (default on); when off, groups are registered with no version segment. A group whose `IEndpointConfig.Version` is not overridden defaults to version 1.
+- Request-user stamping (`RequestBase.ByUser`) and FluentValidation auto-validation are no longer built into the package — the template supplies both itself via the `ConfigureGroup` callback passed to `UseEndpointConfigs()` (see `Program.cs`).
 
 ### Fluent Endpoint Helpers
 
