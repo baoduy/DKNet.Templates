@@ -53,6 +53,11 @@ public class FeatureOptions
     public bool EnableSwagger { get; set; }
 
     /// <summary>
+    ///     Gets or sets a value indicating whether API versioning is enabled. Default is true.
+    /// </summary>
+    public bool EnableVersioning { get; set; } = true;
+
+    /// <summary>
     ///     Gets or sets a value indicating whether authorization is required for API endpoints.
     /// </summary>
     public bool RequireAuthorization { get; set; }

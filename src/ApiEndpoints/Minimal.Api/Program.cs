@@ -1,6 +1,7 @@
 using Minimal.Api.Configs;
 using Minimal.Api.Configs.AzureAppConfig;
 using Minimal.Api.Extensions;
+using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,7 +24,24 @@ await builder.Build()
     .UseAppConfig(a => a.UseEndpointConfigs(o =>
     {
         o.RequireAuthorization = feature.RequireAuthorization;
-        o.SystemAccountName = SharedConsts.SystemAccount;
+        o.EnableVersioning = feature.EnableVersioning;
+        o.ConfigureGroup = (group, _) =>
+        {
+            group.AddEndpointFilter(async (context, next) =>
+            {
+                var identity = context.HttpContext.User.Identity;
+                var userName = feature.RequireAuthorization
+                    ? identity is { IsAuthenticated: true } ? identity.Name : null
+                    : SharedConsts.SystemAccount;
+
+                foreach (var argument in context.Arguments)
+                    if (argument is RequestBase requestBase)
+                        requestBase.ByUser = userName;
+
+                return await next(context);
+            });
+            group.AddFluentValidationAutoValidation();
+        };
     }, typeof(Program).Assembly));
 
 //This Startup endpoint for Unit Tests
