@@ -1,5 +1,7 @@
+global using DKNet.AspCore.Extensions;
 global using DKNet.SlimBus.Extensions;
 global using System.ComponentModel.DataAnnotations;
+global using System.Security.Claims;
 global using System.Text.Json.Serialization;
 global using FluentResults;
 global using Minimal.Domains.Services;

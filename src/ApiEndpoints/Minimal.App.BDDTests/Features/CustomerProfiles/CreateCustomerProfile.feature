@@ -26,3 +26,10 @@ Feature: Create Customer Profile
       | Name          | Email | Phone       |
       | Missing Email |       | +6511122233 |
     Then the response should indicate a validation error
+
+  Scenario: Non-forgeable attribution — a caller-supplied byUser is never persisted
+    When I send a create profile request with byUser "attacker-supplied-value" and the following data:
+      | Name               | Email                   | Phone       |
+      | Forged Attribution | bdd.forged@example.com  | +6500000055 |
+    Then the response should be successful
+    And the persisted profile for email "bdd.forged@example.com" should be attributed to the system account, not "attacker-supplied-value"
