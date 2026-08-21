@@ -76,17 +76,18 @@ This feature does not currently consume events from other features.
 The wiring is in `Minimal.Infra/Extensions/ServiceBusSetup.cs`:
 
 ```csharp
-// Excerpt from ServiceBusSetup.cs
-services.AddServiceBus(bus =>
-{
-    bus.AddConsumersFromAssembly(typeof(AppSetup).Assembly);   // AppServices handlers
-    bus.AddConsumersFromAssembly(typeof(InfraSetup).Assembly); // Infra handlers
-
-    if (!string.IsNullOrEmpty(configuration.GetConnectionString("AzureBus")))
+// Excerpt from ServiceBusSetup.cs — AddServiceBus(this IServiceCollection, IConfiguration, Assembly)
+service.AddSlimBusEfCoreInterceptor<CoreDbContext>()
+    .AddSlimMessageBus(mbb =>
     {
-        bus.AddAzureServiceBus(/* ... */);
-    }
-});
+        mbb.AddJsonSerializer();
+        mbb.AddMemoryBus(serviceAssembly); // always wires the in-memory child bus
+
+        if (!string.IsNullOrWhiteSpace(busConnectionString))
+        {
+            mbb.AddAzureBus(busConnectionString); // only when ConnectionStrings:AzureBus is set
+        }
+    });
 ```
 
 ## Event Flow Diagram
