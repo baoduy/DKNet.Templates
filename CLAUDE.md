@@ -89,6 +89,18 @@ Note: domain entity folder is `Features/Profiles/` (singular feature), but the `
 - **POST in BDD**: generate a fresh `Guid.NewGuid()` for the `X-Idempotency-Key` header in each `[When]` step.
 - **Coverage filter**: `src/coverage.runsettings` includes `[DKNet*]` + `[Minimal*]` and excludes `*Tests`, `bin/`, `obj/`, `GlobalUsings.cs`. Don't put real logic in excluded paths.
 
+### Test layering — where a test belongs
+
+Keep the two suites at different levels; do not duplicate the same behavior in both.
+
+- **xUnit owns three things** and BDD must not re-cover them:
+  1. **Architecture/convention** — NetArchTest + reflection + csproj/source text scans (`Architecture/*`). Cannot be expressed as HTTP scenarios; never port to BDD.
+  2. **Pure functional** — entity methods, validators, mappers, extensions, spec filters (`Unit/*`, plus `Test_*_Mapping`). No host, no DB, no HTTP. This *is* the functional layer; keep it here.
+  3. **Result-level integration** — handler failures asserted on the `Result` object (not-found, empty-id, "already existed") and EF model/schema/migration shape (`Architecture/MigrationSchemaTests`, `Integration/**` failure cases). BDD's HTTP-status/response-text assertions are coarser and would lose this intent (Rule 9).
+- **BDD owns user-facing HTTP behavior**: request→status→response-body scenarios, and domain-event side effects observed via log capture (`LoyaltyMembershipEvents.feature`). When a behavior is exercised end-to-end over HTTP, BDD is the stronger home — delete the xUnit integration duplicate.
+- **Schema/model assertions belong in xUnit, never BDD.** (`MigrationVerification.feature` was removed for this reason; `MigrationSchemaTests` already covers it.)
+- **Still owed** (BDD gaps, not yet ported): CustomerProfiles GET-list/paging, update, delete, and versioned-route 404 scenarios currently live only as xUnit integration tests.
+
 ## Gotchas
 
 - Path of truth is `src/ApiEndpoints/` (not `src/Minimal.ApiEndpoints/` — the inner project folders are prefixed `Minimal.*`).
