@@ -13,14 +13,7 @@ public static class SanitizeForLoggingExtensions
     /// <param name="value">The string value to sanitize.</param>
     /// <returns>A sanitized string safe for logging.</returns>
     public static string SanitizeForLogging(this string value) =>
-        value.Replace("\n", string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Replace("\t", string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Trim() // Trim leading and trailing spaces
-            .Replace('\0', ' ') // Replace null characters
-            .Replace('\f', ' ') // Replace form feed characters
-            .Replace('\r', ' ');
+        string.Concat(value.Where(c => !char.IsControl(c))).Trim();
 
     #endregion
-
-    // Sanitize user input
 }

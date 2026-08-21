@@ -32,17 +32,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Asp.Versioning.Http" Version="10.2.2" />
-    <PackageVersion Include="Aspire.Hosting" Version="13.5.0" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.5.0" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.5.0" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.5.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
     <PackageVersion Include="AutoBogus" Version="2.13.1" />
-    <PackageVersion Include="AWSSDK.Core" Version="4.0.100.6" />
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.101.3" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.1" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="DKNet.AspCore.Extensions" Version="10.1.5" />
@@ -64,49 +59,24 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageVersion Include="ForEvolve.FluentValidation.AspNetCore.Http" Version="1.0.26" />
-    <PackageVersion Include="LinqKit.Microsoft.EntityFrameworkCore" Version="10.0.11" />
-    <PackageVersion Include="Mapster" Version="10.0.11" />
     <PackageVersion Include="Mapster.DependencyInjection" Version="10.0.11" />
-    <PackageVersion Include="Mapster.EFCore" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.3.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Routing.Abstractions" Version="2.3.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.6.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="10.9.0" />
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="8.5.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.FileProviders.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
     <PackageVersion Include="Microsoft.FeatureManagement.AspNetCore" Version="4.6.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
@@ -121,44 +91,19 @@
     <PackageVersion Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="2.0.0" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="SlimMessageBus" Version="3.0.0" />
-    <PackageVersion Include="SlimMessageBus.Host" Version="3.5.0" />
     <PackageVersion Include="SlimMessageBus.Host.AzureServiceBus" Version="3.5.0" />
     <PackageVersion Include="SlimMessageBus.Host.FluentValidation" Version="3.5.0" />
-    <PackageVersion Include="SlimMessageBus.Host.Interceptor" Version="3.0.0" />
     <PackageVersion Include="SlimMessageBus.Host.Memory" Version="3.5.0" />
     <PackageVersion Include="SlimMessageBus.Host.Serialization.SystemTextJson" Version="3.5.0" />
     <PackageVersion Include="StackExchange.Redis" Version="3.1.13" />
-    <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
-    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.19.2" />
-    <PackageVersion Include="System.Memory.Data" Version="10.0.10" />
-    <PackageVersion Include="Testcontainers.Azurite" Version="4.13.0" />
-    <PackageVersion Include="Testcontainers.Minio" Version="4.13.0" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.13.0" />
     <PackageVersion Include="Testcontainers.Redis" Version="4.14.0" />
-    <PackageVersion Include="X.PagedList.EF" Version="10.5.9" />
     <PackageVersion Include="NUnit" Version="4.6.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.14.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
-    <PackageVersion Include="Markdig" Version="0.43.0" />
-    <PackageVersion Include="PdfPig" Version="0.1.11" />
-    <PackageVersion Include="PuppeteerSharp" Version="20.2.4" />
-    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.239">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageVersion>
-    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageVersion>
-    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageVersion>
     <!--        <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556">-->
     <!--            <PrivateAssets>all</PrivateAssets>-->
     <!--            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>-->

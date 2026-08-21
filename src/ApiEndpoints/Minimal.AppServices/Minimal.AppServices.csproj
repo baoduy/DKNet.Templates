@@ -43,10 +43,6 @@
         <PackageReference Include="DKNet.SlimBus.Extensions"/>
         <!-- [FromClaim] declaration + AddContextualRequestPopulation for the six request models' ByUser (DRK-565) -->
         <PackageReference Include="DKNet.AspCore.Extensions"/>
-        <PackageReference Update="Meziantou.Analyzer">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
