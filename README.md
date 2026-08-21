@@ -10,7 +10,9 @@ A production-ready ASP.NET Core solution template built on **vertical slice arch
 - **EF Core** with auto model config and seeding (`UseAutoConfigModel`, `UseAutoDataSeeding`)
 - **SlimMessageBus** — in-memory bus always wired; Azure Service Bus optional
 - **FluentValidation**, **Mapster**, **OpenTelemetry**, **Azure App Configuration**, **JWT Bearer**
-- **xUnit + Shouldly** test project scaffolded out-of-the-box
+- **xUnit + Shouldly** unit/integration tests, plus **Reqnroll + NUnit** BDD tests — both scaffolded out-of-the-box
+
+Full feature inventory: [`docs/template-features.md`](docs/template-features.md).
 
 ---
 
@@ -77,7 +79,8 @@ MyCompany.MyService/
     ├── MyCompany.MyService.Domains/       # Domain entities, repos, events
     ├── MyCompany.MyService.Infra/         # EF Core, repos, event publisher
     ├── MyCompany.MyService.Share/         # Constants, options, shared types
-    └── MyCompany.MyService.App.Tests/     # xUnit + Shouldly test project
+    ├── MyCompany.MyService.App.Tests/     # xUnit + Shouldly unit/integration tests
+    └── MyCompany.MyService.App.BDDTests/  # Reqnroll + NUnit BDD tests
 ```
 
 ### Available parameters
@@ -100,51 +103,42 @@ dotnet new dknet-minimal -n Acme.OrderService \
 
 ---
 
-## Running the generated solution
+## Running, testing, and migrating the generated solution
 
 ```bash
-# Restore
-dotnet restore <Name>.sln
-
-# Build
 dotnet build <Name>.sln -c Release
-
-# Run API only
-dotnet run --project <Name>.ApiEndpoints/<Name>.Api
-
-# Run with Aspire (Redis + PostgreSQL auto-provisioned via Docker)
-dotnet run --project <Name>.ApiEndpoints/<Name>.AppHost
-
-# Test
 dotnet test <Name>.sln --settings coverage.runsettings --collect:"XPlat Code Coverage"
+
+dotnet run --project <Name>.ApiEndpoints/<Name>.Api       # API only
+dotnet run --project <Name>.ApiEndpoints/<Name>.AppHost   # full stack via Aspire (Redis + PostgreSQL)
 ```
 
----
-
-## EF Core Migrations
-
-From inside `<Name>.ApiEndpoints/`:
-
-```bash
-# Add a new migration
-./add-migration.sh <MigrationName>
-
-# Remove the last migration
-./remove-migration.sh <MigrationName>
-```
+Full usage reference (parameters, migrations, packaging): [`docs/template-usage.md`](docs/template-usage.md).
 
 ---
 
 ## Adding a new feature (vertical slice)
 
-Follow the **Profiles/V1** pattern already in the template:
+Follow the **CustomerProfiles/V1** pattern already in the template — domain entity, EF Core
+mapping, application action, endpoint, and its tests, end to end:
+[`docs/ddd-implementation-guide.md`](docs/ddd-implementation-guide.md).
 
-1. **Domain entity** → `<Name>.Domains/Features/<Feature>/Entities/`
-2. **EF Core mapping** → `<Name>.Infra/Features/<Feature>/Mappers/`
-3. **Commands / Queries** → `<Name>.AppServices/<Feature>/V1/`
-4. **Endpoint config** → `<Name>.Api/ApiEndpoints/<Feature>V1Endpoint.cs` (implement `IEndpointConfig`)
+See [AGENTS.md](AGENTS.md) for the condensed architecture reference used by AI coding agents.
 
-See [AGENTS.md](AGENTS.md) for the full architecture reference.
+---
+
+## Documentation
+
+| Guide | Covers |
+|---|---|
+| [`docs/ddd-implementation-guide.md`](docs/ddd-implementation-guide.md) | Adding a vertical-slice feature, end to end — entity → EF mapping → domain event → action → endpoint → unit/BDD tests |
+| [`docs/template-features.md`](docs/template-features.md) | Every capability the template wires up out of the box, and where to configure it |
+| [`docs/template-usage.md`](docs/template-usage.md) | `dotnet new` parameters, run/test/migrate/pack commands |
+| [`docs/features/customer-profiles/`](docs/features/customer-profiles/) | Worked example the guides above reference |
+
+> These guides are visible on GitHub but are **not** packaged into scaffolded solutions — the
+> nuspec's file list doesn't ship `docs/`. If you need this content inside a generated solution,
+> copy it manually or add it to the nuspec.
 
 ---
 
