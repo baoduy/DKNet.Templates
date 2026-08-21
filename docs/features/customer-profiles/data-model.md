@@ -4,103 +4,118 @@
 
 ```mermaid
 erDiagram
-    CustomerProfile {
-        uniqueidentifier Id PK "NEWID() default"
-        nvarchar_150 Name "NOT NULL"
-        nvarchar_256 Email "NOT NULL, UNIQUE INDEX"
-        nvarchar_50 MembershipNo "NOT NULL, UNIQUE INDEX"
-        nvarchar_25 Phone "NULL"
-        nvarchar_20 Status "NOT NULL, DEFAULT Pending"
-        bit IsDeleted "NOT NULL, DEFAULT 0, Global Query Filter"
-        nvarchar_256 CreatedBy "NOT NULL"
-        datetime2 CreatedAt "NOT NULL"
-        nvarchar_256 UpdatedBy "NULL"
-        datetime2 UpdatedAt "NULL"
+    CustomerProfiles {
+        uuid Id PK
+        varchar_150 Name "NOT NULL"
+        varchar_150 Email "NOT NULL, UNIQUE INDEX"
+        varchar_50 MembershipNo "NOT NULL, UNIQUE INDEX"
+        varchar_50 Phone "NULL"
+        varchar_50 Avatar "NULL"
+        date BirthDay "NULL"
+        varchar_255 CreatedBy "NOT NULL"
+        timestamptz CreatedOn "NOT NULL"
+        varchar_255 UpdatedBy "NULL"
+        timestamptz UpdatedOn "NULL"
     }
 ```
+
+Table `CustomerProfiles`, schema `pro` (`DomainSchemas.Profile`) — PostgreSQL via Npgsql, not SQL
+Server. `Id`, `CreatedBy`/`CreatedOn`, `UpdatedBy`/`UpdatedOn` come from the shared
+`AuditedEntity<Guid>` base (`AggregateRoot` → `DomainEntity`), not from anything declared on
+`CustomerProfile` itself.
 
 ## Properties
 
 | C# Property | C# Type | DB Column | DB Type | Nullable | Constraints |
 |-------------|---------|-----------|---------|----------|-------------|
-| `Id` | `Guid` | `Id` | `uniqueidentifier` | No | PK, `NEWID()` default |
-| `Name` | `string` | `Name` | `nvarchar(150)` | No | |
-| `Email` | `string` | `Email` | `nvarchar(256)` | No | Unique index `IX_CustomerProfile_Email` |
-| `MembershipNo` | `string` | `MembershipNo` | `nvarchar(50)` | No | Unique index `IX_CustomerProfile_MembershipNo` |
-| `Phone` | `string?` | `Phone` | `nvarchar(25)` | Yes | |
-| `Status` | `string` | `Status` | `nvarchar(20)` | No | Default `Pending` |
-| `IsDeleted` | `bool` | `IsDeleted` | `bit` | No | Default `0`; EF Global Query Filter `IsDeleted == false` |
-| `CreatedBy` | `string` | `CreatedBy` | `nvarchar(256)` | No | Set from authenticated user ID |
-| `CreatedAt` | `DateTime` | `CreatedAt` | `datetime2` | No | UTC |
-| `UpdatedBy` | `string?` | `UpdatedBy` | `nvarchar(256)` | Yes | Updated on each mutation |
-| `UpdatedAt` | `DateTime?` | `UpdatedAt` | `datetime2` | Yes | UTC |
+| `Id` | `Guid` | `Id` | `uuid` | No | PK |
+| `Name` | `string` | `Name` | `character varying(150)` | No | |
+| `Email` | `string` | `Email` | `character varying(150)` | No | Unique index `IX_CustomerProfiles_Email` |
+| `MembershipNo` | `string` | `MembershipNo` | `character varying(50)` | No | Unique index `IX_CustomerProfiles_MembershipNo` |
+| `Phone` | `string?` | `Phone` | `character varying(50)` | Yes | |
+| `Avatar` | `string?` | `Avatar` | `character varying(50)` | Yes | Avatar URL/path |
+| `BirthDay` | `DateTime?` | `BirthDay` | `date` | Yes | |
+| `CreatedBy` | `string` | `CreatedBy` | `character varying(255)` | No | Set from authenticated user ID |
+| `CreatedOn` | `DateTimeOffset` | `CreatedOn` | `timestamp with time zone` | No | |
+| `UpdatedBy` | `string?` | `UpdatedBy` | `character varying(255)` | Yes | Set on each mutation |
+| `UpdatedOn` | `DateTimeOffset?` | `UpdatedOn` | `timestamp with time zone` | Yes | |
+
+There is no `Status` and no `IsDeleted` column — this entity has no approval workflow and no
+soft-delete.
 
 ## EF Core Mapping Configuration
 
-Configured in `Minimal.Infra/Features/Profiles/Mappers/ProfileMapper.cs` via `IEntityTypeConfiguration<CustomerProfile>`.
+Configured in `Minimal.Infra/Features/Profiles/Mappers/CustomerProfileConfigs.cs` via
+`DefaultEntityTypeConfiguration<CustomerProfile>` (`IEntityTypeConfiguration<CustomerProfile>`
+under the hood).
 
 | Configuration | Detail |
 |---------------|--------|
-| Table name | `CustomerProfiles` (default schema) |
-| PK | `Id` (GUID) |
+| Table name | `CustomerProfiles`, schema `pro` |
+| PK | `Id` (`Guid`/`uuid`) |
 | Unique index on `Email` | `HasIndex(x => x.Email).IsUnique()` |
 | Unique index on `MembershipNo` | `HasIndex(x => x.MembershipNo).IsUnique()` |
-| Global Query Filter | `.HasQueryFilter(x => !x.IsDeleted)` — automatically excludes soft-deleted records |
-| Max lengths | Enforced via `HasMaxLength()` per property |
+| Max lengths | Enforced via `HasMaxLength()` per property — required by `Minimal.App.Tests/Architecture/InfraTests.cs`, not just style |
 
 ## Validation Rules
 
-Validated by `CreateProfileCommandValidator` and `UpdateProfileCommandValidator` (FluentValidation).
+`CreateProfileCommandValidator` (FluentValidation) is the only validator for this entity —
+`UpdateProfileRequest` currently has **no** FluentValidation validator at all.
 
-| Property | Validation Rule | Enforcement |
+| Property | Validation Rule | Enforced by |
 |----------|----------------|-------------|
-| `Name` | Required; max 150 chars | FluentValidation + DB constraint |
-| `Email` | Required; valid email format; max 256 chars; unique across all profiles | FluentValidation + DB unique index |
-| `Phone` | Optional; max 25 chars | FluentValidation + DB constraint |
-| `Reason` (approve/reject) | Required for reject; max 500 chars | FluentValidation |
+| `Email` | Required; valid email format; length 1–1000 | `CreateProfileCommandValidator` + DB unique index |
+| `Phone` | Required; length 6–50 | `CreateProfileCommandValidator` only |
+| `Name` | Required; length 6–100 | `CreateProfileCommandValidator` only |
 
-## Status Values
-
-| Status | Value | Description | Transitions |
-|--------|-------|-------------|-------------|
-| `Pending` | `"Pending"` | Default state on creation | → `Approved`, → `Rejected` |
-| `Approved` | `"Approved"` | KYC verified; customer is active | terminal (until deleted) |
-| `Rejected` | `"Rejected"` | KYC failed; rejection reason recorded | terminal (until deleted) |
+`UpdateProfileRequest` accepts `Email`/`Name`/`Phone` as nullable — a `null` value leaves the
+current stored value unchanged (see `CustomerProfile.Update`) — but nothing validates format or
+length on that path today.
 
 ## Domain Entity Methods
 
 The `CustomerProfile` entity encapsulates its mutations:
 
 ```csharp
-// Constructor — enforces required fields and sets initial status
+// Constructor — enforces required fields
 public CustomerProfile(
     string name,
     string membershipNo,
     string email,
-    string? phone,
+    string phone,
     string byUser)
 
-// Update — mutates allowed fields
+// Update — mutates allowed fields; null/empty name or phoneNumber leaves the current value unchanged
 public void Update(
-    string email,
-    string name,
-    string? phone,
-    string status,
-    string byUser)
+    string? avatar,
+    string? name,
+    string? phoneNumber,
+    DateTime? birthday,
+    string userId)
 ```
 
-> **Rule**: All mutations go through entity methods. Direct property setters (e.g., `profile.Email = "..."`)
-> are not permitted from outside the entity boundary.
+> **Rule**: all mutations go through entity methods. Direct property setters (e.g.,
+> `profile.Email = "..."`) are not possible from outside the entity boundary — every property
+> setter is `private`.
+
+## Membership number generation
+
+`MembershipNo` is assigned by `IMembershipService.NextValueAsync()`
+(`Minimal.Infra/Services/MembershipService.cs`), which pulls the next value from the PostgreSQL
+sequence `Seq_Membership` (schema `seq`) via `SequenceService`. Non-Postgres providers (e.g. the
+EF Core in-memory database used by tests) fall back to a `Guid.NewGuid().ToString()`; the test
+suite instead swaps in `TestMembershipService`, which returns deterministic `TEST-MEM-{n:D6}`
+values.
 
 ## Migration History
 
 | Migration | Description |
-|-----------|-------------|
-| `InitCustomerProfile` | Initial table creation with all columns, PK, and unique indexes |
+|-----------|--------------|
+| `InitDb` | Creates the `pro`/`seq` schemas, the `Seq_Membership` sequence, and the `CustomerProfiles` table with its two unique indexes |
+| `AddLoyaltyMemberships` | Adds the `LoyaltyMemberships` table/schema; does not alter `CustomerProfiles` |
 
-To create a new migration after schema changes:
+To create a new migration after a schema change, from `src/ApiEndpoints/`:
 
 ```bash
-# From src/Minimal.ApiEndpoints/
 ./add-migration.sh <MigrationName>
 ```

@@ -22,16 +22,16 @@ graph TD
     end
 
     subgraph Domains["Minimal.Domains"]
-        ENT["CustomerProfile\n(AggregateRoot)\nId, Name, Email,\nMembershipNo, Phone, Status"]
+        ENT["CustomerProfile\n(AggregateRoot)\nId, Name, Email,\nMembershipNo, Phone, Avatar, BirthDay"]
     end
 
     subgraph Infra["Minimal.Infra"]
-        MAP["ProfileMapper.cs\n(EF Core Config)"]
+        MAP["CustomerProfileConfigs.cs\n(EF Core Config)"]
         REPO["IRepositorySpec\n(EF Core + Spec)"]
         EVH["ProfileCreatedEventHandlers\n(In-Memory / Azure Bus)"]
     end
 
-    DB[("SQL Server\nCustomerProfiles table")]
+    DB[("PostgreSQL — schema 'pro'\nCustomerProfiles table")]
 
     Client -->|HTTP| EP
     EP -->|Message Bus| REQ
@@ -60,7 +60,7 @@ sequenceDiagram
     participant MEM as IMembershipService
     participant EVT as EventPublisher
 
-    C->>EP: POST /api/v1/customer-profiles
+    C->>EP: POST /v1/customer-profiles
     EP->>BUS: bus.Send(CreateProfileRequest)
     BUS->>VAL: Validate(request)
     VAL-->>BUS: Valid ✓
@@ -70,7 +70,7 @@ sequenceDiagram
     HDL->>REPO: FirstOrDefaultAsync(spec)
     REPO-->>HDL: null (no duplicate)
 
-    HDL->>MEM: GenerateMembershipNo()
+    HDL->>MEM: NextValueAsync()
     MEM-->>HDL: "MEM-2025-00001"
 
     HDL->>HDL: new CustomerProfile(name, membershipNo, email, phone, byUser)
@@ -104,11 +104,10 @@ classDiagram
     }
 
     class CreateProfileCommandHandler {
-        -IMapper _mapper
-        -IRepositorySpec _repo
-        -IEventPublisher _eventPublisher
-        -IMembershipService _membership
-        +Handle(request) Result~CustomerProfileDto~
+        -IRepositorySpec repository
+        -IMembershipService membershipProvider
+        -IMapper mapper
+        +OnHandle(request, cancellationToken) IResult~CustomerProfileDto~
     }
 
     class CustomerProfile {
@@ -116,14 +115,14 @@ classDiagram
         +string Name
         +string Email
         +string MembershipNo
-        +string Phone
-        +string Status
-        +bool IsDeleted
+        +string? Phone
+        +string? Avatar
+        +DateTime? BirthDay
         +CustomerProfile(name, membershipNo, email, phone, byUser)
-        +Update(email, name, phone, status, byUser)
+        +Update(avatar, name, phoneNumber, birthday, userId)
     }
 
-    class ProfileMapper {
+    class CustomerProfileConfigs {
         +Configure(EntityTypeBuilder~CustomerProfile~)
     }
 
@@ -132,42 +131,15 @@ classDiagram
         +string Name
         +string Email
         +string MembershipNo
-        +string Phone
-        +string Status
-        +DateTime CreatedAt
+        +string? Phone
+        +DateTime CreatedOn
     }
 
     CustomerProfileV1Endpoint ..> CreateProfileRequest : dispatches
     CreateProfileCommandHandler --> CustomerProfile : creates
     CreateProfileCommandHandler --> IRepositorySpec : queries via Spec
-    ProfileMapper --> CustomerProfile : configures EF mapping
+    CustomerProfileConfigs --> CustomerProfile : configures EF mapping
     CreateProfileCommandHandler ..> CustomerProfileDto : maps to
-```
-
-## Status State Machine
-
-```mermaid
-stateDiagram-v2
-    [*] --> Pending : Profile Created (POST)
-
-    Pending --> Approved : PATCH /{id}/approve
-    Pending --> Rejected : PATCH /{id}/reject
-
-    Approved --> [*] : DELETE /{id} (soft-delete)
-    Rejected --> [*] : DELETE /{id} (soft-delete)
-
-    note right of Pending
-        Default status on creation.
-        Profile visible but not active.
-    end note
-    note right of Approved
-        KYC verified.
-        Customer can be used in orders/invoices.
-    end note
-    note right of Rejected
-        Rejection reason required.
-        Stored for compliance audit trail.
-    end note
 ```
 
 ## Event Flow
@@ -180,7 +152,7 @@ graph LR
     EVT --> AZ["Azure Service Bus\n(if AzureBus configured)"]
 
     MEM --> INTL["ProfileCreatedEventFromMemoryHandler\n(internal audit/testing)"]
-    AZ --> EXT["External Systems\n(e.g., Notifications, Billing)"]
+    AZ --> EXT["CustomerProfileCreatedEmailNotificationHandler\n(topic 'profile-tp' / subscription 'profile-sub')"]
 ```
 
 ## Layer Responsibilities
@@ -190,4 +162,8 @@ graph LR
 | `Minimal.Api` | Route mapping only; no business logic — dispatches to message bus |
 | `Minimal.AppServices` | Command handling, FluentValidation, membership number generation, event publishing |
 | `Minimal.Domains` | `CustomerProfile` entity with constructors and `Update()` method |
-| `Minimal.Infra` | EF Core `ProfileMapper`, `IRepositorySpec` implementation, event handler wiring |
+| `Minimal.Infra` | EF Core `CustomerProfileConfigs`, `IRepositorySpec` implementation, event handler wiring |
+
+> There is no approval workflow or soft-delete on `CustomerProfile` — it has no `Status` or
+> `IsDeleted` field. `DELETE` removes the row. If your feature needs a workflow like this, add the
+> field/state machine yourself; don't assume one exists here.

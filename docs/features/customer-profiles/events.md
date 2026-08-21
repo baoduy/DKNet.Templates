@@ -23,11 +23,11 @@ public sealed record ProfileCreatedEvent(Guid Id, string Name);
 
 | Handler Class | Bus Type | Action |
 |--------------|----------|--------|
-| `ProfileCreatedEventFromMemoryHandler` | In-Memory | Internal log / test hook |
-| _(None configured)_ | Azure Service Bus | — (reserved for external notifications) |
+| `ProfileCreatedEventFromMemoryHandler` | In-Memory | Test-observability flag only (`Called`), no real logic |
+| `CustomerProfileCreatedEmailNotificationHandler` | Azure Service Bus (topic `profile-tp` / subscription `profile-sub`) | Logs the event; only active when `ConnectionStrings:AzureBus` is set — no actual email send yet |
 
-Source: `Minimal.AppServices/CustomerProfiles/V1/Events/`
-and `Minimal.Infra/Features/Profiles/` (if infra handlers present)
+Source: `Minimal.AppServices/CustomerProfiles/V1/Events/ProfileCreatedEventHandlers.cs`
+and `Minimal.Infra/Features/Profiles/ExternalEvents/CustomerProfileCreatedEmailNotificationHandler.cs`
 
 **Subscriber Example**
 
@@ -76,17 +76,18 @@ This feature does not currently consume events from other features.
 The wiring is in `Minimal.Infra/Extensions/ServiceBusSetup.cs`:
 
 ```csharp
-// Excerpt from ServiceBusSetup.cs
-services.AddServiceBus(bus =>
-{
-    bus.AddConsumersFromAssembly(typeof(AppSetup).Assembly);   // AppServices handlers
-    bus.AddConsumersFromAssembly(typeof(InfraSetup).Assembly); // Infra handlers
-
-    if (!string.IsNullOrEmpty(configuration.GetConnectionString("AzureBus")))
+// Excerpt from ServiceBusSetup.cs — AddServiceBus(this IServiceCollection, IConfiguration, Assembly)
+service.AddSlimBusEfCoreInterceptor<CoreDbContext>()
+    .AddSlimMessageBus(mbb =>
     {
-        bus.AddAzureServiceBus(/* ... */);
-    }
-});
+        mbb.AddJsonSerializer();
+        mbb.AddMemoryBus(serviceAssembly); // always wires the in-memory child bus
+
+        if (!string.IsNullOrWhiteSpace(busConnectionString))
+        {
+            mbb.AddAzureBus(busConnectionString); // only when ConnectionStrings:AzureBus is set
+        }
+    });
 ```
 
 ## Event Flow Diagram
@@ -98,7 +99,7 @@ graph LR
     MEM["In-Memory Bus"]
     AZ["Azure Service Bus\n(if AzureBus configured)"]
     INTL["ProfileCreatedEventFromMemoryHandler\n(internal logging/audit)"]
-    EXT["External Systems\n(email, billing, CRM)"]
+    EXT["CustomerProfileCreatedEmailNotificationHandler\n(logs only today — no email send yet)"]
 
     HDL -->|PublishAsync| EVT
     EVT --> MEM
