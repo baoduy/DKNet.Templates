@@ -1,12 +1,11 @@
 using Minimal.Api.Configs;
 using Minimal.Api.Configs.AzureAppConfig;
-using Minimal.Api.Extensions;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Rebind features after potentially loading from Azure App Configuration
-var feature = builder.Configuration.Bind<FeatureOptions>(FeatureOptions.Name);
+var feature = builder.Configuration.GetSection(FeatureOptions.Name).Get<FeatureOptions>() ?? new FeatureOptions();
 
 builder.AddLogConfig(feature)
     .AddAzureAppConfig(feature)

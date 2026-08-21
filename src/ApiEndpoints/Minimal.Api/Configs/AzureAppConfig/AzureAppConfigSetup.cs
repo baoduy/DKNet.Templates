@@ -1,6 +1,5 @@
 using Azure.Identity;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Minimal.Api.Extensions;
 
 namespace Minimal.Api.Configs.AzureAppConfig;
 
@@ -25,7 +24,8 @@ internal static class AzureAppConfigSetup
             return builder;
         }
 
-        var options = builder.Configuration.Bind<AzureAppConfigOptions>(AzureAppConfigOptions.Name);
+        var options = builder.Configuration.GetSection(AzureAppConfigOptions.Name).Get<AzureAppConfigOptions>() ??
+                      new AzureAppConfigOptions();
         var conn = builder.Configuration.GetConnectionString(options.ConnectionStringName);
         if (string.IsNullOrWhiteSpace(conn))
         {
