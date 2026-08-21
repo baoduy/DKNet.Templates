@@ -22,10 +22,6 @@
         <PackageReference Include="DKNet.EfCore.Events"/>
         <PackageReference Include="DKNet.EfCore.Relational.Helpers"/>
         <PackageReference Include="DKNet.SlimBus.Extensions"/>
-        <PackageReference Update="Meziantou.Analyzer">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>

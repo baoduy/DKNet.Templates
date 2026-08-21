@@ -29,7 +29,7 @@ internal static class AppConfig
 
         if (features.EnableSwagger)
         {
-            services.AddOpenApiDoc(features);
+            services.AddOpenApiDoc();
         }
 
         if (features.EnableHttps)

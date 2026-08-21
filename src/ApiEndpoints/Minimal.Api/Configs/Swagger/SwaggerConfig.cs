@@ -35,16 +35,15 @@ internal static class SwaggerConfig
 
     extension(IServiceCollection services)
     {
-        public IServiceCollection AddOpenApiDoc(FeatureOptions features)
+        public IServiceCollection AddOpenApiDoc()
         {
-            services.AddOpenApiDocVersion("v1", features.RequireAuthorization, true);
+            services.AddOpenApiDocVersion("v1", true);
 
             services.MarkConfigAdded(nameof(SwaggerConfig));
             return services;
         }
 
-        private IServiceCollection AddOpenApiDocVersion(string name,
-            bool enableAuthentication, bool includeInternal = false)
+        private IServiceCollection AddOpenApiDocVersion(string name, bool includeInternal = false)
         {
             return services.AddOpenApi(name,
                 c =>
@@ -56,14 +55,6 @@ internal static class SwaggerConfig
                         return includeInternal || !ExcludeFromPublic.Any(s =>
                             description.RelativePath!.Contains(s, StringComparison.OrdinalIgnoreCase));
                     };
-
-                    // if (enableAuthentication)
-                    //     c.AddDocumentTransformer<BearerSecurityTransformer>();
-                    //c.AddOperationTransformer<PathParameterOperationTransformer>();
-                    //c.AddSchemaTransformer<JsonStringEnumSchemaTransformer>();
-                    //c.AddSchemaTransformer<ExcludeInterfaceSchemaTransformer>();
-                    //c.AddSchemaTransformer<DisplayNameSchemaTransformer>();
-                    //c.AddDocumentTransformer<DisplayNameSchemaDocumentTransformer>();
 
                     c.AddDocumentTransformer((doc, _, _) =>
                     {
