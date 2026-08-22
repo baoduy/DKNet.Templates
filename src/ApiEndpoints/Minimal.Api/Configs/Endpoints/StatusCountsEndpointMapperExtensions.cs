@@ -1,4 +1,4 @@
-using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Repositories;
 using Minimal.AppServices.Share.Generics;
 using Minimal.Domains.Share;
 

@@ -1,5 +1,6 @@
 using System.Linq.Dynamic.Core;
-using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Definitions;
+using DKNet.EfCore.Specifications.Repositories;
 using Minimal.Domains.Share;
 
 namespace Minimal.AppServices.Share.Generics;
