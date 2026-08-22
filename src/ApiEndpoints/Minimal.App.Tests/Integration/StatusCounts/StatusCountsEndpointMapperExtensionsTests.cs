@@ -1,4 +1,4 @@
-using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Repositories;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.Share.Generics;
 using Minimal.Domains.Features.LoyaltyMemberships.Entities;
