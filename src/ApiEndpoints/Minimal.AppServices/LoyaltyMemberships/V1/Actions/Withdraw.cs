@@ -1,4 +1,4 @@
-using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Repositories;
 using DKNet.EfCore.Specifications.Extensions;
 using Minimal.AppServices.LoyaltyMemberships.V1.Specs;
 

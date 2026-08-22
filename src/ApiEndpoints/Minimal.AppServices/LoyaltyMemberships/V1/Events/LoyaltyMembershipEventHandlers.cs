@@ -30,13 +30,13 @@ internal sealed class LoyaltyMembershipEnrolledEventHandler(ILogger<LoyaltyMembe
 ///     Logs a loyalty membership's tier change. Raised by the DKNet events hook only when the tier
 ///     actually changed in that save.
 /// </summary>
-internal sealed class LoyaltyMembershipTierChangedEventHandler(
-    ILogger<LoyaltyMembershipTierChangedEventHandler> logger)
-    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipTierChangedEvent>
+internal sealed class LoyaltyMembershipTierUpdatedEventHandler(
+    ILogger<LoyaltyMembershipTierUpdatedEventHandler> logger)
+    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipTierUpdatedEvent>
 {
     #region Methods
 
-    public Task OnHandle(LoyaltyMembershipTierChangedEvent notification, CancellationToken cancellationToken)
+    public Task OnHandle(LoyaltyMembershipTierUpdatedEvent notification, CancellationToken cancellationToken)
     {
         if (logger.IsEnabled(LogLevel.Information))
         {
@@ -55,12 +55,12 @@ internal sealed class LoyaltyMembershipTierChangedEventHandler(
 /// <summary>
 ///     Logs a loyalty membership's withdrawal, carrying the last-held tier and points.
 /// </summary>
-internal sealed class LoyaltyMembershipWithdrawnEventHandler(ILogger<LoyaltyMembershipWithdrawnEventHandler> logger)
-    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipWithdrawnEvent>
+internal sealed class LoyaltyMembershipDeletedEventHandler(ILogger<LoyaltyMembershipDeletedEventHandler> logger)
+    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipDeletedEvent>
 {
     #region Methods
 
-    public Task OnHandle(LoyaltyMembershipWithdrawnEvent notification, CancellationToken cancellationToken)
+    public Task OnHandle(LoyaltyMembershipDeletedEvent notification, CancellationToken cancellationToken)
     {
         if (logger.IsEnabled(LogLevel.Information))
         {

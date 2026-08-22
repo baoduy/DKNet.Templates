@@ -1,4 +1,4 @@
-using DKNet.EfCore.Specifications;
+using DKNet.EfCore.Specifications.Definitions;
 
 namespace Minimal.AppServices.CustomerProfiles.V1.Specs;
 
