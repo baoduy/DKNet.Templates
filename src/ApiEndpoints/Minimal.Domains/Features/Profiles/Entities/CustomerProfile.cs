@@ -1,10 +1,17 @@
-﻿using Minimal.Domains.Share;
+﻿using DKNet.EfCore.Abstractions.Events;
+using Minimal.Domains.Share;
 
 namespace Minimal.Domains.Features.Profiles.Entities;
 
 /// <summary>
 /// Represents a customer profile aggregate root, encapsulating identity, contact, and membership information.
 /// </summary>
+/// <remarks>
+/// Creation is declared via <see cref="RaisesEventAttribute"/> — the DKNet source generator composes the
+/// <c>CustomerProfileCreatedEvent</c> payload (narrowed to <c>Id</c> + <c>Name</c>) and the events hook raises it
+/// automatically on save; no method here calls <c>AddEvent</c> and no hand-written event record is needed.
+/// </remarks>
+[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name)])]
 public class CustomerProfile : AggregateRoot
 {
     #region Constructors

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Minimal.Domains.Features.LoyaltyMemberships.Entities;
-using Minimal.Domains.Features.LoyaltyMemberships.Events;
 
 namespace Minimal.AppServices.LoyaltyMemberships.V1.Events;
 
@@ -9,11 +8,11 @@ namespace Minimal.AppServices.LoyaltyMemberships.V1.Events;
 ///     <see cref="DKNet.EfCore.Abstractions.Events.RaisesEventAttribute" /> — no persistence, no outbound call.
 /// </summary>
 internal sealed class LoyaltyMembershipEnrolledEventHandler(ILogger<LoyaltyMembershipEnrolledEventHandler> logger)
-    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipEvents>
+    : Fluents.EventsConsumers.IHandler<LoyaltyMembershipCreatedEvent>
 {
     #region Methods
 
-    public Task OnHandle(LoyaltyMembershipEvents notification, CancellationToken cancellationToken)
+    public Task OnHandle(LoyaltyMembershipCreatedEvent notification, CancellationToken cancellationToken)
     {
         if (logger.IsEnabled(LogLevel.Information))
         {

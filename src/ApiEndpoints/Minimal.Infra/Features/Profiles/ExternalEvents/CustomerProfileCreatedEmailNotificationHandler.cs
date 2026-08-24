@@ -1,12 +1,12 @@
 using DKNet.SlimBus.Extensions;
 using Microsoft.Extensions.Logging;
-using Minimal.AppServices.CustomerProfiles.V1.Events;
+using Minimal.Domains.Features.Profiles.Entities;
 
 namespace Minimal.Infra.Features.Profiles.ExternalEvents;
 
 internal sealed class CustomerProfileCreatedEmailNotificationHandler(
     ILogger<CustomerProfileCreatedEmailNotificationHandler> logger)
-    : Fluents.EventsConsumers.IHandler<ProfileCreatedEvent>
+    : Fluents.EventsConsumers.IHandler<CustomerProfileCreatedEvent>
 {
     #region Properties
 
@@ -16,7 +16,7 @@ internal sealed class CustomerProfileCreatedEmailNotificationHandler(
 
     #region Methods
 
-    public Task OnHandle(ProfileCreatedEvent notification, CancellationToken cancellationToken)
+    public Task OnHandle(CustomerProfileCreatedEvent notification, CancellationToken cancellationToken)
     {
         Called = notification.Id != Guid.Empty;
         if (logger.IsEnabled(LogLevel.Information))

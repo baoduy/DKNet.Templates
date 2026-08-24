@@ -1,5 +1,4 @@
 using DKNet.EfCore.Abstractions.Events;
-using Minimal.Domains.Features.LoyaltyMemberships.Events;
 using Minimal.Domains.Share;
 
 namespace Minimal.Domains.Features.LoyaltyMemberships.Entities;
@@ -21,7 +20,7 @@ public enum MembershipTier
 /// Enrolment, tier changes, and withdrawal are declared via <see cref="RaisesEventAttribute"/> and raised
 /// automatically by the DKNet events hook on save — no method here calls <c>AddEvent</c>.
 /// </remarks>
-[RaisesEvent(typeof(LoyaltyMembershipEvents), EventOperations.Created)]
+[RaisesEvent(EventOperations.Created)]
 [RaisesEvent(EventOperations.Updated, nameof(Tier))]
 [RaisesEvent(EventOperations.Deleted)]
 public class LoyaltyMembership : AggregateRoot

@@ -1,11 +1,11 @@
-namespace Minimal.AppServices.CustomerProfiles.V1.Events;
+using Minimal.Domains.Features.Profiles.Entities;
 
-public sealed record ProfileCreatedEvent(Guid Id, string Name);
+namespace Minimal.AppServices.CustomerProfiles.V1.Events;
 
 /// <summary>
 ///     NOTE: remove this as just for testing purposed only
 /// </summary>
-internal sealed class ProfileCreatedEventFromMemoryHandler : Fluents.EventsConsumers.IHandler<ProfileCreatedEvent>
+internal sealed class ProfileCreatedEventFromMemoryHandler : Fluents.EventsConsumers.IHandler<CustomerProfileCreatedEvent>
 {
     #region Properties
 
@@ -15,7 +15,7 @@ internal sealed class ProfileCreatedEventFromMemoryHandler : Fluents.EventsConsu
 
     #region Methods
 
-    public Task OnHandle(ProfileCreatedEvent notification, CancellationToken cancellationToken)
+    public Task OnHandle(CustomerProfileCreatedEvent notification, CancellationToken cancellationToken)
     {
         Called = notification.Id != Guid.Empty;
         return Task.CompletedTask;

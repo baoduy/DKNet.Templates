@@ -1,7 +1,6 @@
 using DKNet.EfCore.Abstractions.Events;
 using Minimal.AppServices.LoyaltyMemberships.V1.Actions;
 using Minimal.Domains.Features.LoyaltyMemberships.Entities;
-using Minimal.Domains.Features.LoyaltyMemberships.Events;
 
 namespace Minimal.App.Tests.Unit.LoyaltyMemberships;
 

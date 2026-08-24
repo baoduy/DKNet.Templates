@@ -105,7 +105,7 @@ public class PackageArchitectureTests
     [Fact]
     public void AllDKNetPackageReferences_ShouldResolveToOneRelease()
     {
-        const string expectedVersion = "10.1.9";
+        const string expectedVersion = "10.1.10";
 
         var srcDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../.."));
@@ -170,7 +170,7 @@ public class PackageArchitectureTests
     [Fact]
     public void ServiceBusSetup_ShouldStillProduceProfileCreatedEventToItsExternalTopic()
     {
-        // Regression guard for the invariant "the existing hand-raised event still... produces to the
+        // Regression guard for the invariant "the ProfileCreated event still... produces to the
         // external topic for the broker" — CustomerProfileEventPublishingTests covers the in-process
         // subscriber side at runtime; reaching a real Azure Service Bus topic needs live infrastructure
         // this repo's own harness cannot provide, so the topic wiring itself is verified at the source level.
@@ -181,8 +181,8 @@ public class PackageArchitectureTests
         File.Exists(sourcePath).ShouldBeTrue();
         var source = File.ReadAllText(sourcePath);
 
-        source.ShouldContain("Produce<ProfileCreatedEvent>(o => o.DefaultTopic(\"profile-tp\"))");
-        source.ShouldContain("Consume<ProfileCreatedEvent>(");
+        source.ShouldContain("Produce<CustomerProfileCreatedEvent>(o => o.DefaultTopic(\"profile-tp\"))");
+        source.ShouldContain("Consume<CustomerProfileCreatedEvent>(");
         source.ShouldContain("WithConsumer<CustomerProfileCreatedEmailNotificationHandler>()");
     }
 }
