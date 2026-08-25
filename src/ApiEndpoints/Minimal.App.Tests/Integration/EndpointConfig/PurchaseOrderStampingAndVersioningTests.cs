@@ -53,8 +53,9 @@ public sealed class PurchaseOrderStampingAndVersioningTests
     }
 
     /// <summary>
-    /// <c>RequireAuthorization</c> off → <c>user.Identity?.Name</c> is null on the anonymous caller, so the
-    /// endpoint's own fallback stamps <see cref="SharedConsts.SystemAccount" />.
+    /// <c>RequireAuthorization</c> off → <c>Identity?.Name</c> is null on the anonymous caller, so contextual
+    /// population resolves <c>ByUser</c> to its configured <c>SystemAccountFallback</c> (<c>Program.cs:23</c>) —
+    /// the endpoint stamps nothing itself.
     /// </summary>
     [Fact]
     public async Task AuthorizationOff_CreateIsAttributedToSystemAccount()

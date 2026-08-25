@@ -30,12 +30,17 @@ public sealed class PurchaseOrderListPagingTests(ApiFixture fixture) : IClassFix
         var client = fixture.CreateClient();
 
         using var response = await client.GetAsync(BaseUrl);
+        using var explicitFirstPageResponse = await client.GetAsync($"{BaseUrl}?pageIndex=1");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK,
             "the un-parameterised listing must serve the declared default page, not reject it as an invalid page size.");
+        explicitFirstPageResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var orders = await response.Content.ReadFromJsonAsync<List<PurchaseOrderDto>>(SharedConsts.JsonSerializerOptions);
+        var explicitFirstPageOrders = await explicitFirstPageResponse.Content.ReadFromJsonAsync<List<PurchaseOrderDto>>(SharedConsts.JsonSerializerOptions);
         orders.ShouldNotBeNull();
         orders!.Count.ShouldBe(20, "PageSize's declared default is 20 — a smaller/larger count means it was not honoured.");
+        orders.Select(o => o.Id).ShouldBe(explicitFirstPageOrders!.Select(o => o.Id),
+            "omitting pageIndex must serve the same page 1 an explicit pageIndex=1 (DefaultPageIndex) serves.");
     }
 
     [Theory]
@@ -71,25 +76,6 @@ public sealed class PurchaseOrderListPagingTests(ApiFixture fixture) : IClassFix
         pageIndexBody.Select(p => p.Key).Order().ShouldBe(pageSizeBody.Select(p => p.Key).Order(),
             "an unvalidated pageIndex must fail with the same ValidationProblemDetails shape as pageSize, not a 500's ProblemDetails shape.");
         pageIndexBody["errors"].ShouldNotBeNull();
-    }
-
-    [Fact]
-    public async Task List_WithNoQueryString_ShouldServe_TheDeclaredDefaultPageIndex()
-    {
-        await fixture.ResetDatabaseAsync();
-        await SeedOrdersAsync(25);
-        var client = fixture.CreateClient();
-
-        using var defaultResponse = await client.GetAsync(BaseUrl);
-        using var explicitFirstPageResponse = await client.GetAsync($"{BaseUrl}?pageIndex=1");
-
-        defaultResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var defaultOrders = await defaultResponse.Content.ReadFromJsonAsync<List<PurchaseOrderDto>>(SharedConsts.JsonSerializerOptions);
-        var explicitFirstPageOrders = await explicitFirstPageResponse.Content.ReadFromJsonAsync<List<PurchaseOrderDto>>(SharedConsts.JsonSerializerOptions);
-
-        defaultOrders.ShouldNotBeNull();
-        defaultOrders!.Select(o => o.Id).ShouldBe(explicitFirstPageOrders!.Select(o => o.Id),
-            "omitting pageIndex must serve the same page 1 an explicit pageIndex=1 (DefaultPageIndex) serves.");
     }
 
     private async Task SeedOrdersAsync(int count)
