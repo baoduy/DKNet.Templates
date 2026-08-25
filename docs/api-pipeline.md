@@ -59,9 +59,12 @@ with no handler code involved.
 
 ## 6. Idempotency on POST
 
-`Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`'s create route chains
-`.RequiredIdempotentKey()`, which enforces the idempotency key header (default `X-Idempotency-Key`) on
-that route — a request missing it is rejected before the handler runs.
+Idempotency is opt-in per route, not automatic for every POST. `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`'s
+create route chains `.RequiredIdempotentKey()`, which enforces the idempotency key header (default
+`X-Idempotency-Key`) on that route — a request missing it is rejected before the handler runs. The
+automated sample's generated create route (`Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs`'s
+`MapProductCrud()`) makes no such call — a replayed request there is processed as a brand-new create, not
+deduplicated. Add `.RequiredIdempotentKey()` yourself on any route where duplicate submissions matter.
 
 Store selection happens once in `Minimal.Api/Configs/AppConfig.cs`, based on whether
 `ConnectionStrings:Redis` is configured:
