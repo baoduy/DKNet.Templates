@@ -10,6 +10,5 @@ global using FluentValidation;
 global using Mapster;
 global using MapsterMapper;
 global using Minimal.AppServices.Extensions;
-global using Minimal.AppServices.Extensions.LazyMapper;
+global using DKNet.SlimBus.Extensions.LazyMapper;
 global using Minimal.AppServices.Share;
-global using Minimal.Domains.Features.Profiles.Entities;

@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Azure.Messaging.ServiceBus;
 using Minimal.Infra.Contexts;
-using Minimal.Infra.Features.Profiles.ExternalEvents;
-using Minimal.Domains.Features.Profiles.Entities;
 
 namespace Minimal.Infra.Extensions;
 
@@ -47,11 +45,6 @@ public static class ServiceBusSetup
                             }
                         };
                     });
-
-                azb.Produce<CustomerProfileCreatedEvent>(o => o.DefaultTopic("profile-tp"));
-                azb.Consume<CustomerProfileCreatedEvent>(o => o.Path("profile-tp")
-                    .SubscriptionName("profile-sub")
-                    .WithConsumer<CustomerProfileCreatedEmailNotificationHandler>());
             });
         return builder;
     }

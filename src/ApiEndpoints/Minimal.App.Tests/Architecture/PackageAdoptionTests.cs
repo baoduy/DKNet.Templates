@@ -1,5 +1,4 @@
 using System.Xml.Linq;
-using Minimal.Api.ApiEndpoints;
 
 namespace Minimal.App.Tests.Architecture;
 
@@ -10,18 +9,6 @@ namespace Minimal.App.Tests.Architecture;
 public class PackageAdoptionTests
 {
     #region Methods
-
-    [Theory]
-    [InlineData(typeof(CustomerProfileV1Endpoint))]
-    [InlineData(typeof(LoyaltyMembershipV1Endpoint))]
-    public void EndpointConfigs_ShouldImplementThePackagesInterface_NotATemplateCopy(Type endpointType)
-    {
-        var endpointConfigInterface = endpointType.GetInterface("IEndpointConfig");
-
-        endpointConfigInterface.ShouldNotBeNull($"{endpointType.Name} should implement IEndpointConfig.");
-        endpointConfigInterface.Assembly.GetName().Name.ShouldBe("DKNet.AspCore.Extensions",
-            $"{endpointType.Name} should implement the package's IEndpointConfig, not a template-local one.");
-    }
 
     [Theory]
     [InlineData("Minimal.Api/Configs/Endpoints/EndpointConfig.cs")]

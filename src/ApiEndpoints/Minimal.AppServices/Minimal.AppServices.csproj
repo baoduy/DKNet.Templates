@@ -43,6 +43,10 @@
         <PackageReference Include="DKNet.SlimBus.Extensions"/>
         <!-- [FromClaim] declaration + AddContextualRequestPopulation for the six request models' ByUser (DRK-565) -->
         <PackageReference Include="DKNet.AspCore.Extensions"/>
+        <PackageReference Include="DKNet.SlimBus.Generators">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
@@ -53,22 +57,4 @@
         <InternalsVisibleTo Include="Minimal.App.Tests"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Update="Features\Profiles\V1\Actions\DeleteProfileCommand.cs">
-            <DependentUpon>Delete.cs</DependentUpon>
-        </Compile>
-        <Compile Update="Features\Profiles\V1\Actions\UpdateProfileCommand.cs">
-            <DependentUpon>Update.cs</DependentUpon>
-        </Compile>
-        <Compile Update="Features\Profiles\V1\Actions\CreateProfileCommand.cs">
-            <DependentUpon>Create.cs</DependentUpon>
-        </Compile>
-        <Compile Update="Features\Profiles\V1\Events\ProfileCreatedEvent.cs">
-            <DependentUpon>ProfileCreatedEventHandlers.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="CustomerProfiles\V1\Queries\" />
-    </ItemGroup>
 </Project>

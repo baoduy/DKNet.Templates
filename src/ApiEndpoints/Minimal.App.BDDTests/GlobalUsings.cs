@@ -6,7 +6,6 @@ global using System.Text.Json;
 global using Microsoft.EntityFrameworkCore;
 global using Minimal.App.BDDTests.Support;
 global using Minimal.App.TestSupport;
-global using Minimal.Domains.Features.Profiles.Entities;
 global using Minimal.Infra.Contexts;
 global using Minimal.Share;
 global using Reqnroll;
