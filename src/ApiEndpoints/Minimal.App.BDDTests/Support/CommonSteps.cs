@@ -20,4 +20,11 @@ public sealed class CommonSteps(ScenarioState state)
         state.Response.ShouldNotBeNull();
         state.Response!.IsSuccessStatusCode.ShouldBeFalse();
     }
+
+    [Then(@"the response status is (\d+)")]
+    public void ThenTheResponseStatusIs(int statusCode)
+    {
+        state.Response.ShouldNotBeNull();
+        ((int)state.Response!.StatusCode).ShouldBe(statusCode);
+    }
 }
