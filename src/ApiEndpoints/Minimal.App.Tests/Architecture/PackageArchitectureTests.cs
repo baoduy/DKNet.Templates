@@ -146,4 +146,54 @@ public class PackageArchitectureTests
         source.ShouldContain("AddIdempotencyWithRedisStore(");
         source.ShouldContain("AddIdempotentKey(");
     }
+
+    [Fact]
+    public void EveryDKNetPackageVersion_ShouldBeReferencedByAtLeastOneProject()
+    {
+        // DRK-757: a PackageVersion pinned in Directory.Packages.props but never referenced is drift —
+        // either a stale entry (this ticket's fix) or a project quietly relying on a transitive package.
+        var srcDir = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "../../../../.."));
+
+        var directoryPackagesPath = Path.Combine(srcDir, "Directory.Packages.props");
+        File.Exists(directoryPackagesPath).ShouldBeTrue();
+
+        var dkNetPackageNames = XDocument.Load(directoryPackagesPath).Descendants("PackageVersion")
+            .Select(e => e.Attribute("Include")?.Value ?? "")
+            .Where(v => v.StartsWith("DKNet.", StringComparison.Ordinal))
+            .ToArray();
+        dkNetPackageNames.ShouldNotBeEmpty();
+
+        var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
+        var referencedPackages = csprojFiles
+            .SelectMany(file => XDocument.Load(file).Descendants("PackageReference")
+                .Select(e => e.Attribute("Include")?.Value ?? ""))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var unreferenced = dkNetPackageNames.Where(p => !referencedPackages.Contains(p)).ToArray();
+        unreferenced.ShouldBeEmpty(
+            "The following DKNet PackageVersion entries are pinned but never referenced by any project: " +
+            string.Join(", ", unreferenced));
+    }
+
+    [Fact]
+    public void NoPackageReference_ShouldCarryAVersionAttribute()
+    {
+        // DRK-757: versions are centrally managed in Directory.Packages.props (repo CLAUDE.md) — a
+        // Version= on a PackageReference bypasses that and can silently drift from the pinned release.
+        var srcDir = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "../../../../.."));
+
+        var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
+
+        var offenders = csprojFiles
+            .SelectMany(file => XDocument.Load(file).Descendants("PackageReference")
+                .Where(e => e.Attribute("Version") != null)
+                .Select(e => $"{Path.GetFileName(file)}: {e.Attribute("Include")?.Value}"))
+            .ToArray();
+
+        offenders.ShouldBeEmpty(
+            "PackageReference elements must not carry a Version attribute — versions are centrally " +
+            "managed in Directory.Packages.props. Offenders: " + string.Join(", ", offenders));
+    }
 }
