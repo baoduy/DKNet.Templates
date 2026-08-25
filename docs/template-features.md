@@ -3,7 +3,8 @@
 Everything `dotnet new dknet-minimal` wires up before you write a line of feature code.
 Toggles live in `Minimal.Share/Options/FeatureOptions.cs`, bound from the `FeatureManagement`
 config section — treat that class as the source of truth over any given `appsettings.json`,
-whose checked-in keys have drifted for a couple of flags (see the note at the end).
+whose checked-in keys have drifted for a couple of flags (see the note at the end). For the full
+list of DKNet NuGet packages behind these features, see [`docs/dknet-packages.md`](dknet-packages.md).
 
 | Feature | What it gives you | Configure it in |
 |---|---|---|
@@ -13,12 +14,12 @@ whose checked-in keys have drifted for a couple of flags (see the note at the en
 | **FluentValidation** | Automatic `400` responses for invalid requests — handlers never call `Validate()` themselves. | Add an `AbstractValidator<TRequest>` next to the action; wiring in `Minimal.Api/Configs/FluentValidationConfig.cs` |
 | **OpenTelemetry** | ASP.NET Core + HttpClient tracing/metrics; console exporter in DEBUG, OTLP or Azure Monitor otherwise. | `FeatureManagement:EnableOpenTelemetry`, `OTEL_EXPORTER_OTLP_ENDPOINT` / `AzureMonitor:ConnectionString`; `Minimal.Api/Configs/LogConfigs.cs` |
 | **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, `ConnectionStrings:AzureAppConfiguration`; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` |
-| **JWT bearer auth** | Standard bearer-token auth, optional MS Graph token handler swap-in. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs` |
-| **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs` |
+| **JWT bearer auth** | Standard bearer-token auth, optional MS Graph token handler swap-in. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
+| **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **Health checks** | EF Core connectivity check mapped at `/healthz` and `/`. | `FeatureManagement:EnableHealthCheck`; `Minimal.Api/Configs/Healthz/HealthzConfig.cs` |
 | **Hybrid caching** | `AddHybridCache()` registered (Redis-backed when `ConnectionStrings:Redis` is set, otherwise in-memory). Not yet consumed by any shipped feature — wire it up where you need query caching. | `Minimal.Api/Configs/CacheConfig.cs` |
-| **SlimMessageBus** | In-memory bus always wired for internal command/event dispatch; Azure Service Bus child bus added only when configured. | `ConnectionStrings:AzureBus`; `Minimal.Infra/Extensions/ServiceBusSetup.cs` |
-| **Mapster** | Entity↔request/DTO mapping registered automatically from `[MapsFrom]`/`[GenerateDto]` attributes — no per-feature mapping config. | `Minimal.AppServices/AppSetup.cs` |
+| **SlimMessageBus** | In-memory bus always wired for internal command/event dispatch; Azure Service Bus child bus added only when configured. | `ConnectionStrings:AzureBus`; `Minimal.Infra/Extensions/ServiceBusSetup.cs`. Deep dive: [`docs/slimbus-messaging.md`](slimbus-messaging.md) |
+| **Mapster** | Entity↔request/DTO mapping registered automatically from `[MapsFrom]`/`[GenerateDto]` attributes — no per-feature mapping config. | `Minimal.AppServices/AppSetup.cs`. Attribute mechanics: [`docs/crud-attributes.md`](crud-attributes.md) |
 | **Scalar / OpenAPI** | OpenAPI 3.0 document + Scalar UI at `/docs` with a Bearer-auth preset. | `FeatureManagement:EnableSwagger`; `Minimal.Api/Configs/Swagger/SwaggerConfig.cs` |
 | **Reqnroll + NUnit BDD** | Gherkin feature files exercised against a real `WebApplicationFactory<Program>` host, in-memory DB. | `Minimal.App.BDDTests/` |
 | **EF Core migration scripts** | `./add-migration.sh <Name>` / `./remove-migration.sh <Name>`, always targeting `CoreDbContext`. | Run from `src/ApiEndpoints/` |
@@ -29,9 +30,15 @@ whose checked-in keys have drifted for a couple of flags (see the note at the en
 - **xUnit + Shouldly** unit/integration tests (`Minimal.App.Tests`) alongside the BDD suite above.
 - **Contextual claim population** (`[FromClaim]`) — request properties are filled from the
   authenticated caller's claims by the endpoint pipeline, overwriting anything the caller sent.
+  Audit-field stamping (`CreatedBy`/`UpdatedBy`) is the same principle applied at save time — see
+  [`docs/auditing-and-data-ownership.md`](auditing-and-data-ownership.md).
 - **NetArchTest architecture tests** (`Minimal.App.Tests/Architecture/`) enforcing internal/sealed
   visibility, max-length on every mapped string, and Npgsql-only package references — these fail
   the build, not just review.
+- **Domain events** — raised manually (`AddEvent`) or declaratively (`[RaisesEvent]`), dispatched
+  after `SaveChanges` succeeds. See [`docs/efcore-events.md`](efcore-events.md).
+- **Specifications** — filtered/paged/projected queries via `DKNet.EfCore.Specifications` instead of
+  a raw `IQueryable`. See [`docs/querying-and-specifications.md`](querying-and-specifications.md).
 
 ## FeatureManagement flags (`Minimal.Share/Options/FeatureOptions.cs`)
 

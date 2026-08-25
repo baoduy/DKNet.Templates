@@ -29,6 +29,58 @@ copilot plugin marketplace add baoduy/DKNet.Templates
 /plugin install dknet-minimal
 ```
 
+## Architecture
+
+A generated solution is layered onion-style — each layer knows only about the layers inside it, never the layers outside it:
+
+```
+                 ┌───────────────────────────┐
+                 │   Minimal.Api             │  Minimal API endpoints, auth, OpenAPI
+                 │   Minimal.AppHost         │  Aspire orchestration (Redis + PostgreSQL)
+                 └─────────────┬─────────────┘
+                               │ depends on
+                 ┌─────────────▼─────────────┐
+                 │   Minimal.Infra           │  CoreDbContext, mappers, seeding,
+                 │                           │  bus wiring, event publisher
+                 └─────────────┬─────────────┘
+                               │ depends on
+                 ┌─────────────▼─────────────┐
+                 │   Minimal.AppServices     │  CQRS actions, queries, specs,
+                 │                           │  DTOs, domain event handlers
+                 └─────────────┬─────────────┘
+                               │ depends on
+                 ┌─────────────▼─────────────┐
+                 │   Minimal.Domains         │  entities, aggregate roots,
+                 │                           │  domain events, repo interfaces
+                 └───────────────────────────┘
+
+   Minimal.Share — constants/options/base types, referenced by every layer above
+```
+
+`Minimal.Domains` knows nothing above it — no reference to `AppServices`, `Infra`, or `Api`. `Minimal.AppServices`
+depends only on `Domains` (plus `Share`); `Minimal.Infra` and `Minimal.Api` depend on `AppServices` and `Domains`,
+never the reverse. `Minimal.Share` is the one cross-cutting exception — constants, options, and base types read by
+every layer. `Minimal.AppHost` sits alongside `Minimal.Api` as the Aspire orchestrator and carries no business logic
+of its own.
+
+### Request flow
+
+1. An HTTP request hits a `Minimal.Api` Minimal API endpoint (`IEndpointConfig`).
+2. The request is validated (FluentValidation) and any `[FromClaim]` property is populated from the caller's claims — see [`docs/api-pipeline.md`](docs/api-pipeline.md).
+3. The endpoint dispatches the request as a CQRS action/query in `Minimal.AppServices`, over the in-memory SlimMessageBus.
+4. The action's handler calls a method on a `Minimal.Domains` entity, which mutates its own state and may raise a domain event.
+5. `Minimal.Infra`'s `CoreDbContext.SaveChanges` persists the change.
+6. EF Core hooks run around the save: `DataOwnerHook` stamps `CreatedBy`/`UpdatedBy` from the authenticated principal, then queued domain events are dispatched to their `Minimal.AppServices` handlers.
+7. A dispatched event may be forwarded to an external bus (Azure Service Bus) when one is configured, in addition to the always-on in-memory dispatch.
+
+See [`docs/api-pipeline.md`](docs/api-pipeline.md), [`docs/auditing-and-data-ownership.md`](docs/auditing-and-data-ownership.md), and [`docs/efcore-events.md`](docs/efcore-events.md) for the full detail behind each step.
+
+### Enforced, not just documented
+
+`Minimal.App.Tests/Architecture/` uses NetArchTest to assert these layer boundaries in code — a reference from `Minimal.Domains` into `Minimal.AppServices` (or any other outer-to-inner violation) fails the build, not just review.
+
+---
+
 ## Installation
 
 Install from GitHub Packages:
@@ -140,6 +192,13 @@ See [AGENTS.md](AGENTS.md) for the condensed architecture reference used by AI c
 | [`docs/samples/manual-vs-automated.md`](docs/samples/manual-vs-automated.md) | Layer-by-layer comparison of the two worked samples the guides above reference |
 | [`docs/samples/manual-purchase-orders/`](docs/samples/manual-purchase-orders/) | Hand-written vertical slice — `PurchaseOrder` |
 | [`docs/samples/automated-products/`](docs/samples/automated-products/) | Generator-driven vertical slice — `Product` |
+| [`docs/dknet-packages.md`](docs/dknet-packages.md) | Every DKNet NuGet package this template wires up, and what it's for |
+| [`docs/api-pipeline.md`](docs/api-pipeline.md) | The full request pipeline — routing, versioning, auth, validation, idempotency, rate limiting — in the order it runs |
+| [`docs/auditing-and-data-ownership.md`](docs/auditing-and-data-ownership.md) | How `CreatedBy`/`UpdatedBy` get stamped, and why a caller can never forge them |
+| [`docs/efcore-events.md`](docs/efcore-events.md) | Domain events — manual `AddEvent` vs. declarative `[RaisesEvent]`, and dispatch ordering after `SaveChanges` |
+| [`docs/crud-attributes.md`](docs/crud-attributes.md) | How `[CrudCreate]`/`[CrudUpdate]`/`[GenerateDto]` build a full CRUD slice for the generator-driven sample |
+| [`docs/slimbus-messaging.md`](docs/slimbus-messaging.md) | How SlimMessageBus is wired, and how to forward a domain event to an external broker |
+| [`docs/querying-and-specifications.md`](docs/querying-and-specifications.md) | The read side — filtering, paging, and projection via `DKNet.EfCore.Specifications` |
 
 > These guides are visible on GitHub but are **not** packaged into scaffolded solutions — the
 > nuspec's file list doesn't ship `docs/`. If you need this content inside a generated solution,
