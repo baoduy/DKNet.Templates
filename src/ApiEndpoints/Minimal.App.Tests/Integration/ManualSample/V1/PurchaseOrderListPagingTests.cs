@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using DKNet.EfCore.Specifications.Repositories;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.ManualSample.V1;
@@ -48,6 +49,47 @@ public sealed class PurchaseOrderListPagingTests(ApiFixture fixture) : IClassFix
         using var response = await client.GetAsync($"{BaseUrl}?pageIndex=1&pageSize={pageSize}");
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task List_WithPageIndexOutsideDeclaredRange_ShouldReturnBadRequest_NotThrow(int pageIndex)
+    {
+        // Before the DRK-744 fix this path 500s — X.PagedList throws on pageNumber < 1 — so an assertion
+        // that only checked "not 200" would have passed on `dev`. Assert the same failure shape ?pageSize=0
+        // produces, not just the status code.
+        await fixture.ResetDatabaseAsync();
+        var client = fixture.CreateClient();
+
+        using var pageIndexResponse = await client.GetAsync($"{BaseUrl}?pageIndex={pageIndex}");
+        using var pageSizeResponse = await client.GetAsync($"{BaseUrl}?pageSize=0");
+
+        pageIndexResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var pageIndexBody = JsonNode.Parse(await pageIndexResponse.Content.ReadAsStringAsync())!.AsObject();
+        var pageSizeBody = JsonNode.Parse(await pageSizeResponse.Content.ReadAsStringAsync())!.AsObject();
+        pageIndexBody.Select(p => p.Key).Order().ShouldBe(pageSizeBody.Select(p => p.Key).Order(),
+            "an unvalidated pageIndex must fail with the same ValidationProblemDetails shape as pageSize, not a 500's ProblemDetails shape.");
+        pageIndexBody["errors"].ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task List_WithNoQueryString_ShouldServe_TheDeclaredDefaultPageIndex()
+    {
+        await fixture.ResetDatabaseAsync();
+        await SeedOrdersAsync(25);
+        var client = fixture.CreateClient();
+
+        using var defaultResponse = await client.GetAsync(BaseUrl);
+        using var explicitFirstPageResponse = await client.GetAsync($"{BaseUrl}?pageIndex=1");
+
+        defaultResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var defaultOrders = await defaultResponse.Content.ReadFromJsonAsync<List<PurchaseOrderDto>>(SharedConsts.JsonSerializerOptions);
+        var explicitFirstPageOrders = await explicitFirstPageResponse.Content.ReadFromJsonAsync<List<PurchaseOrderDto>>(SharedConsts.JsonSerializerOptions);
+
+        defaultOrders.ShouldNotBeNull();
+        defaultOrders!.Select(o => o.Id).ShouldBe(explicitFirstPageOrders!.Select(o => o.Id),
+            "omitting pageIndex must serve the same page 1 an explicit pageIndex=1 (DefaultPageIndex) serves.");
     }
 
     private async Task SeedOrdersAsync(int count)
