@@ -1,11 +1,16 @@
 ---
 name: dknet-endpoint-config
-description: Create Minimal API endpoint configurations using this project's IEndpointConfig pattern with fluent helpers (MapGetList, MapGetById, MapPost, MapPut, MapDelete). Use after AppServices actions are ready.
+description: Create Minimal API endpoint configurations using this project's IEndpointConfig pattern — either hand-mapped literal routes or the generator's single MapXxxCrud() call. Use after AppServices actions are ready.
 ---
 
 # Skill: Endpoint Configuration
 
-Create versioned REST API endpoints that wire AppServices actions to HTTP routes using the project's fluent endpoint mapping pattern.
+Create versioned REST API endpoints that wire AppServices actions to HTTP routes, using this template's `IEndpointConfig` pattern.
+
+This project currently ships two real, different ways to do this — pick the one matching how the underlying feature was built (see **dknet-appservices-actions**):
+
+1. **Hand-mapped literal routes** (`PurchaseOrderV1Endpoint`) — every route is a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call against the raw minimal-API surface. This is the primary pattern taught below.
+2. **Generator-driven CRUD** (`ProductV1Endpoint`) — one `group.MapXxxCrud()` call, generated from the entity's `[CrudCreate]`/`[CrudUpdate]`/`[RaisesEvent]` attributes. See the dedicated section near the end.
 
 ---
 
@@ -21,15 +26,8 @@ Create versioned REST API endpoints that wire AppServices actions to HTTP routes
 2. **DTO class** (from AppServices): the response DTO
 3. **Action requests** (from AppServices): Create, Update, Delete request types
 4. **API version**: integer (e.g., `1`)
-5. **Route group**: kebab-case path (e.g., `/customer-profiles`)
-6. **Idempotency**: does POST need idempotency key?
-
-## DTO Contract Rule (GenerateDto-First)
-
-- Endpoint response DTOs should be generated from entities by default (`[GenerateDto]`) in AppServices.
-- Prefer generated shapes for request/response consistency whenever request payload is entity-aligned.
-- Only use hand-written request records when command semantics differ from entity structure (partial updates, hidden/server fields, workflow-only fields).
-- Avoid manually duplicating entity property names/types in multiple request/response records unless contract differences are intentional.
+5. **Route group**: kebab-case path (e.g., `/purchase-orders`)
+6. **Idempotency**: does POST need an idempotency key? (only meaningful for hand-mapped routes — see below)
 
 ---
 
@@ -40,61 +38,53 @@ Create versioned REST API endpoints that wire AppServices actions to HTTP routes
 - Implement `IEndpointConfig` interface — auto-discovered via assembly scanning
 - Class must be `internal sealed`
 - `Version` → API version integer
-- `GroupEndpoint` → route path (e.g., `/customer-profiles`)
-- `Map(RouteGroupBuilder group)` → wire endpoints using fluent helpers
-- `Tag` is auto-derived from `GroupEndpoint` (strips `/` → kebab-case)
+- `GroupEndpoint` → route path (e.g., `/purchase-orders`, `/products`)
+- `Map(RouteGroupBuilder group)` → wire endpoints
+- `Tag` is auto-derived from `GroupEndpoint` (strips `/` → kebab-case) unless overridden
 
-### Auto-Wiring (EndpointConfig.cs)
+### Auto-Wiring (`UseEndpointConfigs()`)
 
 `UseEndpointConfigs()` scans the assembly for all `IEndpointConfig` implementations and creates route groups with:
 - `RequireAuthorization()` (if auth is configured)
 - API versioning via `{version:apiVersion}` path segment — switchable with the `EnableVersioning` feature flag (default on); when off, groups are registered with no version segment. A group whose `IEndpointConfig.Version` is not overridden defaults to version 1.
-- Request-user stamping (`RequestBase.ByUser`) and FluentValidation auto-validation are no longer built into the package — the template supplies both itself via the `ConfigureGroup` callback passed to `UseEndpointConfigs()` (see `Program.cs`).
+- Request-user population (`[FromClaim]` properties, via `AddContextualRequestPopulation`) and FluentValidation are wired once at the composition root (`Program.cs`), not per endpoint.
 
-### Fluent Endpoint Helpers
+### Hand-mapped routes: no fluent entity/DTO helper
 
-| Helper | HTTP | Request Interface | Response |
-|--------|------|------------------|----------|
-| `MapGetList<TEntity, TDto>()` | GET `/` | Auto-wires `GenericListParameters` (filter/sort/page) — NO request type needed | `PagedResponse<TDto>` |
-| `MapGetById<TEntity, TDto>()` | GET `/{id:guid}` | Auto-wires `Guid id` from route — NO request type needed | `TDto` |
-| `MapPost<TReq, TDto>()` | POST `/` | `Fluents.Requests.IWitResponse<TDto>` | 201 + `TDto` |
-| `MapPut<TReq, TDto>()` | PUT `/` | `Fluents.Requests.IWitResponse<TDto>` | 200 + `TDto` |
-| `MapDelete<TReq>()` | DELETE `/` | `Fluents.Requests.INoResponse` | 200 |
-| `MapDelete<TReq, TDto>()` | DELETE `/` | `Fluents.Requests.IWitResponse<TDto>` | 200 + `TDto` |
-| `MapGet<TReq, TDto>()` | GET `/` | `Fluents.Queries.IWitResponse<TDto>` | 200 + `TDto` |
-| `MapGetPage<TReq, TDto>()` | GET `/` | `Fluents.Queries.IWitPageResponse<TDto>` | 200 + `PagedResponse<TDto>` |
-| `MapPatch<TReq, TDto>()` | PATCH `/` | `Fluents.Requests.IWitResponse<TDto>` | 200 + `TDto` |
-| `MapGetStatusCounts<TEntity>()` | GET `/status` | `GenericStatusCountsParameters` | `List<StatusCountsResult>` |
+`PurchaseOrderV1Endpoint` maps every route with the raw minimal-API surface directly — `group.MapPost("/", async (CreatePurchaseOrderRequest req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) => {...})`. Inside the lambda, the endpoint itself stamps the acting user from `ClaimsPrincipal` as a second safety net (`req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount`), then calls `bus.Send(req, cancellationToken: ct)` and returns `result.Response(isCreated: true)` (or `result.Response()` for non-create). This is the current convention for any hand-written feature — there is no generic `MapPost<TReq,TDto>()`-style call to reach for here; that call shape now exists only inside the generator's own output (see below).
 
-All fluent helpers automatically:
-- Dispatch through `IMessageBus.Send(request)` (SlimMessageBus)
-- Add common error Produces (400, 401, 403, 404, 409, 429, 500)
-- POST with "Create" in name → 201 status code (detected via `typeof(TCommand).Name.Contains("Create")`)
-- Note: `MapGetList` and `MapGetById` are different — they wire directly to `IRepositorySpec` with generic specs, NOT through the message bus. They don't need a request type parameter.
+POST does **not** auto-add idempotency — call `.RequiredIdempotentKey()` explicitly on the route you want protected; clients then send `X-Idempotency-Key: {Guid}`. A replayed key returns the original response instead of creating a duplicate.
 
 ### File Location
 
 ```
 src/ApiEndpoints/Minimal.Api/
 └── ApiEndpoints/
-    └── {Entity}V{N}Endpoint.cs         ← One file per entity per version
+    └── {Feature}/
+        └── {Entity}V{N}Endpoint.cs         ← One file per entity per version
 ```
 
 ---
 
-## Step-by-Step
+## Step-by-Step (hand-mapped routes)
 
 ### Step 1: Create the Endpoint Config
 
-Create `src/ApiEndpoints/Minimal.Api/ApiEndpoints/{Entity}V1Endpoint.cs`:
+Create `src/ApiEndpoints/Minimal.Api/ApiEndpoints/{Feature}/{Entity}V1Endpoint.cs`:
 
 ```csharp
+using DKNet.AspCore.Extensions.Responses;
+using DKNet.AspCore.Idempotency;
 using Minimal.AppServices.{Feature}.V1.Actions;
-using Minimal.Domains.Features.{Feature}.Entities;
+using Minimal.AppServices.{Feature}.V1.Queries;
 using {Entity}Dto = Minimal.AppServices.{Feature}.V1.{Entity}Dto;
 
-namespace Minimal.Api.ApiEndpoints;
+namespace Minimal.Api.ApiEndpoints.{Feature};
 
+/// <summary>
+/// Every route here is written with the raw minimal-API surface — no generic entity/DTO
+/// route-registration helper is used.
+/// </summary>
 internal sealed class {Entity}V1Endpoint : IEndpointConfig
 {
     #region Properties
@@ -109,62 +99,86 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
 
     public void Map(RouteGroupBuilder group)
     {
-        // GET /v1/{route} — paginated list with filtering/sorting
-        group.MapGetList<{Entity}, {Entity}Dto>()
-            .WithDescription("Get all {entities}");
+        group.MapPost("/", async (
+                Create{Entity}Request req,
+                ClaimsPrincipal user,
+                IMessageBus bus,
+                CancellationToken ct) =>
+            {
+                req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
+                var result = await bus.Send(req, cancellationToken: ct);
+                return result.Response(isCreated: true);
+            })
+            .RequiredIdempotentKey()
+            .Produces<{Entity}Dto>(StatusCodes.Status201Created)
+            .WithDescription(
+                "Create {entity}. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
+                "X-Idempotency-Key: {IdempotencyKey} <br/>");
 
-        // GET /v1/{route}/{id} — single entity by ID
-        group.MapGetById<{Entity}, {Entity}Dto>()
+        group.MapGet("{id:guid}", async (
+                Guid id,
+                IMessageBus bus,
+                CancellationToken ct) =>
+            {
+                var dto = await bus.Send(new Get{Entity}ByIdQuery { Id = id }, cancellationToken: ct);
+                return dto is null ? Results.NotFound() : Results.Ok(dto);
+            })
+            .Produces<{Entity}Dto>()
+            .Produces(StatusCodes.Status404NotFound)
             .WithDescription("Get {entity} by id");
 
-        // POST /v1/{route} — create new entity
-        group.MapPost<Create{Entity}Request, {Entity}Dto>()
-            .WithDescription("Create {entity}");
+        group.MapPut("{id:guid}", async (
+                Guid id,
+                Update{Entity}Request req,
+                ClaimsPrincipal user,
+                IMessageBus bus,
+                CancellationToken ct) =>
+            {
+                var result = await bus.Send(
+                    req with { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
+                    cancellationToken: ct);
+                return result.Response();
+            })
+            .WithDescription("Update {entity}");
 
-        // PUT /v1/{route} — update existing entity
-        group.MapPut<Update{Entity}Request, {Entity}Dto>()
-            .WithDescription("Update {entity} by id");
-
-        // DELETE /v1/{route} — soft-delete entity
-        group.MapDelete<Delete{Entity}Request>()
-            .WithDescription("Delete {entity} by id");
+        group.MapDelete("{id:guid}", async (
+                Guid id,
+                ClaimsPrincipal user,
+                IMessageBus bus,
+                CancellationToken ct) =>
+            {
+                var result = await bus.Send(
+                    new Delete{Entity}Request { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
+                    cancellationToken: ct);
+                return result.Response();
+            })
+            .WithDescription("Delete {entity}");
     }
 
     #endregion
 }
 ```
 
-Before wiring endpoints, verify the DTO used by `{Entity}Dto` is generated from the entity and that request records intentionally deviate only where needed.
+This mirrors `PurchaseOrderV1Endpoint` exactly (base route `/v1/purchase-orders`) — it also maps a `POST {id}/cancel` route the same way, for the `CancelPurchaseOrderRequest` action.
 
-### Step 2: Add Idempotency (for POST, if needed)
+### Step 2: Idempotency (POST only, if needed)
 
 ```csharp
-using Minimal.Api.Configs.Idempotency;
-
-// In the Map method:
-group.MapPost<Create{Entity}Request, {Entity}Dto>()
-    .AddIdempotencyFilter()
+group.MapPost("/", async (Create{Entity}Request req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+    {
+        req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
+        var result = await bus.Send(req, cancellationToken: ct);
+        return result.Response(isCreated: true);
+    })
+    .RequiredIdempotentKey()
     .WithDescription(
         "Create {entity}. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
         "X-Idempotency-Key: {IdempotencyKey} <br/>");
 ```
 
-### Step 3: Add Custom Endpoints (if needed)
+There is no equivalent for the generator-driven path — see the gap called out below.
 
-For endpoints beyond basic CRUD:
-
-```csharp
-// Custom query endpoint
-group.MapGet<CustomQueryRequest, CustomResponseDto>("/custom-route")
-    .WithDescription("Custom query description");
-
-// Status counts endpoint
-group.MapGetStatusCounts<{Entity}>("status",
-    new StatusPropertyInfo("Status", typeof({Entity})))
-    .WithDescription("Get {entity} status counts");
-```
-
-### Step 4: Override Auth Policy (if needed)
+### Step 3: Override Auth Policy or Tag (if needed)
 
 ```csharp
 internal sealed class {Entity}V1Endpoint : IEndpointConfig
@@ -180,42 +194,117 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
 
 ---
 
-## Reference: CustomerProfile (actual production code)
+## Reference: PurchaseOrderV1Endpoint (actual production code)
+
+`Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`, base route `/v1/purchase-orders`:
 
 ```csharp
-using Minimal.Api.Configs.Idempotency;
-using Minimal.AppServices.CustomerProfiles.V1.Actions;
-using Minimal.Domains.Features.Profiles.Entities;
-using CustomerProfileDto = Minimal.AppServices.CustomerProfiles.V1.CustomerProfileDto;
-
-namespace Minimal.Api.ApiEndpoints;
-
-internal sealed class CustomerProfileV1Endpoint : IEndpointConfig
+internal sealed class PurchaseOrderV1Endpoint : IEndpointConfig
 {
     public int Version => 1;
-    public string GroupEndpoint => "/customer-profiles";
+
+    public string GroupEndpoint => "/purchase-orders";
 
     public void Map(RouteGroupBuilder group)
     {
-        group.MapGetList<CustomerProfile, CustomerProfileDto>()
-            .WithDescription("Get all profiles");
-        group.MapGetById<CustomerProfile, CustomerProfileDto>()
-            .WithDescription("Get profile by id");
-
-        group.MapPost<CreateProfileRequest, CustomerProfileDto>()
-            .AddIdempotencyFilter()
+        group.MapPost("/", async (
+                CreatePurchaseOrderRequest req,
+                ClaimsPrincipal user,
+                IMessageBus bus,
+                CancellationToken ct) =>
+            {
+                req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
+                var result = await bus.Send(req, cancellationToken: ct);
+                return result.Response(isCreated: true);
+            })
+            .RequiredIdempotentKey()
+            .Produces<PurchaseOrderDto>(StatusCodes.Status201Created)
             .WithDescription(
-                "Create profile. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
+                "Create purchase order. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
                 "X-Idempotency-Key: {IdempotencyKey} <br/>");
 
-        group.MapPut<UpdateProfileRequest, CustomerProfileDto>()
-            .WithDescription("Update profile by id");
+        group.MapGet("/", async ([AsParameters] ListPurchaseOrdersQuery query, IMessageBus bus, CancellationToken ct) =>
+                Results.Ok(await bus.Send(query, cancellationToken: ct)))
+            .WithDescription("Get purchase orders (paged, optionally filtered by customer name).");
 
-        group.MapDelete<DeleteProfileRequest>()
-            .WithDescription("Delete profile by id");
+        group.MapGet("{id:guid}", async (Guid id, IMessageBus bus, CancellationToken ct) =>
+            {
+                var dto = await bus.Send(new GetPurchaseOrderByIdQuery { Id = id }, cancellationToken: ct);
+                return dto is null ? Results.NotFound() : Results.Ok(dto);
+            })
+            .WithDescription("Get purchase order by id");
+
+        group.MapPut("{id:guid}", async (Guid id, UpdatePurchaseOrderRequest req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+            {
+                var result = await bus.Send(
+                    req with { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
+                    cancellationToken: ct);
+                return result.Response();
+            })
+            .WithDescription("Update purchase order amount");
+
+        group.MapPost("{id:guid}/cancel", async (Guid id, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+            {
+                var result = await bus.Send(
+                    new CancelPurchaseOrderRequest { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
+                    cancellationToken: ct);
+                return result.Response();
+            })
+            .WithDescription("Cancel purchase order");
+
+        group.MapDelete("{id:guid}", async (Guid id, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+            {
+                var result = await bus.Send(
+                    new DeletePurchaseOrderRequest { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
+                    cancellationToken: ct);
+                return result.Response();
+            })
+            .WithDescription("Delete purchase order");
     }
 }
 ```
+
+Confirmed live: blank customer name, a non-positive amount, and a missing `X-Idempotency-Key` header on create all return `400` — FluentValidation and the idempotency filter both run for every route here, because the .NET 10 validation source generator can see a literal `Map*(string, Delegate)` call written in this project's own source.
+
+---
+
+## Generator-driven alternative: `ProductV1Endpoint`
+
+For an entity using `[CrudCreate]`/`[CrudUpdate]`/`[RaisesEvent]` (see `Product` in **dknet-domain-entity**), the entire endpoint file collapses to one call. `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` in full:
+
+```csharp
+internal sealed class ProductV1Endpoint : IEndpointConfig
+{
+    public int Version => 1;
+
+    public string GroupEndpoint => "/products";
+
+    public void Map(RouteGroupBuilder group)
+    {
+        group.WithDescription("Automated sample — Product CRUD generated from [CrudCreate]/[CrudUpdate]/[RaisesEvent].");
+        group.MapProductCrud();
+    }
+}
+```
+
+`MapProductCrud()` is generated by `DKNet.SlimBus.Generators` (inspect it under `obj/Generated/.../ProductCrudEndpoints.g.cs` after a build) and internally calls the same generic library extensions from `DKNet.AspCore.Extensions` that a hand-mapped endpoint no longer calls directly:
+
+```csharp
+group.MapGetById<Product, Guid, ProductDto>();
+group.MapGetList<Product, Guid, ProductDto>();
+group.MapDeleteById<Product, Guid>();
+group.MapPost<CreateProductRequest, ProductDto>("/");
+group.MapPutById<ChangePriceProductRequest, Guid, ProductDto>("{id}");
+```
+
+`MapProductCrud(configure)` also accepts an optional `Action<CrudMapOptions>` to exclude one of the five operations (`CrudMapOptions.Exclude(CrudOp.Delete)`, for example) if you need to drop one route and hand-write a replacement.
+
+**What you give up, concretely:**
+- **No idempotency.** Nothing in this call chain adds `.RequiredIdempotentKey()` — a duplicate-submit or client retry on `POST /v1/products` silently creates a second product. Adding one means excluding `CrudOp.Create` and hand-mapping that one route.
+- **No enforced request validation.** `CreateProductRequest.Price` genuinely carries `[Range(0.01, double.MaxValue)]` (attribute forwarding works), but nothing evaluates it — the .NET 10 validation source generator can't see through this generic library wrapper the way it can see `PurchaseOrderV1Endpoint`'s literal calls. Confirmed live: `POST /v1/products` with `price: -1` returns `201`, not `400`. See `docs/samples/manual-vs-automated.md` for the full account.
+- **No custom filter/sort surface.** `MapGetList`/`MapGetById` here are the generic, any-`IEntity<TKey>` library helpers — there's no per-entity query object to add a parameter to (contrast `PurchaseOrderV1Endpoint`'s `ListPurchaseOrdersQuery`, which has a `CustomerName` filter).
+
+Pick this shape only when the entity's validation is fully expressible as DataAnnotations *and* you don't need it enforced, and idempotency doesn't matter for that route.
 
 ---
 
@@ -225,13 +314,13 @@ internal sealed class CustomerProfileV1Endpoint : IEndpointConfig
 - [ ] Class is `internal sealed`
 - [ ] `Version` returns correct API version integer
 - [ ] `GroupEndpoint` uses kebab-case with leading `/`
-- [ ] `Map()` uses fluent helpers (`MapGetList`, `MapGetById`, `MapPost`, `MapPut`, `MapDelete`)
+- [ ] Hand-mapped routes use the raw minimal-API surface (`MapPost`/`MapGet`/`MapPut`/`MapDelete` with a literal lambda) and dispatch through `bus.Send(...)`
+- [ ] The endpoint re-stamps `ByUser` from `ClaimsPrincipal` before sending, as a second safety net alongside `[FromClaim]`
 - [ ] DTO type alias added if namespace conflicts: `using {Entity}Dto = ...`
 - [ ] All endpoints have `.WithDescription()` for OpenAPI docs
-- [ ] POST for creation uses `MapPost` (auto 201 for "Create" in name)
-- [ ] DELETE without response body uses `MapDelete<TReq>()` (single generic param)
-- [ ] Idempotency filter added to POST if needed (`.AddIdempotencyFilter()`)
-- [ ] File placed in `Minimal.Api/ApiEndpoints/`
+- [ ] Create route calls `.RequiredIdempotentKey()` if duplicate submits must be rejected
+- [ ] Generator-driven endpoints are a single `group.MapXxxCrud()` call plus `.WithDescription()` — nothing else hand-mapped
+- [ ] File placed in `Minimal.Api/ApiEndpoints/{Feature}/`
 - [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
 - [ ] Swagger/Scalar UI shows endpoints correctly under versioned group
 
@@ -241,12 +330,13 @@ internal sealed class CustomerProfileV1Endpoint : IEndpointConfig
 
 | Mistake | Fix |
 |---------|-----|
-| Creating manual `app.MapGet(...)` routes | Use fluent helpers — they wire bus dispatch + error responses |
-| Forgetting DTO type alias | Add `using {Entity}Dto = Minimal.AppServices.{Feature}.V1.{Entity}Dto;` |
-| Using `MapDelete<TReq, TDto>` when no response needed | Use single-param `MapDelete<TReq>()` for void deletes |
+| Reaching for a generic `MapPost<TReq,TDto>()`/`MapGetList<TEntity,TDto>()` call in a hand-written endpoint | That call shape now belongs to the generator's own output; hand-mapped routes use the raw minimal-API surface directly (see `PurchaseOrderV1Endpoint`) |
+| Assuming `[Range]`/`[Required]` on a generated CRUD request is enforced | It isn't, under this template's routing convention — see the generator-driven section above |
+| Forgetting DTO type alias | Add `using {Entity}Dto = Minimal.AppServices.{Feature}.V1.{Entity}Dto;` when the DTO name collides |
 | Making endpoint class `public` | Must be `internal sealed` — discovered by assembly scanning |
-| Wrong `GroupEndpoint` format | Must start with `/`, use kebab-case plural (e.g., `/order-items`) |
+| Wrong `GroupEndpoint` format | Must start with `/`, use kebab-case plural (e.g., `/purchase-orders`) |
 | Registering endpoint in `Program.cs` | NOT needed — `UseEndpointConfigs()` auto-discovers all `IEndpointConfig` |
+| Expecting `.RequiredIdempotentKey()` on a generated create route | It doesn't exist there — idempotency is a hand-mapped-only capability today |
 
 ---
 

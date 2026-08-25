@@ -34,7 +34,7 @@ If you don't have these, take 10 minutes to review them first—this skill build
 Before you start following the step-by-step workflow, collect this information:
 
 - [ ] **[Input 1 Name]**: [Description of what this is and where to find it]
-  - Example: Entity name (PascalCase): `CustomerProfile`
+  - Example: Entity name (PascalCase): `PurchaseOrder`
   
 - [ ] **[Input 2 Name]**: [Description]
   - Example: List of properties with types

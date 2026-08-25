@@ -54,7 +54,7 @@ You want to build a feature. Pick your starting point:
    - Adjust names and properties for your entity
 
 3. **Use the examples/** folder
-   - See working production code (CustomerProfile)
+   - See working production code (`PurchaseOrder` in `ManualSample/`, `Product` in `AutomatedSample/`)
    - Understand design decisions and patterns
    - Copy implementation patterns
 
@@ -72,27 +72,26 @@ You want to build a feature. Pick your starting point:
 
 ## 🎯 Success Examples
 
-### Example 1: Build a Customer Profile Feature
+### Example 1: Build a Purchase Order Feature
 
 ```
-Task: Add CRUD for customer profiles with validation and REST API
+Task: Add CRUD for purchase orders with validation and REST API
 
 Step 1: Domain Modeling Skill (20 min)
-├─ Create CustomerProfile entity
-├─ Create CustomerProfileMapper
+├─ Create PurchaseOrder entity
+├─ Create PurchaseOrderConfigs mapper
 └─ Run migration
 
 Step 2: CRUD Operations Skill (45 min)
-├─ Create CreateCustomerProfileRequest DTO + validator
-├─ Create UpdateCustomerProfileRequest DTO + validator
-├─ Create ICustomerProfileRepository interface
-├─ Implement repository in Infra layer
-└─ Create CustomerProfileCreatedEvent
+├─ Create CreatePurchaseOrderRequest + validator + handler
+├─ Create UpdatePurchaseOrderRequest + validator + handler
+├─ Create SpecGetPurchaseOrder specification
+└─ Raise PurchaseOrderCreatedEvent from the entity's constructor
 
 Step 3: API Endpoints Skill (30 min)
-├─ Create CustomerProfileDto with [GenerateDto]
-├─ Create ProfileV1Endpoints configuration
-├─ Map all 4 CRUD endpoints (GET, POST, PUT, DELETE)
+├─ Create PurchaseOrderDto
+├─ Create PurchaseOrderV1Endpoint configuration
+├─ Map all routes (GET, POST, PUT, DELETE)
 └─ Verify OpenAPI documentation
 
 Result: ✅ Feature complete (1.5 hours)
@@ -188,15 +187,14 @@ API Layer (Minimal.Api)
 
 AppServices Layer (Minimal.AppServices)
   ├─ Request DTOs + Validators       (Skill 2: CRUD Operations)
-  ├─ IRepository interface           (Skill 2: CRUD Operations)
+  ├─ IRepositorySpec (generic, DI)   (Skill 2: CRUD Operations)
   └─ Domain Events                   (Skill 2: CRUD Operations)
 
 Domain Layer (Minimal.Domains)
-  └─ CustomerProfile entity          (Skill 1: Domain Modeling)
+  └─ PurchaseOrder entity            (Skill 1: Domain Modeling)
 
 Infra Layer (Minimal.Infra)
-  ├─ CustomerProfileMapper           (Skill 1: Domain Modeling)
-  └─ CustomerProfileRepository impl  (Skill 2: CRUD Operations)
+  └─ PurchaseOrderConfigs mapper     (Skill 1: Domain Modeling)
 ```
 
 ---

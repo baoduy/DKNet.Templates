@@ -10,7 +10,7 @@ You are producing authoritative feature documentation for a vertical slice that 
 
 1. `.claude/skills/dknet-feature-documentation/SKILL.md`
 2. `.claude/skills/dknet-feature-documentation/templates/` (README, architecture, data-model, events, api-reference templates).
-3. `docs/features/customer-profiles/` for shape/voice reference.
+3. `docs/samples/manual-vs-automated.md` and the two per-sample READMEs (`docs/samples/manual-purchase-orders/README.md`, `docs/samples/automated-products/README.md`) for shape/voice reference — these are the current worked examples of feature documentation in this repo.
 
 ## Steps
 

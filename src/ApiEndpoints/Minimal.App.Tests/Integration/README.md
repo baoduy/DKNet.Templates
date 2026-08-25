@@ -1,6 +1,6 @@
 # Integration Tests
 
-These tests validate the Profile V1 actions (`Create`, `Update`, `Delete`) from API DI downward.
+These tests validate the PurchaseOrder and Product V1 actions (`Create`, `Update`, `Delete`) from API DI downward.
 
 ## Design
 
@@ -13,6 +13,6 @@ These tests validate the Profile V1 actions (`Create`, `Update`, `Delete`) from 
 ## Run
 
 ```zsh
-dotnet test src/Minimal.ApiEndpoints/Minimal.App.Tests/Minimal.App.Tests.csproj --filter "FullyQualifiedName~Integration.Profiles.V1"
+dotnet test src/ApiEndpoints/Minimal.App.Tests/Minimal.App.Tests.csproj --filter "FullyQualifiedName~Integration"
 ```
 

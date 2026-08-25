@@ -1,7 +1,7 @@
 ---
 name: falkordb-codegraph
 description: "Use when answering architecture or class relationship questions in this repository. Query falkordb-codegraph MCP first for fast dependency and relationship retrieval, then fallback to source code scanning when graph coverage is missing or stale."
-argument-hint: "Question scope and target symbols. Example: explain CustomerProfile class relationships and call flow"
+argument-hint: "Question scope and target symbols. Example: explain PurchaseOrder class relationships and call flow"
 ---
 
 # Skill: FalkorDB Codegraph Q&A with Source Fallback

@@ -34,11 +34,13 @@ Assertion policy:
 
 ---
 
+> **Status on this branch**: no `.feature` files exist yet for either of the template's two worked samples (`PurchaseOrder` in `ManualSample/`, `Product` in `AutomatedSample/`) — `Minimal.App.BDDTests` has no `Features/` folder at all today. Authoring that suite is a separate QA cycle's job. Everything below is the pattern to follow when that work happens, not a description of existing scenarios.
+
 ## Inputs Checklist
 
 Gather these first:
 
-- [ ] Feature name and target domain (for example: `CustomerProfiles`).
+- [ ] Feature name and target domain (for example: `ManualSample`/`PurchaseOrder` or `AutomatedSample`/`Product`).
 - [ ] Matching docs folder under `docs/features/<feature-name>/`.
 - [ ] Matching spec folder under `specs/<feature-id-or-name>/`.
 - [ ] API contract details: route, method, headers, expected response behavior.
@@ -102,7 +104,7 @@ Implementation rules:
 - Add `[Binding]` class with constructor injection for shared context (`HttpClient`, `ScenarioState`, and other registered services).
 - Keep step methods concise: arrange input, call API, assert outcome.
 - Serialize requests using `SharedConsts.JsonSerializerOptions`.
-- Include idempotency header where required (`X-Idempotency-Key`).
+- Include idempotency header where required (`X-Idempotency-Key`). This is a per-endpoint decision, not a blanket rule — `PurchaseOrderV1Endpoint`'s create route calls `.RequiredIdempotentKey()`, so a `POST` scenario against it needs a fresh `Guid.NewGuid()` header value per the project's BDD convention, and a replayed-key scenario is worth its own test. `ProductV1Endpoint`'s generated create route has no such call — no header is required, and there's no idempotency behavior to assert at all for it (a replayed request there simply creates a second product).
 - Parse response JSON with deterministic property assertions against the contract.
 - Validate response at three levels whenever applicable:
    - HTTP status code

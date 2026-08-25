@@ -130,18 +130,18 @@ paths:
                     type: string
                   examplePath:
                     type: string
-                    example: examples/customer-profile-example
+                    example: examples/purchase-order-example
                   files:
                     type: array
                     items:
                       type: string
                     example:
-                      - CustomerProfile.cs
-                      - CustomerProfileMapper.cs
+                      - PurchaseOrder.cs
+                      - PurchaseOrderConfigs.cs
                       - README.md
                   testPath:
                     type: string
-                    example: CustomerProfileMapperTests.cs
+                    example: PurchaseOrderConfigsTests.cs
                   testStatus:
                     type: string
                     enum:
@@ -273,7 +273,7 @@ components:
               items:
                 type: string
               example:
-                - "Mapper class (e.g., CustomerProfileMapper)"
+                - "Mapper class (e.g., PurchaseOrderConfigs)"
                 - "EF Core migration script"
             successCriteria:
               type: array

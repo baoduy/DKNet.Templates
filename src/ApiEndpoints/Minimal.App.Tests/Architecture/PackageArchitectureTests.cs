@@ -105,7 +105,7 @@ public class PackageArchitectureTests
     [Fact]
     public void AllDKNetPackageReferences_ShouldResolveToOneRelease()
     {
-        const string expectedVersion = "10.1.5";
+        const string expectedVersion = "10.1.12";
 
         var srcDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../.."));
@@ -127,26 +127,6 @@ public class PackageArchitectureTests
             string.Join(", ", offenders.Select(p => $"{p.Package}={p.Version}")));
     }
 
-    [Theory]
-    [InlineData("Enroll.cs")]
-    [InlineData("Change.cs")]
-    [InlineData("Withdraw.cs")]
-    public void LoyaltyMembershipCommandHandlers_ShouldNotRaiseEventsByHand(string fileName)
-    {
-        // The spec's signal for "declared events, not hand-raised": no line in these command handlers
-        // calls AddEvent — the three events are raised by the DKNet events hook via [RaisesEvent] on the
-        // entity itself (see LoyaltyMembershipTests.LoyaltyMembership_ShouldDeclareItsThreeEventsViaAttribute_NotByHand).
-        var sourcePath = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory,
-                $"../../../../../ApiEndpoints/Minimal.AppServices/LoyaltyMemberships/V1/Actions/{fileName}"));
-
-        File.Exists(sourcePath).ShouldBeTrue();
-        var source = File.ReadAllText(sourcePath);
-
-        source.ShouldNotContain(".AddEvent(");
-        source.ShouldNotContain(".AddEvent<");
-    }
-
     [Fact]
     public void AppConfig_ShouldWireIdempotencyToRedisOnlyWhenAConnectionStringIsConfigured()
     {
@@ -165,24 +145,5 @@ public class PackageArchitectureTests
         source.ShouldContain("GetConnectionString(SharedConsts.RedisConnectionString)");
         source.ShouldContain("AddIdempotencyWithRedisStore(");
         source.ShouldContain("AddIdempotentKey(");
-    }
-
-    [Fact]
-    public void ServiceBusSetup_ShouldStillProduceProfileCreatedEventToItsExternalTopic()
-    {
-        // Regression guard for the invariant "the existing hand-raised event still... produces to the
-        // external topic for the broker" — CustomerProfileEventPublishingTests covers the in-process
-        // subscriber side at runtime; reaching a real Azure Service Bus topic needs live infrastructure
-        // this repo's own harness cannot provide, so the topic wiring itself is verified at the source level.
-        var sourcePath = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory,
-                "../../../../../ApiEndpoints/Minimal.Infra/Extensions/ServiceBusSetup.cs"));
-
-        File.Exists(sourcePath).ShouldBeTrue();
-        var source = File.ReadAllText(sourcePath);
-
-        source.ShouldContain("Produce<ProfileCreatedEvent>(o => o.DefaultTopic(\"profile-tp\"))");
-        source.ShouldContain("Consume<ProfileCreatedEvent>(");
-        source.ShouldContain("WithConsumer<CustomerProfileCreatedEmailNotificationHandler>()");
     }
 }

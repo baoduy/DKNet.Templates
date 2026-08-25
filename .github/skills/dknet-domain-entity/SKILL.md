@@ -13,8 +13,8 @@ If the aggregate boundary, entity-vs-value-object choice, or invariant placement
 
 ## When to Use
 
-- Adding a new aggregate root entity (e.g., Order, Invoice, Product)
-- Adding a new owned value object (e.g., Address, Company)
+- Adding a new aggregate root entity (e.g., `PurchaseOrder`, `Product`, Invoice)
+- Adding a new owned value object (a plain nested type with no identity of its own, e.g. a `ShippingDetails` record embedded in an order)
 - Adding domain service interfaces for the new feature
 
 ## Inputs Required
@@ -42,12 +42,14 @@ AuditedEntity<Guid>        ← from DKNet.EfCore.Abstractions.Entities
 
 ### Key Rules
 
-- Entities are **NOT sealed** — they inherit from `AggregateRoot` (or `DomainEntity` for non-root entities)
+- Entities inherit from `AggregateRoot` (or `DomainEntity` for non-root entities); mark the class `sealed` unless you have a concrete reason another type needs to derive from it (`PurchaseOrder` is `sealed`; `Product` isn't, only because its generator-driven constructor needed no further customization either way — sealing is the default, not the exception)
 - Properties use `{ get; private set; }` — mutation happens ONLY through named methods
-- Constructor sets immutable fields; `Update(...)` method handles mutable fields
+- Constructor sets immutable fields; a mutation method (e.g. `ChangeAmount`, `Cancel`) handles anything that changes later
 - `SetCreatedBy(userId)` and `SetUpdatedBy(userId)` are inherited from `AuditedEntity`
-- Entity uses `AddEvent(...)` to publish domain events (inherited from base)
-- `Guid.Empty` for Id means "let the database generate it"
+- Entity uses `AddEvent(...)` to publish domain events by hand (inherited from base) — see the callout below for the declarative alternative
+- The public constructor calls `base(byUser)` — `AggregateRoot`'s own constructor auto-generates the Id (`Guid.NewGuid()`), you never assign it yourself. The `internal Guid id` overload (`base(id, byUser)`) exists only for rehydrating a known identity, e.g. static seed data — see `PurchaseOrder`'s internal constructor.
+
+> **Alternative: declare events/CRUD instead of hand-writing them.** Everything on this page describes writing the entity, its events, and its mutation methods by hand — the pattern used by `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`. An entity can instead declare `[RaisesEvent(EventOperations.Created, Include = [...])]` / `[RaisesEvent(EventOperations.Updated, nameof(Prop))]` at the class level, mark its constructor `[CrudCreate]`, and mark a mutation method `[CrudUpdate]` — the `DKNet.SlimBus.Generators` analyzer then generates the event record, the create/update request+handler, and the CRUD routes for you. See `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`. The trade-off: the generated create/update request's DataAnnotations (`[Required]`, `[Range]`, etc.) are **not enforced** under this template's own endpoint-registration convention — see `docs/samples/manual-vs-automated.md` for why. Pick the manual, hand-written shape whenever you need that validation to actually run, or any business rule beyond what a DataAnnotations attribute can express.
 
 ### File Location
 
@@ -98,34 +100,29 @@ namespace Minimal.Domains.Features.{Feature}.Entities;
 /// <summary>
 /// {Description of the aggregate root}.
 /// </summary>
-public class {Entity} : AggregateRoot
+public sealed class {Entity} : AggregateRoot
 {
     #region Constructors
 
     /// <summary>
-    /// Creates a new {Entity} with a system-assigned identity.
+    /// Creates a new {Entity} with a system-assigned identity (base's <c>Guid.NewGuid()</c> overload).
     /// </summary>
-    public {Entity}(
-        {constructor params for immutable + mutable fields},
-        string byUser)
-        : this(Guid.Empty, {forward all params}, byUser)
+    public {Entity}({constructor params for immutable + mutable fields}, string byUser)
+        : base(byUser)
     {
+        {ImmutableProp} = {value};
+        {MutableProp} = {value};
     }
 
     /// <summary>
-    /// Rehydrates an existing {Entity} from persistence.
+    /// Rehydrates an existing {Entity} with a known identity — used by static reference-data seeding only.
+    /// Does not re-raise any creation event.
     /// </summary>
-    internal {Entity}(
-        Guid id,
-        {all params},
-        string createdBy)
-        : base(id, createdBy)
+    internal {Entity}(Guid id, {all params}, string byUser)
+        : base(id, byUser)
     {
-        // Set immutable properties
         {ImmutableProp} = {value};
-
-        // Delegate mutable fields to Update
-        Update({mutable params}, createdBy);
+        {MutableProp} = {value};
     }
 
     #endregion
@@ -133,9 +130,9 @@ public class {Entity} : AggregateRoot
     #region Properties
 
     // Immutable properties (set only in constructor)
-    public string {ImmutableProp} { get; private set; }
+    public string {ImmutableProp} { get; private set; } = null!;
 
-    // Mutable properties (changed via Update method)
+    // Mutable properties (changed via named mutation methods)
     public string? {MutableProp} { get; private set; }
 
     #endregion
@@ -143,14 +140,12 @@ public class {Entity} : AggregateRoot
     #region Methods
 
     /// <summary>
-    /// Updates mutable fields. Null/empty values are ignored (preserves current).
+    /// Named, single-purpose mutation — prefer one method per state transition
+    /// (e.g. <c>ChangeAmount</c>, <c>Cancel</c>) over a catch-all <c>Update</c>.
     /// </summary>
-    public void Update({mutable params}, string userId)
+    public void Change{MutableProp}({type} {param}, string userId)
     {
-        if (!string.IsNullOrEmpty({param}))
-        {
-            {MutableProp} = {param};
-        }
+        {MutableProp} = {param};
 
         SetUpdatedBy(userId);
     }
@@ -202,56 +197,62 @@ public static class Sequences
 
 ---
 
-## Reference: CustomerProfile (actual production code)
+## Reference: PurchaseOrder (actual production code)
+
+Every layer of this entity is hand-written — no declarative event/CRUD attribute is used anywhere on it (`Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`):
 
 ```csharp
-public class CustomerProfile : AggregateRoot
+public sealed class PurchaseOrder : AggregateRoot
 {
-    // Constructor: new entity
-    public CustomerProfile(string name, string membershipNo, string email, string phone, string byUser)
-        : this(Guid.Empty, name, membershipNo, email, phone, byUser) { }
-
-    // Constructor: rehydration
-    internal CustomerProfile(Guid id, string name, string membershipNo, string email, string phone, string createdBy)
-        : base(id, createdBy)
+    public PurchaseOrder(string customerName, decimal amount, string byUser)
+        : base(byUser)
     {
-        Name = name;
-        Email = email;
-        MembershipNo = membershipNo;
-        Update(null, name, phone, null, createdBy);
+        CustomerName = customerName;
+        Amount = amount;
+        Status = PurchaseOrderStatus.Placed;
+
+        AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount));
     }
 
-    // Immutable
-    public string Email { get; private set; }
-    public string MembershipNo { get; private set; }
-
-    // Mutable
-    public string Name { get; private set; }
-    public string? Phone { get; private set; }
-    public string? Avatar { get; private set; }
-    public DateTime? BirthDay { get; private set; }
-
-    public void Update(string? avatar, string? name, string? phoneNumber, DateTime? birthday, string userId)
+    // Rehydration constructor — used by static reference-data seeding only, does NOT re-raise the event
+    internal PurchaseOrder(Guid id, string customerName, decimal amount, string byUser)
+        : base(id, byUser)
     {
-        Avatar = avatar;
-        BirthDay = birthday;
-        if (!string.IsNullOrEmpty(name)) Name = name;
-        if (!string.IsNullOrEmpty(phoneNumber)) Phone = phoneNumber;
+        CustomerName = customerName;
+        Amount = amount;
+        Status = PurchaseOrderStatus.Placed;
+    }
+
+    public string CustomerName { get; private set; } = null!;
+    public decimal Amount { get; private set; }
+    public PurchaseOrderStatus Status { get; private set; }
+
+    public void ChangeAmount(decimal amount, string userId)
+    {
+        Amount = amount;
+        SetUpdatedBy(userId);
+    }
+
+    public void Cancel(string userId)
+    {
+        Status = PurchaseOrderStatus.Cancelled;
         SetUpdatedBy(userId);
     }
 }
 ```
 
+Note the shape here: rather than one generic `Update(...)` method, `PurchaseOrder` exposes named, single-purpose mutation methods (`ChangeAmount`, `Cancel`) — each one is exactly the state transition it names. Prefer this over a catch-all `Update` when the mutations are conceptually distinct operations, as they are here.
+
 ---
 
 ## Validation Checklist
 
-- [ ] Entity inherits from `AggregateRoot` (not sealed, not using `required` keyword)
+- [ ] Entity inherits from `AggregateRoot`, not using the `required` keyword on properties
 - [ ] Properties use `{ get; private set; }` — no public setters
-- [ ] Constructor takes `string byUser` as last param; passes to `base(id, createdBy)`
-- [ ] Public constructor uses `Guid.Empty` for new entities
-- [ ] Internal constructor used for rehydration from persistence
-- [ ] `Update(...)` method calls `SetUpdatedBy(userId)` at the end
+- [ ] Public constructor takes `string byUser` as last param; passes to `base(byUser)` (auto-generates the Id)
+- [ ] Internal rehydration constructor (`base(id, byUser)`) exists only if the feature needs static seed data with fixed Ids
+- [ ] Mutation methods are named per state transition (e.g. `ChangeAmount`, `Cancel`), not a single catch-all `Update`
+- [ ] Every mutation method calls `SetUpdatedBy(userId)` at the end
 - [ ] Immutable fields set only in constructor
 - [ ] Schema constant added to `DomainSchemas.cs`
 - [ ] Namespace follows `Minimal.Domains.Features.{Feature}.Entities`
@@ -266,12 +267,12 @@ public class CustomerProfile : AggregateRoot
 
 | Mistake | Fix |
 |---------|-----|
-| Making entity `sealed` | Remove `sealed` — entities inherit from `AggregateRoot` |
 | Using `required` keyword on properties | Use `{ get; private set; }` — values set in constructor |
 | Public setters on properties | Make setters `private set` — mutate via methods only |
-| Missing `SetUpdatedBy()` in Update | Always call at end of mutation methods |
+| Missing `SetUpdatedBy()` in a mutation method | Always call at end of every method that changes state |
 | Using `DateTime.UtcNow` directly | Audit timestamps handled by `AuditedEntity` base class |
-| Forgetting `internal` on rehydration constructor | Mark it `internal` — only infra should call it |
+| Forgetting `internal` on the rehydration constructor | Mark it `internal` — only infra (e.g. static seed data) should call it |
+| Assigning `Id` yourself in the public constructor | Don't — `base(byUser)` generates it via `Guid.NewGuid()` internally |
 
 ---
 

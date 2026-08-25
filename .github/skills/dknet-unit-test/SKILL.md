@@ -36,11 +36,13 @@ Additionally, tests should include at least one DTO consistency check when the f
 - verify key response fields expected from the entity mapping are present and correctly populated
 - catch request/response drift introduced by manual record edits
 
+> **Status on this branch**: neither of the template's two worked samples (`PurchaseOrder` in `ManualSample/`, `Product` in `AutomatedSample/`) has a committed unit or integration test suite yet — that's a separate QA cycle's job, not part of building the sample. Nothing below names an existing test file for either sample; treat every path/class name as a placeholder to fill in when that work happens.
+
 ## Inputs Required
 
-1. **Feature name** and entity class (e.g., `CustomerProfiles` / `CustomerProfile`)
+1. **Feature name** and entity class (e.g., `ManualSample` / `PurchaseOrder`, or `AutomatedSample` / `Product`)
 2. **AppServices request types** for the feature (Create / Update / Delete / Query requests)
-3. **Spec class** for querying the entity (e.g., `SpecGetCustomerProfile`)
+3. **Spec class** for querying the entity (e.g., `SpecGetPurchaseOrder`)
 4. **Domain entity constructor** signature (to seed test data directly)
 5. **Business rules** to cover: duplicate checks, not-found paths, validation failures
 
@@ -385,19 +387,18 @@ public void {Entity}MappingShouldProduceValidDto()
 
 ---
 
-## Reference: CustomerProfile Integration Tests (actual production code)
+## What the suite would cover for the two current samples (not yet written)
 
-Test class: `CustomerProfileActionsIntegrationTests(ApiFixture fixture) : IClassFixture<ApiFixture>`
+No `PurchaseOrderActionsIntegrationTests` or `ProductActionsIntegrationTests` class exists on this branch — this is what dev-qc's later Verify-stage pass would need to prove, using the step-by-step pattern above:
 
-| Test | What it proves |
-|------|---------------|
-| `Test_CustomerProvide_Mapping` | Mapster config is correct; `IMapper` resolves from DI |
-| `CreateActionShouldResolveFromDiAndPersistProfile` | Full create flow + `TEST-MEM-` membership generation + EF persistence |
-| `CreateActionShouldFailWhenEmailAlreadyExists` | Duplicate-check business rule returns `IsFailed` with specific message |
-| `UpdateActionShouldResolveFromDiAndUpdateEntity` | Fetch → mutate → verify persisted changes |
-| `UpdateActionShouldFailWhenProfileIsMissing` | Not-found returns `IsFailed` with `$"The Profile {id} is not found."` |
-| `DeleteActionShouldResolveFromDiAndDeleteEntity` | Soft-delete removes entity from spec query results |
-| `DeleteActionShouldFailWhenIdIsEmpty` | `Guid.Empty` guard returns `IsFailed` with `"The Id is in valid."` |
+For `PurchaseOrder` (`Minimal.AppServices/ManualSample/V1/Actions/`):
+- Create persists a new order and raises `PurchaseOrderCreatedEvent` (assert the in-memory handler's side effect, or just that create succeeds)
+- Update changes `Amount` via `ChangeAmount`
+- Cancel succeeds once, then fails with a specific message the second time (the "already cancelled" business rule) — a business-rule failure test this skill's Step 4 pattern maps directly onto
+- Delete removes the order; a not-found id 404s via `NotFoundError` on every action
+- FluentValidation rejects a blank `CustomerName` and a non-positive `Amount`
+
+For `Product` (`Minimal.AppServices/AutomatedSample/V1/`): the create/update requests and handlers are generator-produced (`Minimal.AppServices.Crud` namespace, inspect under `obj/Generated/` after a build), so a test still sends the same generated request types through `IMessageBus` — but there is no hand-written validator to test, and per `docs/samples/manual-vs-automated.md`, a negative `Price` is expected to succeed (`201`), not fail, because the DataAnnotations range check is never enforced under this template's generated-route convention. A future test suite for `Product` should assert that gap explicitly rather than assume validation runs.
 
 The same scope provides both `IMessageBus` and `IRepositorySpec` — they share the same `DbContext` instance, so `SaveChangesAsync` on the repository commits what the bus handler staged.
 
@@ -429,7 +430,7 @@ The same scope provides both `IMessageBus` and `IRepositorySpec` — they share 
 | Seeding via `bus.Send(createRequest)` then testing the same path again | Seed directly via `repository.AddAsync` + `SaveChangesAsync` to isolate the scenario under test |
 | Not calling `ResetDatabaseAsync()` at the start | Tests sharing state produce false positives; always reset |
 | Asserting `result.Value` on a delete (returns `IResultBase`, not `IResult<T>`) | Use `result.IsSuccess.ShouldBeTrue()` — delete handlers have no value |
-| Missing `ByUser` on requests | `RequestBase.ByUser` is used by audit and domain mutation methods; omitting it causes `null` reference errors or incorrect audit data |
+| Missing `ByUser` on a request built directly in a test (bypassing `[FromClaim]` population) | `ByUser` is read by the aggregate's constructor/mutation methods for audit stamping; omitting it in a bus-level test (no HTTP pipeline to populate it) causes an "unauthenticated caller" failure or incorrect audit data |
 | Creating a per-feature fixture without calling `base.ConfigureWebHost` | The in-memory DB and service overrides in `ApiFixture` will be skipped |
 
 ---

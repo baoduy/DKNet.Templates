@@ -37,7 +37,7 @@ public sealed class PerHostFeatureStateTests
         await using var relaxedHost = new PlainFactory($"host-state-{Guid.NewGuid():N}");
         using var relaxedClient = CreateClientWithRequireAuthorization(relaxedHost, required: false);
 
-        const string listUrl = "/v1/customer-profiles?pageNumber=1&pageSize=10";
+        const string listUrl = "/v1/purchase-orders?pageIndex=1&pageSize=10";
         var strictResponse = await strictClient.GetAsync(listUrl);
         var relaxedResponse = await relaxedClient.GetAsync(listUrl);
 

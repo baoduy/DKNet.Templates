@@ -5,23 +5,25 @@
             <DataCollector friendlyName="XPlat Code Coverage">
                 <Configuration>
                     <Include>
-                        [DKNet*]*
+                        [DKNet*]*,
                         [Minimal*]*
                     </Include>
                     <Exclude>
-                        [*.Tests]*
-                        [*Tests]*
-                        [*.TestObjects]*
+                        [*.Tests]*,
+                        [*Tests]*,
+                        [*.TestObjects]*,
                         [*TestDataLayer]*
                     </Exclude>
                     <ExcludeByFile>
-                        **/bin/**
-                        **/obj/**
-                        **/*Tests.cs
-                        **/*Test.cs
-                        **/TestObjects/**
-                        **/GlobalUsings.cs
+                        **/bin/**,
+                        **/obj/**,
+                        **/*Tests.cs,
+                        **/*Test.cs,
+                        **/TestObjects/**,
+                        **/GlobalUsings.cs,
+                        **/*.g.cs
                     </ExcludeByFile>
+                    <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
                 </Configuration>
             </DataCollector>
         </DataCollectors>

@@ -1,4 +1,4 @@
-global using DKNet.AspCore.Extensions;
+global using DKNet.AspCore.Extensions.ModelBinding;
 global using DKNet.SlimBus.Extensions;
 global using System.ComponentModel.DataAnnotations;
 global using System.Security.Claims;
@@ -10,6 +10,5 @@ global using FluentValidation;
 global using Mapster;
 global using MapsterMapper;
 global using Minimal.AppServices.Extensions;
-global using Minimal.AppServices.Extensions.LazyMapper;
+global using DKNet.SlimBus.Extensions.LazyMapper;
 global using Minimal.AppServices.Share;
-global using Minimal.Domains.Features.Profiles.Entities;

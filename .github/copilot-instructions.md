@@ -22,19 +22,23 @@ Layer boundaries are strict, no skipping: `Api → AppServices → Domains ← I
 
 ## Core Patterns
 
-1. **Feature vertical slice** — mirror the existing `CustomerProfiles/V1` slice: domain entity in `Domains/Features/<Feature>/Entities/`, EF mapper in `Infra/Features/<Feature>/Mappers/` (`IEntityTypeConfiguration<T>` via `DefaultEntityTypeConfiguration<T>`), CQRS actions in `AppServices/<Feature>/V1/Actions/`, endpoint in `Api/ApiEndpoints/<Feature>V1Endpoint.cs` (`IEndpointConfig`).
-2. **Validation** — FluentValidation validators alongside their request record; fail fast, use `.When(...)` for conditional rules.
+Two complete worked slices ship in the template, built two different ways — read
+[`docs/samples/manual-vs-automated.md`](../docs/samples/manual-vs-automated.md) before picking one
+to mirror; it states what each layer costs or gives up.
+
+1. **Feature vertical slice** — mirror `ManualSample/PurchaseOrder` (hand-written: domain entity in `Domains/Features/<Feature>/Entities/`, EF mapper in `Infra/Features/<Feature>/Mappers/` via `DefaultEntityTypeConfiguration<T>`, CQRS actions in `AppServices/<Feature>/V1/Actions/`, endpoint in `Api/ApiEndpoints/<Feature>V1Endpoint.cs` implementing `IEndpointConfig`) or `AutomatedSample/Product` (entity declares `[RaisesEvent]`/`[CrudCreate]`/`[CrudUpdate]`, one `[GenerateDto(typeof(Entity))]` DTO, endpoint calls the generated `Map<Entity>Crud()` — no hand-written request/handler).
+2. **Validation** — FluentValidation validators alongside their request record; fail fast, use `.When(...)` for conditional rules. Only enforced when the entity's route is hand-mapped (literal `Map*` calls) — a generated CRUD route's forwarded DataAnnotations attributes are never evaluated under this template's wiring; see the comparison doc's "Request validation" row before relying on `[Range]`/`[Required]` on a `[CrudCreate]`/`[CrudUpdate]` parameter.
 3. **Handlers** — sealed `*CommandHandler`/`*QueryHandler` classes; async I/O only, never block on `.Result`/`.Wait()`.
-4. **Mapping** — Mapster, global config in `AppServices/AppSetup.cs`. DTOs use `[GenerateDto(...)]`; `[MapsFrom(typeof(Entity))]` keeps request/response records aligned. Lazy mapping via `mapper.ResultOf<T>(entity)` / `mapper.LazyMap<T>()`.
-5. **EF Core auto-discovery** — `UseAutoConfigModel` + `UseAutoDataSeeding` in `InfraSetup.AddInfraServices`; no manual `DbSet` declarations. Mappers and seed classes must be `internal sealed` to be picked up by assembly scan.
+4. **Mapping** — Mapster, global config in `AppServices/AppSetup.cs`. DTOs use `[GenerateDto(typeof(Entity), Exclude/Include = [...])]` (generates every audited property by default) or a hand-written record for full control over the exposed shape. Lazy mapping via `mapper.ResultOf<T>(entity)` / `mapper.LazyMap<T>()` from `DKNet.SlimBus.Extensions.LazyMapper`.
+5. **EF Core auto-discovery** — `UseAutoConfigModel` + `UseAutoDataSeeding` in both `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb`; no manual `DbSet` declarations. Mappers and seed classes must be `internal sealed` to be picked up by assembly scan.
 6. **Repositories** — Scrutor auto-registers classes that are `sealed` and live under a `.Repos` or `.Services` namespace.
-7. **Domain events** — raised via aggregate methods, published by `Infra/Services/EventPublisher.cs` through SlimMessageBus. An in-memory bus is always wired; Azure Service Bus is added only when `ConnectionStrings:AzureBus` is configured.
-8. **`ByUser` auto-fill** — commands inheriting `BaseCommand` get the user ID injected via `SetUserIdPropertyFilter`, added by `EndpointConfig.CreateGroup`.
+7. **Domain events** — raised by hand via `AddEvent(...)` in an aggregate method (`PurchaseOrder`), or declared via `[RaisesEvent(EventOperations.X, ...)]` on the entity and raised automatically by DKNet's EF Core save hook (`Product` — no `AddEvent` call anywhere in that sample). Either way, published by `Infra/Services/EventPublisher.cs` through SlimMessageBus. An in-memory bus is always wired; Azure Service Bus is added only when `ConnectionStrings:AzureBus` is configured.
+8. **Acting-user auto-fill** — a request property decorated `[FromClaim(ClaimTypes.Name)]` is populated by `AddContextualRequestPopulation` (wired in `Program.cs`) before validation and before the handler runs. A **generated** CRUD request can never carry such a property — the generator forwards only `System.ComponentModel.DataAnnotations` attributes — so the automated sample stamps `CreatedBy` via `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `ServiceConfigs.AddAllAppServices`.
 
 ## Naming & File Organization
 
 - One public request/record per file unless small + variant.
-- Endpoint fluent helpers: `MapGetList`, `MapGetById`, `MapPost`, `MapPut`, `MapDelete` from `FluentEndpointMapperExtensions.cs`. POST does NOT auto-add idempotency — call `.AddIdempotencyFilter()` explicitly; clients then send `X-Idempotency-Key: {Guid}`.
+- Endpoint mapping helpers live in the `DKNet.AspCore.Extensions` package, not this repo: hand-map with the raw minimal-API surface (see `PurchaseOrderV1Endpoint`), or use the generic `MapGetList<TEntity,TKey,TDto>`/`MapGetById`/`MapPost<TRequest,TDto>`/`MapPutById`/`MapDeleteById` a CRUD generator's `Map<Entity>Crud()` extension calls internally. POST does NOT auto-add idempotency either way — call `.RequiredIdempotentKey()` explicitly (see `PurchaseOrderV1Endpoint`'s create route); clients then send `X-Idempotency-Key: {Guid}`.
 - DTOs generated with `[GenerateDto(typeof(Entity), Exclude = [...])]`; hand-write request/response records only when the contract diverges from the entity shape.
 
 ## EF Core / Migrations
@@ -77,7 +81,7 @@ Layer boundaries are strict, no skipping: `Api → AppServices → Domains ← I
 
 ## When Unsure
 
-Search for the closest existing feature (start with `CustomerProfiles/V1`) and replicate its style with minimal divergence. See `AGENTS.md` and `CLAUDE.md` for the full architecture reference, and `.github/skills/` (`dknet-project-structure`, `dknet-ddd-principles`, and the other `dknet-*` skills) for step-by-step guidance.
+Search for the closest existing feature — `ManualSample/PurchaseOrder` or `AutomatedSample/Product`, per `docs/samples/manual-vs-automated.md` — and replicate its style with minimal divergence. See `AGENTS.md` and `CLAUDE.md` for the full architecture reference, and `.github/skills/` (`dknet-project-structure`, `dknet-ddd-principles`, and the other `dknet-*` skills) for step-by-step guidance.
 
 ---
 End of Copilot Instructions.

@@ -5,6 +5,11 @@
 **Status**: Draft  
 **Input**: User description: "I would like to setup a best practise of the BDDTest using Reqnroll and NUnit for src/ApiEndpoints/Minimal.App.BDDTests and develop 1 feature test to test src/ApiEndpoints/Minimal.Api using WebApplicationFactory<Api.Program>"
 
+> **2026-08-25 note:** This document is a historical record from when the template's demo
+> features were `CustomerProfile`/`LoyaltyMembership`. Those were removed; current worked
+> examples are the `PurchaseOrder` (hand-written) and `Product` (generator-driven) samples —
+> see `docs/samples/manual-vs-automated.md`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - BDD Infrastructure with Hosted API (Priority: P1)
