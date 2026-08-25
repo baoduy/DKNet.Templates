@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using DKNet.EfCore.Extensions.Extensions;
 using Minimal.Infra.Contexts;
 
 namespace Minimal.Infra.Extensions;
@@ -22,11 +23,11 @@ public static class InfraMigration
             new DbContextOptionsBuilder<CoreDbContext>()
                 .UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(Sequences).Assembly])
                 .UseNpgsqlWithMigration(connectionString)
+                .UseAutoDataSeeding([typeof(InfraSetup).Assembly])
                 .Options);
 
+        // Seeding runs as part of MigrateAsync via UseAutoDataSeeding above.
         await db.Database.MigrateAsync();
-
-        // Data seeding can be added here when needed (IDataSeedingConfiguration has limitations with owned types)
     }
 
     #endregion

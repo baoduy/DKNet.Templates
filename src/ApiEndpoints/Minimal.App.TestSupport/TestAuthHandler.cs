@@ -20,9 +20,21 @@ public sealed class TestAuthHandler(
     public const string SchemeName = "TestScheme";
     public const string CallerName = "test-authenticated-caller";
 
+    /// <summary>
+    /// The claim <c>PrincipalProvider</c> reads as <c>ProfileId</c> — <c>DataOwnerHook</c> stamps
+    /// <c>CreatedBy</c>/<c>UpdatedBy</c> from <c>GetOwnershipKey()</c> (i.e. this value's string form), not
+    /// from <see cref="CallerName" />. A real token carries this as its <c>sub</c>/<c>oid</c> claim.
+    /// </summary>
+    public static readonly Guid CallerProfileId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var identity = new ClaimsIdentity([new Claim(ClaimTypes.Name, CallerName)], SchemeName);
+        var identity = new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Name, CallerName),
+                new Claim(ClaimTypes.NameIdentifier, CallerProfileId.ToString())
+            ],
+            SchemeName);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }

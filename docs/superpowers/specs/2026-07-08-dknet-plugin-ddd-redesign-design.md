@@ -1,5 +1,10 @@
 # DKNet Claude Code Plugin — DDD-Focused Redesign
 
+> **2026-08-25 note:** This document is a historical record from when the template's demo
+> features were `CustomerProfile`/`LoyaltyMembership`. Those were removed; current worked
+> examples are the `PurchaseOrder` (hand-written) and `Product` (generator-driven) samples —
+> see `docs/samples/manual-vs-automated.md`.
+
 ## Context
 
 `.claude-plugin/dknet-minimal` already exists (added in commit `c73515a`, ported from `.github/skills/`). It ships 3 agents, 7 skills, and ~18 commands (including a full Spec-Kit command set and a `dknet-developer` orchestrator that drives Spec-Kit).

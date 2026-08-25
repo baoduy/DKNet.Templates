@@ -120,7 +120,7 @@
             "items": {
                 "type": "string",
                 "examples": [
-                    "Mapper class (e.g., CustomerProfileMapper)",
+                    "Mapper class (e.g., PurchaseOrderConfigs)",
                     "EF Core migration script",
                     "Repository interface + sealed implementation",
                     "CreateProfileCommand + handler"
@@ -166,8 +166,8 @@
             "type": "string",
             "description": "Path to worked example directory (relative to skill folder)",
             "examples": [
-                "examples/customer-profile-example",
-                "examples/customer-profile-crud"
+                "examples/purchase-order-example",
+                "examples/purchase-order-crud"
             ]
         },
         "relatedSkills": {

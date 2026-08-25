@@ -40,7 +40,7 @@ description: Generate structured technical documentation and Mermaid architectur
 
 Collect this before you start:
 
-- [ ] **Feature name** (e.g., `CustomerProfile`, `Orders`, `Invoices`)
+- [ ] **Feature name** (e.g., `PurchaseOrder`, `Orders`, `Invoices`)
 - [ ] **Purpose**: What business problem does it solve? (1–2 sentences)
 - [ ] **Entity properties**: All fields with types and constraints
 - [ ] **Entity relationships**: Foreign keys and navigation properties
@@ -58,11 +58,11 @@ Collect this before you start:
 **Convention**: All feature docs must live in `docs/features/<feature-name>/`.
 
 ```bash
-mkdir -p docs/features/customer-profiles
+mkdir -p docs/features/purchase-orders
 ```
 
 **Naming convention**:
-- Folder name: `kebab-case` (e.g., `customer-profiles`, `order-management`)
+- Folder name: `kebab-case` (e.g., `purchase-orders`, `order-management`)
 - File names: lowercase with hyphens (e.g., `api-reference.md`, `data-model.md`)
 
 ---
@@ -74,44 +74,43 @@ mkdir -p docs/features/customer-profiles
 **Target audience**: Any developer new to the feature (including your future self).
 
 ```markdown
-# Customer Profiles
+# Purchase Orders
 
-> Manages customer identity, contact information, and membership accounts.
+> Manages the lifecycle of a customer's purchase order — creation, amount changes, and cancellation.
 
 ## What Is This?
 
-The Customer Profiles feature provides a complete lifecycle for customer records — creation,
-updates, soft-deletion, and approval workflows. Each profile is linked to a user account
-and carries a unique auto-generated membership number.
+The Purchase Orders feature provides a complete lifecycle for purchase-order records — creation,
+amount updates, and cancellation. Every order carries the identity of the user who created or last
+changed it.
 
 ## Why Does It Exist?
 
-Customer profiles are the central entity in the system. All orders, invoices, and
-communications are linked back to a profile. This feature enables:
-- Customer onboarding via REST API
-- Membership number auto-generation
-- Profile approval workflow for KYC compliance
+Purchase orders are the entry point for a customer's spend in the system. This feature enables:
+- Order creation via REST API, protected by an idempotency key so a client retry can't create a duplicate
+- Amount correction after creation
+- Cancellation, which is rejected if the order is already cancelled
 
 ## Quick Start
 
-### Create a Profile
+### Create a Purchase Order
 
 ```http
-POST /api/v1/customer-profiles
+POST /api/v1/purchase-orders
 Content-Type: application/json
 Authorization: Bearer {token}
+X-Idempotency-Key: 6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01
 
 {
-  "name": "Jane Smith",
-  "email": "jane.smith@example.com",
-  "phone": "+61412345678"
+  "customerName": "Acme Pte Ltd",
+  "amount": 1250.00
 }
 ```
 
-### Get a Profile
+### Get a Purchase Order
 
 ```http
-GET /api/v1/customer-profiles/{id}
+GET /api/v1/purchase-orders/{id}
 Authorization: Bearer {token}
 ```
 
@@ -119,19 +118,19 @@ Authorization: Bearer {token}
 
 | Concept | Description |
 |---------|-------------|
-| **MembershipNo** | Unique identifier auto-generated on create. Read-only after set. |
-| **Status** | Workflow state: `Pending → Approved / Rejected` |
-| **ByUser** | The authenticated user who created/modified the record |
-| **Soft Delete** | Profiles are never hard-deleted; `IsDeleted = true` marks them inactive |
+| **Status** | Lifecycle state: `Draft → Placed → Cancelled` |
+| **ByUser** | The authenticated user who created/modified the record, via `[FromClaim(ClaimTypes.Name)]` |
+| **Idempotency** | `POST` requires an `X-Idempotency-Key` header; a replayed key returns the original response instead of creating a duplicate |
+| **Cancellation guard** | Cancelling an already-cancelled order fails with a business-rule error instead of silently succeeding |
 
 ## Feature Map
 
 ```
-Domain Modeling   → Minimal.Domains/Features/Profiles/Entities/CustomerProfile.cs
-EF Mapping        → Minimal.Infra/Features/Profiles/Mappers/ProfileMapper.cs
-CRUD Handlers     → Minimal.AppServices/CustomerProfiles/V1/Actions/
-Domain Events     → Minimal.AppServices/CustomerProfiles/V1/Events/
-API Endpoints     → Minimal.Api/ApiEndpoints/ProfileEndpoints.cs
+Domain Modeling   → Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs
+EF Mapping        → Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs
+CRUD Handlers     → Minimal.AppServices/ManualSample/V1/Actions/
+Domain Events     → Minimal.AppServices/ManualSample/V1/Events/
+API Endpoints     → Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs
 ```
 
 ## Related Documentation
@@ -157,7 +156,7 @@ API Endpoints     → Minimal.Api/ApiEndpoints/ProfileEndpoints.cs
 5. **Event Flow Diagram** — Domain events and consumers
 
 ````markdown
-# Customer Profiles — Architecture
+# Purchase Orders — Architecture
 
 ## Vertical Slice Overview
 
@@ -169,7 +168,7 @@ graph TD
     Client["Client / Browser"]
 
     subgraph API["Minimal.Api"]
-        EP["ProfileEndpoints.cs\n(IEndpointConfig)"]
+        EP["PurchaseOrderV1Endpoint.cs\n(IEndpointConfig)"]
     end
 
     subgraph AppServices["Minimal.AppServices"]
@@ -177,15 +176,15 @@ graph TD
         VAL["Validators\n(FluentValidation)"]
         HDL["Command Handlers\n(IHandler)"]
         SPEC["Query Specs\n(Ardalis.Specification)"]
-        EVT["Domain Events\n(ProfileCreatedEvent)"]
+        EVT["Domain Events\n(PurchaseOrderCreatedEvent)"]
     end
 
     subgraph Domains["Minimal.Domains"]
-        ENT["CustomerProfile\n(AggregateRoot)"]
+        ENT["PurchaseOrder\n(AggregateRoot)"]
     end
 
     subgraph Infra["Minimal.Infra"]
-        MAP["ProfileMapper.cs\n(EF Core Config)"]
+        MAP["PurchaseOrderConfigs.cs\n(EF Core Config)"]
         REPO["IRepositorySpec\n(EF Core + Spec)"]
         EVH["Event Handlers\n(Azure Bus / In-Memory)"]
     end
@@ -205,111 +204,99 @@ graph TD
     EVT --> EVH
 ```
 
-## Create Profile — Sequence Diagram
+## Create Purchase Order — Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant EP as ProfileEndpoints
+    participant EP as PurchaseOrderV1Endpoint
     participant BUS as MessageBus
     participant VAL as Validator
-    participant HDL as CreateProfileHandler
-    participant SPEC as SpecGetProfileByEmail
+    participant HDL as CreatePurchaseOrderCommandHandler
     participant REPO as IRepositorySpec
     participant EVT as EventPublisher
 
-    C->>EP: POST /api/v1/customer-profiles
-    EP->>BUS: bus.Send(CreateProfileRequest)
+    C->>EP: POST /api/v1/purchase-orders (X-Idempotency-Key header)
+    EP->>BUS: bus.Send(CreatePurchaseOrderRequest)
     BUS->>VAL: Validate request
     VAL-->>BUS: Valid ✓
 
     BUS->>HDL: Handle(request)
-    HDL->>SPEC: new SpecGetProfileByEmail(email)
-    HDL->>REPO: FirstOrDefaultAsync(spec)
-    REPO-->>HDL: null (no duplicate)
-
-    HDL->>HDL: new CustomerProfile(...)
-    HDL->>REPO: AddAsync(profile)
+    HDL->>HDL: new PurchaseOrder(...) — raises PurchaseOrderCreatedEvent itself
+    HDL->>REPO: AddAsync(order)
     HDL->>REPO: SaveChangesAsync()
     REPO-->>HDL: OK
 
-    HDL->>EVT: PublishAsync(ProfileCreatedEvent)
+    HDL->>EVT: PublishAsync(PurchaseOrderCreatedEvent)
     EVT-->>HDL: OK
 
-    HDL-->>BUS: Result<CustomerProfileDto>.Success(dto)
-    BUS-->>EP: CustomerProfileDto
-    EP-->>C: 201 Created + CustomerProfileDto
+    HDL-->>BUS: Result<PurchaseOrderDto>.Success(dto)
+    BUS-->>EP: PurchaseOrderDto
+    EP-->>C: 201 Created + PurchaseOrderDto
 ```
 
 ## Component Diagram
 
 ```mermaid
 classDiagram
-    class CustomerProfileV1Endpoint {
+    class PurchaseOrderV1Endpoint {
         +int Version = 1
-        +string GroupEndpoint = "/customer-profiles"
+        +string GroupEndpoint = "/purchase-orders"
         +Map(RouteGroupBuilder group)
     }
 
-    class CreateProfileRequest {
-        +string Email
-        +string Name
-        +string Phone
+    class CreatePurchaseOrderRequest {
+        +string ByUser
+        +string CustomerName
+        +decimal Amount
     }
 
-    class CreateProfileCommandHandler {
+    class CreatePurchaseOrderCommandHandler {
         -IMapper _mapper
-        -IRepositorySpec _repo
-        -IEventPublisher _eventPublisher
-        +Handle(request) Result~CustomerProfileDto~
+        -IRepositorySpec _repository
+        +OnHandle(request) Result~PurchaseOrderDto~
     }
 
-    class CustomerProfile {
+    class PurchaseOrder {
         +Guid Id
-        +string Name
-        +string Email
-        +string MembershipNo
-        +string Phone
-        +string Status
-        +Approve(reason)
-        +Reject(reason)
-        +Update(...)
+        +string CustomerName
+        +decimal Amount
+        +PurchaseOrderStatus Status
+        +ChangeAmount(amount, userId)
+        +Cancel(userId)
     }
 
-    class ProfileMapper {
+    class PurchaseOrderConfigs {
         +Configure(EntityTypeBuilder)
     }
 
-    CustomerProfileV1Endpoint ..> CreateProfileRequest : maps request
-    CreateProfileCommandHandler --> CustomerProfile : creates
-    CreateProfileCommandHandler --> IRepositorySpec : uses
-    ProfileMapper --> CustomerProfile : configures
+    PurchaseOrderV1Endpoint ..> CreatePurchaseOrderRequest : maps request
+    CreatePurchaseOrderCommandHandler --> PurchaseOrder : creates
+    CreatePurchaseOrderCommandHandler --> IRepositorySpec : uses
+    PurchaseOrderConfigs --> PurchaseOrder : configures
 ```
 
 ## Status State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending : Profile Created
+    [*] --> Placed : PurchaseOrder Created
 
-    Pending --> Approved : approve() action
-    Pending --> Rejected : reject() action
+    Placed --> Cancelled : Cancel() action
 
-    Approved --> [*] : (soft-deleted)
-    Rejected --> [*] : (soft-deleted)
+    Cancelled --> [*]
 
-    note right of Pending : Default status on creation
-    note right of Approved : Customer can be used in orders
-    note right of Rejected : Reason stored for audit trail
+    note right of Placed : Default status on creation
+    note right of Cancelled : Cancelling an already-cancelled order fails instead of re-transitioning
 ```
 
 ## Event Flow
 
 ```mermaid
 graph LR
-    HDL["CreateProfileHandler"] -->|Publish| EVT["ProfileCreatedEvent"]
+    HDL["CreatePurchaseOrderCommandHandler"] -->|Publish| EVT["PurchaseOrderCreatedEvent"]
 
-    EVT --> MEM["In-Memory Bus Handler\n(ProfileCreatedEventFromMemoryHandler)"]
+    EVT --> MEM["In-Memory Bus Handler\n(PurchaseOrderCreatedEventHandler)"]
     EVT --> AZ["Azure Service Bus Handler\n(if AzureBus configured)"]
 
     MEM -->|Side effects| LOG["Audit Log / Debug"]
@@ -333,9 +320,9 @@ graph LR
 **What you're doing**: Full endpoint documentation with curl examples, request/response schemas, and error codes.
 
 ````markdown
-# Customer Profiles — API Reference
+# Purchase Orders — API Reference
 
-**Base Path**: `/api/v1/customer-profiles`
+**Base Path**: `/api/v1/purchase-orders`
 **Auth**: Bearer token required on all endpoints
 **Content-Type**: `application/json`
 
@@ -345,29 +332,26 @@ graph LR
 
 | Method | Path | Description | Request Type | Auth Required |
 |--------|------|-------------|--------------|---------------|
-| `GET` | `/` | List profiles (paginated) | Query params | ✓ |
-| `GET` | `/{id}` | Get profile by ID | Route param | ✓ |
-| `POST` | `/` | Create new profile | Body (JSON) | ✓ |
-| `PUT` | `/{id}` | Update profile | Body (JSON) | ✓ |
-| `DELETE` | `/{id}` | Soft-delete profile | Route param | ✓ |
-| `PATCH` | `/{id}/approve` | Approve pending profile | Body (optional reason) | ✓ Admin |
-| `PATCH` | `/{id}/reject` | Reject pending profile | Body (required reason) | ✓ Admin |
+| `GET` | `/` | List purchase orders (paginated, optional customer-name filter) | Query params | ✓ |
+| `GET` | `/{id}` | Get purchase order by ID | Route param | ✓ |
+| `POST` | `/` | Create new purchase order (idempotency key required) | Body (JSON) | ✓ |
+| `PUT` | `/{id}` | Update purchase order amount | Body (JSON) | ✓ |
+| `POST` | `/{id}/cancel` | Cancel purchase order | Route param | ✓ |
+| `DELETE` | `/{id}` | Delete purchase order | Route param | ✓ |
 
 ---
 
-## GET /api/v1/customer-profiles
+## GET /api/v1/purchase-orders
 
-Returns a paginated list of customer profiles.
+Returns a paginated list of purchase orders.
 
 **Query Parameters**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `pageNumber` | int | 1 | Page number (1-based) |
-| `pageSize` | int | 20 | Items per page (max 100) |
-| `search` | string | — | Filter by name or email |
-| `sortBy` | string | `CreatedAt` | Sort field |
-| `sortDirection` | string | `desc` | `asc` or `desc` |
+| `pageIndex` | int | 1 | Page number (1-based) |
+| `pageSize` | int | 20 | Items per page |
+| `customerName` | string | — | Filter by customer name |
 
 **Response** `200 OK`
 
@@ -375,48 +359,40 @@ Returns a paginated list of customer profiles.
 {
   "items": [
     {
-      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "name": "Jane Smith",
-      "email": "jane.smith@example.com",
-      "membershipNo": "MEM-2024-00001",
-      "phone": "+61412345678",
-      "status": "Approved",
-      "createdAt": "2025-01-15T10:30:00Z",
-      "updatedAt": "2025-01-20T14:00:00Z"
+      "id": "6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01",
+      "customerName": "Acme Pte Ltd",
+      "amount": 1250.00,
+      "status": "Placed",
+      "createdBy": "system"
     }
   ],
-  "pageNumber": 1,
-  "pageSize": 20,
-  "totalCount": 142,
-  "totalPages": 8
+  "pageIndex": 1,
+  "pageSize": 20
 }
 ```
 
 **curl Example**
 
 ```bash
-curl -X GET "https://api.example.com/api/v1/customer-profiles?pageSize=10&search=jane" \
+curl -X GET "https://api.example.com/api/v1/purchase-orders?pageSize=10&customerName=Acme" \
   -H "Authorization: Bearer {token}"
 ```
 
 ---
 
-## GET /api/v1/customer-profiles/{id}
+## GET /api/v1/purchase-orders/{id}
 
-Returns a single profile by ID.
+Returns a single purchase order by ID.
 
 **Response** `200 OK`
 
 ```json
 {
-  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "name": "Jane Smith",
-  "email": "jane.smith@example.com",
-  "membershipNo": "MEM-2024-00001",
-  "phone": "+61412345678",
-  "status": "Approved",
-  "createdAt": "2025-01-15T10:30:00Z",
-  "updatedAt": "2025-01-20T14:00:00Z"
+  "id": "6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01",
+  "customerName": "Acme Pte Ltd",
+  "amount": 1250.00,
+  "status": "Placed",
+  "createdBy": "system"
 }
 ```
 
@@ -424,42 +400,37 @@ Returns a single profile by ID.
 
 | Status | Reason |
 |--------|--------|
-| `404 Not Found` | No profile with this ID |
+| `404 Not Found` | No purchase order with this ID |
 
 ---
 
-## POST /api/v1/customer-profiles
+## POST /api/v1/purchase-orders
 
-Creates a new customer profile.
+Creates a new purchase order. Requires an `X-Idempotency-Key` header — a replayed key returns the original response instead of creating a duplicate.
 
 **Request Body**
 
 ```json
 {
-  "name": "Jane Smith",
-  "email": "jane.smith@example.com",
-  "phone": "+61412345678"
+  "customerName": "Acme Pte Ltd",
+  "amount": 1250.00
 }
 ```
 
 | Field | Type | Required | Rules |
 |-------|------|----------|-------|
-| `name` | string | ✓ | 2–150 characters |
-| `email` | string | ✓ | Valid email, max 256 chars, must be unique |
-| `phone` | string | — | Max 50 chars, valid phone format |
+| `customerName` | string | ✓ | 1–200 characters |
+| `amount` | decimal | ✓ | Greater than 0 |
 
 **Response** `201 Created`
 
 ```json
 {
-  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "name": "Jane Smith",
-  "email": "jane.smith@example.com",
-  "membershipNo": "MEM-2024-00001",
-  "phone": "+61412345678",
-  "status": "Pending",
-  "createdAt": "2025-01-15T10:30:00Z",
-  "updatedAt": "2025-01-15T10:30:00Z"
+  "id": "6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01",
+  "customerName": "Acme Pte Ltd",
+  "amount": 1250.00,
+  "status": "Placed",
+  "createdBy": "jane.doe"
 }
 ```
 
@@ -467,78 +438,73 @@ Creates a new customer profile.
 
 | Status | Reason |
 |--------|--------|
-| `400 Bad Request` | Validation failure (see body for details) |
-| `409 Conflict` | Email already belongs to another profile |
+| `400 Bad Request` | Validation failure (blank customer name, non-positive amount) or missing `X-Idempotency-Key` header |
 
 **curl Example**
 
 ```bash
-curl -X POST "https://api.example.com/api/v1/customer-profiles" \
+curl -X POST "https://api.example.com/api/v1/purchase-orders" \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Jane Smith","email":"jane.smith@example.com","phone":"+61412345678"}'
+  -H "X-Idempotency-Key: $(uuidgen)" \
+  -d '{"customerName":"Acme Pte Ltd","amount":1250.00}'
 ```
 
 ---
 
-## PUT /api/v1/customer-profiles/{id}
+## PUT /api/v1/purchase-orders/{id}
 
-Updates an existing profile. All fields are optional — only non-null fields are updated.
+Updates an existing purchase order's amount.
 
 **Request Body**
 
 ```json
 {
-  "name": "Jane A. Smith",
-  "phone": "+61498765432"
+  "amount": 1500.00
 }
 ```
 
----
+**Error Responses**
 
-## DELETE /api/v1/customer-profiles/{id}
-
-Soft-deletes the profile. The record is preserved with `IsDeleted = true`.
-
-**Response** `204 No Content`
-
----
-
-## PATCH /api/v1/customer-profiles/{id}/approve
-
-Approves a pending profile.
-
-**Request Body**
-
-```json
-{
-  "reason": "KYC verified manually"
-}
-```
-
-**Response** `200 OK` — Returns updated `CustomerProfileDto`.
+| Status | Reason |
+|--------|--------|
+| `400 Bad Request` | `amount` is not greater than 0 |
+| `404 Not Found` | No purchase order with this ID |
 
 ---
 
-## PATCH /api/v1/customer-profiles/{id}/reject
+## POST /api/v1/purchase-orders/{id}/cancel
 
-Rejects a pending profile. Reason is **required**.
+Cancels a purchase order.
 
-**Request Body**
+**Response** `200 OK` — Returns the updated `PurchaseOrderDto` with `status: "Cancelled"`.
 
-```json
-{
-  "reason": "Identity documents not provided"
-}
-```
+**Error Responses**
 
-**Response** `200 OK` — Returns updated `CustomerProfileDto`.
+| Status | Reason |
+|--------|--------|
+| `400 Bad Request` | The order is already cancelled |
+| `404 Not Found` | No purchase order with this ID |
+
+---
+
+## DELETE /api/v1/purchase-orders/{id}
+
+Deletes the purchase order.
+
+**Response** `200 OK`
+
+**Error Responses**
+
+| Status | Reason |
+|--------|--------|
+| `404 Not Found` | No purchase order with this ID |
 
 ---
 
 ## Common Error Response Format
 
-All errors return a `ProblemDetails` structure:
+All errors return a `ProblemDetails`-shaped structure:
 
 ```json
 {
@@ -547,8 +513,8 @@ All errors return a `ProblemDetails` structure:
   "status": 400,
   "detail": "One or more validation errors occurred.",
   "errors": {
-    "email": ["Email format is invalid"],
-    "name": ["Name must be between 2 and 150 characters"]
+    "customerName": ["'Customer Name' must not be empty."],
+    "amount": ["'Amount' must be greater than '0'."]
   }
 }
 ```
@@ -561,76 +527,52 @@ All errors return a `ProblemDetails` structure:
 **What you're doing**: Document the entity schema, constraints, relationships, and EF Core mapping config.
 
 ````markdown
-# Customer Profiles — Data Model
+# Purchase Orders — Data Model
 
 ## Entity Relationship Diagram
 
 ```mermaid
 erDiagram
-    CUSTOMER_PROFILE {
+    PURCHASE_ORDER {
         uniqueidentifier Id PK "Auto-generated GUID"
-        nvarchar(150)   Name "Not null"
-        nvarchar(256)   Email UK "Unique, not null"
-        nvarchar(50)    MembershipNo UK "Auto-generated, unique"
-        nvarchar(50)    Phone "Nullable"
-        nvarchar(50)    Status "Pending / Approved / Rejected"
-        bit             IsDeleted "Soft delete flag"
-        nvarchar(450)   CreatedBy FK "Linked to user"
-        datetime2       CreatedAt "UTC, auto-set"
+        nvarchar(200)   CustomerName "Not null"
+        decimal         Amount "Precision (18,2)"
+        nvarchar(50)    Status "Draft / Placed / Cancelled, stored as string"
+        nvarchar(450)   CreatedBy "Linked to user"
+        datetime2       CreatedOn "UTC, auto-set"
         nvarchar(450)   UpdatedBy "Nullable"
-        datetime2       UpdatedAt "UTC, auto-updated"
+        datetime2       UpdatedOn "Nullable, UTC"
     }
-
-    AUDIT_LOG {
-        uniqueidentifier Id PK
-        uniqueidentifier EntityId FK
-        nvarchar(50)    EntityType
-        nvarchar(50)    Action
-        nvarchar(max)   OldValues
-        nvarchar(max)   NewValues
-        datetime2       ChangedAt
-        nvarchar(450)   ChangedBy
-    }
-
-    CUSTOMER_PROFILE ||--o{ AUDIT_LOG : "audited by"
 ```
 
 ## Properties
 
 | Property | C# Type | DB Column | Constraints |
 |----------|---------|-----------|-------------|
-| `Id` | `Guid` | `Id` (PK) | Not null, auto-generated |
-| `Name` | `string` | `Name` | Not null, max 150 chars |
-| `Email` | `string` | `Email` | Not null, max 256 chars, unique index |
-| `MembershipNo` | `string` | `MembershipNo` | Not null, max 50 chars, unique index |
-| `Phone` | `string?` | `Phone` | Nullable, max 50 chars |
-| `Status` | `string` | `Status` | Not null, max 50 chars |
-| `IsDeleted` | `bool` | `IsDeleted` | Default: `false` |
-| `CreatedBy` | `string` | `CreatedBy` | Not null (from `RequestBase.ByUser`) |
-| `CreatedAt` | `DateTime` | `CreatedAt` | UTC, auto-set on insert |
-| `UpdatedBy` | `string?` | `UpdatedBy` | Nullable |
-| `UpdatedAt` | `DateTime?` | `UpdatedAt` | UTC, auto-updated |
+| `Id` | `Guid` | `Id` (PK) | Not null, generated in the constructor via `Guid.NewGuid()` |
+| `CustomerName` | `string` | `CustomerName` | Not null, max 200 chars, indexed (not unique) |
+| `Amount` | `decimal` | `Amount` | Precision `(18,2)`, must be greater than 0 |
+| `Status` | `PurchaseOrderStatus` | `Status` | Stored as string via `.HasConversion<string>()`; `Draft`/`Placed`/`Cancelled` |
+| `CreatedBy` | `string` | `CreatedBy` | Not null, set from `[FromClaim(ClaimTypes.Name)] ByUser` |
+| `UpdatedBy` | `string?` | `UpdatedBy` | Nullable, set by `SetUpdatedBy(userId)` on mutation |
 
 ## EF Core Mapping Configuration
 
-See `Minimal.Infra/Features/Profiles/Mappers/ProfileMapper.cs` for the full config.
+See `Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` for the full config.
 
 Key mapping decisions:
-- **Table name**: `CustomerProfiles` (schema: `dbo`)
-- **Unique indexes**: `Email`, `MembershipNo`
-- **Query filter**: `IsDeleted == false` applied globally — deleted records excluded from all queries
-- **Precision**: `UpdatedAt` uses `datetime2(7)` for sub-second precision
+- **Table name**: `PurchaseOrders` (schema: `manual_sample`)
+- **Index**: `CustomerName` (not unique — several orders can share a customer name)
+- **Enum storage**: `Status` stored as `string`, not the underlying `int`
+- **Precision**: `Amount` uses `HasPrecision(18, 2)`
 
 ## Validation Rules
 
 | Rule | Details |
 |------|---------|
-| `Email` unique | Enforced at DB level (unique index) + application level (Spec check before insert) |
-| `MembershipNo` unique | Enforced at DB level (unique index) + auto-generated by `IMembershipService` |
-| `Name` length | 2–150 characters (enforced by FluentValidation) |
-| `Phone` format | Phone number format (enforced by FluentValidation, optional) |
-| `Status` transitions | `Pending → Approved` or `Pending → Rejected` only (enforced in domain entity) |
-| Soft delete | `IsDeleted` flag; EF Global Query Filter excludes deleted records automatically |
+| `CustomerName` required | `[Required][StringLength(200, MinimumLength = 1)]` on the create request + `NotEmpty().Length(1, 200)` FluentValidation rule |
+| `Amount` positive | `GreaterThan(0)` FluentValidation rule on both create and update requests |
+| Cancel is idempotent-unsafe by design | Cancelling an already-`Cancelled` order fails with a business-rule error rather than succeeding a second time (enforced in the command handler, see `dknet-ddd-principles`) |
 ````
 
 ---
@@ -640,44 +582,46 @@ Key mapping decisions:
 **What you're doing**: Catalog all domain events published and consumed by this feature so other teams know how to subscribe.
 
 ````markdown
-# Customer Profiles — Domain Events
+# Purchase Orders — Domain Events
 
 ## Events Published
 
-### ProfileCreatedEvent
+### PurchaseOrderCreatedEvent
 
-Raised immediately after a new customer profile is successfully created and persisted.
+Raised by hand from `PurchaseOrder`'s own constructor (`AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))`), immediately when a new order is constructed — not in the handler.
 
-**Published by**: `CreateProfileCommandHandler`
+**Published by**: `PurchaseOrder` constructor (via `AddEvent`), delivered by `Minimal.Infra/Services/EventPublisher.cs` after `SaveChangesAsync`
 
 **Payload**
 
 ```csharp
-public sealed record ProfileCreatedEvent(Guid Id, string Name);
+public sealed record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, decimal Amount);
 ```
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Id` | `Guid` | The newly created profile's ID |
-| `Name` | `string` | The profile's display name |
+| `Id` | `Guid` | The newly created order's ID |
+| `CustomerName` | `string` | The order's customer name |
+| `Amount` | `decimal` | The order amount |
 
 **Subscribers**
 
 | Subscriber | Bus | Action |
 |-----------|-----|--------|
-| `ProfileCreatedEventFromMemoryHandler` | In-Memory | Internal (testing/audit) |
-| (Add Azure Bus handler here) | Azure Service Bus | External systems |
+| `PurchaseOrderCreatedEventHandler` | In-Memory | Logs the event at Information level |
+
+*(For an entity that instead declares `[RaisesEvent(...)]` rather than calling `AddEvent` by hand — see `Product` — the event is raised by DKNet's EF Core save hook instead of application code; only the consumer above is still hand-written. `Product`'s declared events are also consumed externally over Azure Service Bus — see `ProductCreatedNotificationHandler` for that pattern if this feature needs one too.)*
 
 **Example Usage** — subscribing to this event:
 
 ```csharp
-internal sealed class SendWelcomeEmailHandler : 
-    Fluents.EventsConsumers.IHandler<ProfileCreatedEvent>
+internal sealed class LogPurchaseOrderCreatedHandler(ILogger<LogPurchaseOrderCreatedHandler> logger) :
+    Fluents.EventsConsumers.IHandler<PurchaseOrderCreatedEvent>
 {
-    public Task OnHandle(ProfileCreatedEvent notification, CancellationToken cancellationToken)
+    public Task OnHandle(PurchaseOrderCreatedEvent notification, CancellationToken cancellationToken)
     {
-        // Send welcome email to new customer
-        return _emailService.SendWelcomeAsync(notification.Id, cancellationToken);
+        logger.LogInformation("Purchase order {Id} created for {CustomerName}.", notification.Id, notification.CustomerName);
+        return Task.CompletedTask;
     }
 }
 ```
@@ -699,8 +643,8 @@ See `Minimal.Infra/Extensions/ServiceBusSetup.cs` for the bus wiring.
 
 ```mermaid
 graph LR
-    HDLR["CreateProfileHandler"]
-    EVT["ProfileCreatedEvent"]
+    HDLR["CreatePurchaseOrderCommandHandler"]
+    EVT["PurchaseOrderCreatedEvent"]
     MEM["In-Memory Bus"]
     AZ["Azure Service Bus"]
     INTL["Internal Handlers"]
@@ -761,12 +705,20 @@ They render automatically on GitHub, GitLab, VS Code (Markdown Preview), Docusau
 ```
 docs/
 └── features/
-    └── customer-profiles/        ← kebab-case folder name
+    └── purchase-orders/        ← kebab-case folder name
         ├── README.md             ← Overview (START HERE)
         ├── architecture.md       ← Diagrams + vertical slice
         ├── api-reference.md      ← Endpoints + examples + curl
         ├── data-model.md         ← Entity diagram + constraints
         ├── events.md             ← Domain events + subscribers
         └── decisions/            ← Optional ADRs
-            └── adr-001-membership-number-generation.md
+            └── adr-001-idempotency-key-strategy.md
 ```
+
+## Real Reference Material Already in This Repo
+
+Neither of this template's own two worked samples (`PurchaseOrder`/`ManualSample`, `Product`/`AutomatedSample`) has this five-file `docs/features/<feature-name>/` treatment — they're documented instead by:
+- [`docs/samples/manual-vs-automated.md`](../../../docs/samples/manual-vs-automated.md) — the authoritative, layer-by-layer comparison of the two samples, closest thing in this repo to an `architecture.md` + `data-model.md` + `events.md` combined
+- [`docs/samples/manual-purchase-orders/README.md`](../../../docs/samples/manual-purchase-orders/README.md) and [`docs/samples/automated-products/README.md`](../../../docs/samples/automated-products/README.md) — thin per-sample overviews, the closest thing to a `README.md`
+
+Read those before documenting a *new* feature you've built — they show what "grounded in real code, not invented" looks like for this repo, and are a better model to imitate than any hypothetical example above.

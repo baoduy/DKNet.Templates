@@ -23,7 +23,7 @@
   - Zero compiler warnings
 - **Related Skills**: dknet-crud-operations, dknet-api-endpoints
 - **Folder**: [`.github/skills/domain-modeling/`](./domain-modeling/)
-- **Example**: [CustomerProfile entity example](./domain-modeling/examples/customer-profile-example/)
+- **Example**: [PurchaseOrder entity example](./domain-modeling/examples/purchase-order-example/)
 
 **Start Here**: Read [Domain Modeling skill.md](./domain-modeling/skill.md)
 
@@ -47,7 +47,7 @@
   - Zero compiler warnings
 - **Related Skills**: dknet-domain-modeling, dknet-api-endpoints
 - **Folder**: [`.github/skills/crud-operations/`](./crud-operations/)
-- **Example**: [CustomerProfile CRUD example](./crud-operations/examples/customer-profile-crud/)
+- **Example**: [PurchaseOrder CRUD example](./crud-operations/examples/purchase-order-crud/)
 
 **Start Here**: Read [CRUD Operations skill.md](./crud-operations/skill.md)
 
@@ -95,7 +95,7 @@
   - Events catalog lists all `IHandler<TEvent>` subscribers
 - **Related Skills**: domain-modeling, crud-operations, api-endpoints
 - **Folder**: [`.github/skills/feature-documentation/`](./feature-documentation/)
-- **Example**: [Customer Profiles example docs](../../docs/features/customer-profiles/)
+- **Example**: [Manual-vs-automated sample comparison](../../docs/samples/manual-vs-automated.md)
 
 **Start Here**: Read [Feature Documentation skill.md](./feature-documentation/skill.md)
 

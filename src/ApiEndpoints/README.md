@@ -10,5 +10,5 @@ reference, see:
 - [`docs/ddd-implementation-guide.md`](../../docs/ddd-implementation-guide.md)
 - [`docs/template-features.md`](../../docs/template-features.md)
 - [`docs/template-usage.md`](../../docs/template-usage.md)
-- [`docs/features/customer-profiles/`](../../docs/features/customer-profiles/) — worked example
+- [`docs/samples/manual-vs-automated.md`](../../docs/samples/manual-vs-automated.md) — worked-example comparison (`PurchaseOrder` hand-written vs. `Product` generator-driven)
 - [`AGENTS.md`](../../AGENTS.md) — architecture reference for AI coding agents

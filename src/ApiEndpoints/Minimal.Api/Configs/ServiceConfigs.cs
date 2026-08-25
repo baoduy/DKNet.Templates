@@ -1,3 +1,5 @@
+using Minimal.Infra.Contexts;
+
 namespace Minimal.Api.Configs;
 
 [ExcludeFromCodeCoverage]
@@ -13,7 +15,10 @@ internal static class ServiceConfigs
         services
             .AddSingleton<IHttpContextAccessor, HttpContextAccessor>()
             .AddScoped<IPrincipalProvider, PrincipalProvider>()
-            .AddScoped<IDataOwnerProvider>(p => p.GetRequiredService<IPrincipalProvider>());
+            // Also wires DKNet's DataOwnerHook onto CoreDbContext: it stamps CreatedBy/CreatedOn from
+            // IDataOwnerProvider on save, never from a request property — a generated create request can
+            // never set the acting user (DRK-715 R1).
+            .AddDataOwnerProvider<CoreDbContext, PrincipalProvider>();
 
         services
             .AddAppServices()

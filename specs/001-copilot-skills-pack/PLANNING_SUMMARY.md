@@ -6,6 +6,11 @@
 **Status**: ✅ **Planning Complete** (Phase 0 + Phase 1)  
 **Next Phase**: Phase 2 (Implementation Tasks) — Run `/speckit.tasks` command
 
+> **2026-08-25 note:** This document is a historical record from when the template's demo
+> features were `CustomerProfile`/`LoyaltyMembership`. Those were removed; current worked
+> examples are the `PurchaseOrder` (hand-written) and `Product` (generator-driven) samples —
+> see `docs/samples/manual-vs-automated.md`.
+
 ---
 
 ## 📋 What Was Planned

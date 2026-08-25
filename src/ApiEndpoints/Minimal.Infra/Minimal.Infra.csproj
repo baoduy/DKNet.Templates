@@ -31,6 +31,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Minimal.Api needs internal CoreDbContext for ServiceConfigs.cs's PrincipalProvider registration. -->
+        <InternalsVisibleTo Include="Minimal.Api"/>
         <InternalsVisibleTo Include="Minimal.App.Tests"/>
         <InternalsVisibleTo Include="Minimal.App.BDDTests"/>
         <InternalsVisibleTo Include="Minimal.App.TestSupport"/>

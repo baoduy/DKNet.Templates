@@ -3,6 +3,11 @@
 **Branch**: `004-bdd-reqnroll-nunit-setup` | **Date**: 2026-03-31 | **Spec**: [spec.md](./spec.md)  
 **Input**: Feature specification from `specs/004-bdd-reqnroll-nunit-setup/spec.md`
 
+> **2026-08-25 note:** This document is a historical record from when the template's demo
+> features were `CustomerProfile`/`LoyaltyMembership`. Those were removed; current worked
+> examples are the `PurchaseOrder` (hand-written) and `Product` (generator-driven) samples —
+> see `docs/samples/manual-vs-automated.md`.
+
 ## Summary
 
 Wire the existing `Minimal.App.BDDTests` project into a production-quality BDD harness: add `WebApplicationFactory<Program>` lifecycle management via Reqnroll hooks, substitute an in-memory EF Core database, and deliver one complete `.feature` file covering Customer Profile creation (happy-path, duplicate, and validation-error scenarios) with matching NUnit step definitions. The design mirrors the `ApiFixture` pattern already proven in `Minimal.App.Tests`.

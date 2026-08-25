@@ -38,11 +38,16 @@ Additionally, tests should include at least one DTO consistency check when the f
 
 ## Inputs Required
 
-1. **Feature name** and entity class (e.g., `CustomerProfiles` / `CustomerProfile`)
-2. **AppServices request types** for the feature (Create / Update / Delete / Query requests)
-3. **Spec class** for querying the entity (e.g., `SpecGetCustomerProfile`)
+1. **Feature name** and entity class (e.g., `ManualSample` / `PurchaseOrder`, `AutomatedSample` / `Product`)
+2. **AppServices request types** for the feature (Create / Update / Cancel-or-other-transition / Delete / Query requests) — or none at all, if the entity uses `[CrudCreate]`/`[CrudUpdate]` and the layer is generated (see `dknet-appservices-actions`)
+3. **Spec class** for querying the entity (e.g., `SpecGetPurchaseOrder`) — may not exist if reads go through the generic `MapGetById`/`MapGetList`
 4. **Domain entity constructor** signature (to seed test data directly)
-5. **Business rules** to cover: duplicate checks, not-found paths, validation failures
+5. **Business rules** to cover: duplicate checks, not-found paths, validation failures, guarded state transitions (e.g. `PurchaseOrder.Cancel` rejecting an already-cancelled order)
+
+**Status on this branch**: neither `PurchaseOrder` nor `Product` has a committed unit or BDD test
+suite yet — a separate QA cycle authors the full suite for both samples at Verify. Nothing under
+`Minimal.App.Tests/Integration/ManualSample/` or `.../AutomatedSample/` exists to copy from today;
+use the generic pattern below and the real `Actions`/`Entities` source files as your only ground truth.
 
 ---
 
@@ -385,19 +390,33 @@ public void {Entity}MappingShouldProduceValidDto()
 
 ---
 
-## Reference: CustomerProfile Integration Tests (actual production code)
+## Reference: what to write for PurchaseOrder / Product (no committed suite exists yet)
 
-Test class: `CustomerProfileActionsIntegrationTests(ApiFixture fixture) : IClassFixture<ApiFixture>`
+There is no existing `PurchaseOrderActionsIntegrationTests` or `ProductActionsIntegrationTests` file
+to read on this branch — describing the pattern generically, grounded in the real `Actions`/`Entities`
+source, is the honest thing to do here rather than inventing a path that doesn't exist:
+
+A test class following `<Entity>ActionsIntegrationTests(ApiFixture fixture) : IClassFixture<ApiFixture>`
+naming, resolving `IMessageBus` and `IRepositorySpec` from the same `fixture.CreateScope()`, should
+cover — for `PurchaseOrder` (reading `Minimal.AppServices/ManualSample/V1/Actions/*.cs` as the source
+of truth for exact behavior):
 
 | Test | What it proves |
 |------|---------------|
-| `Test_CustomerProvide_Mapping` | Mapster config is correct; `IMapper` resolves from DI |
-| `CreateActionShouldResolveFromDiAndPersistProfile` | Full create flow + `TEST-MEM-` membership generation + EF persistence |
-| `CreateActionShouldFailWhenEmailAlreadyExists` | Duplicate-check business rule returns `IsFailed` with specific message |
-| `UpdateActionShouldResolveFromDiAndUpdateEntity` | Fetch → mutate → verify persisted changes |
-| `UpdateActionShouldFailWhenProfileIsMissing` | Not-found returns `IsFailed` with `$"The Profile {id} is not found."` |
-| `DeleteActionShouldResolveFromDiAndDeleteEntity` | Soft-delete removes entity from spec query results |
-| `DeleteActionShouldFailWhenIdIsEmpty` | `Guid.Empty` guard returns `IsFailed` with `"The Id is in valid."` |
+| Create — happy path | `bus.Send(new CreatePurchaseOrderRequest{...})` persists via `repository.AddAsync`; `PurchaseOrderCreatedEvent` fires |
+| Create — missing `ByUser` | `CreatePurchaseOrderCommandHandler` fails with `"The caller is not authenticated."` when `ByUser` is empty |
+| Update — happy path | `ChangeAmount` persists; `Result.Ok` returns the mapped DTO |
+| Update — not found | Fails with `NotFoundError` for an unknown `Id` |
+| Cancel — happy path | `order.Status` transitions to `Cancelled` |
+| Cancel — already cancelled | Handler's guard (`order.Status == PurchaseOrderStatus.Cancelled`) fails the request — the concrete business-rule test this sample exists to demonstrate |
+| Delete — happy path / not found | Mirrors the Update not-found shape |
+
+For `Product` (`AutomatedSample`), there is no hand-written handler to unit-test at all for
+create/update — the generated `CreateProductHandler`/`ChangePriceProductHandler` are produced code,
+and this template's own convention doesn't unit-test generated handlers directly. Coverage for
+`Product` instead centers on the entity's declared behavior (`[RaisesEvent]` firing on save — an
+integration-level assertion through `ApiFixture`, not a handler-level one) and the hand-written
+`ProductCreatedEventHandler`/`ProductCreatedNotificationHandler` consumers.
 
 The same scope provides both `IMessageBus` and `IRepositorySpec` — they share the same `DbContext` instance, so `SaveChangesAsync` on the repository commits what the bus handler staged.
 
@@ -429,7 +448,7 @@ The same scope provides both `IMessageBus` and `IRepositorySpec` — they share 
 | Seeding via `bus.Send(createRequest)` then testing the same path again | Seed directly via `repository.AddAsync` + `SaveChangesAsync` to isolate the scenario under test |
 | Not calling `ResetDatabaseAsync()` at the start | Tests sharing state produce false positives; always reset |
 | Asserting `result.Value` on a delete (returns `IResultBase`, not `IResult<T>`) | Use `result.IsSuccess.ShouldBeTrue()` — delete handlers have no value |
-| Missing `ByUser` on requests | `RequestBase.ByUser` is used by audit and domain mutation methods; omitting it causes `null` reference errors or incorrect audit data |
+| Missing `ByUser` on requests | Every hand-written handler checks `string.IsNullOrEmpty(request.ByUser)` and fails the request — set it explicitly in tests (there's no request base class auto-filling it outside the running app's claim-population pipeline) |
 | Creating a per-feature fixture without calling `base.ConfigureWebHost` | The in-memory DB and service overrides in `ApiFixture` will be skipped |
 
 ---

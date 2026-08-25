@@ -7,7 +7,7 @@
         ],
         "Topics": [
           {
-            "Name": "profile-tp",
+            "Name": "product-tp",
             "Properties": {
               "DefaultMessageTimeToLive": "PT1H",
               "DuplicateDetectionHistoryTimeWindow": "PT20S",
@@ -15,7 +15,7 @@
             },
             "Subscriptions": [
               {
-                "Name": "profile-sub",
+                "Name": "product-sub",
                 "Properties": {
                   "DeadLetteringOnMessageExpiration": false,
                   "DefaultMessageTimeToLive": "PT1H",

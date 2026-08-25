@@ -40,9 +40,9 @@ Each skill must follow this directory layout:
 │   │   ├── mapper-template.cs
 │   │   └── migration-template.sql
 │   ├── examples/                        ← Working code examples (RECOMMENDED)
-│   │   └── customer-profile-example/
-│   │       ├── CustomerProfile.cs
-│   │       ├── CustomerProfileMapper.cs
+│   │   └── purchase-order-example/
+│   │       ├── PurchaseOrder.cs
+│   │       ├── PurchaseOrderConfigs.cs
 │   │       └── README.md
 │   └── tests/                          ← Test files (OPTIONAL)
 │       └── DomainModelingSkillTests.cs
@@ -105,7 +105,7 @@ Every skill's `metadata.json` MUST include these fields:
   ],
   "relatedSkills": ["dknet-crud-operations", "dknet-api-endpoints"],
   "folderPath": ".github/skills/domain-modeling",
-  "examplesPath": ".github/skills/domain-modeling/examples/customer-profile-example",
+  "examplesPath": ".github/skills/domain-modeling/examples/purchase-order-example",
   "testPath": "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs"
 }
 ```
@@ -173,7 +173,7 @@ Before starting, you should:
 ## Inputs Checklist
 
 Gather this information before starting:
-- [ ] Entity name (PascalCase, e.g., "CustomerProfile")
+- [ ] Entity name (PascalCase, e.g., "PurchaseOrder")
 - [ ] List of properties (name, type, required/optional)
 - [ ] Relationships to other entities (if any)
 - [ ] Validation rules (string lengths, numeric ranges)
@@ -207,10 +207,10 @@ Verify your work against the [Validation Checklist](./checklist.md):
 
 ## Examples
 
-See [customer-profile-example/](./examples/customer-profile-example/) for a complete, production-ready example:
-- [CustomerProfile.cs](./examples/customer-profile-example/CustomerProfile.cs) — Entity class
-- [CustomerProfileMapper.cs](./examples/customer-profile-example/CustomerProfileMapper.cs) — EF mapper
-- [README.md](./examples/customer-profile-example/README.md) — Explanation of each piece
+See [purchase-order-example/](./examples/purchase-order-example/) for a complete, production-ready example:
+- [PurchaseOrder.cs](./examples/purchase-order-example/PurchaseOrder.cs) — Entity class
+- [PurchaseOrderConfigs.cs](./examples/purchase-order-example/PurchaseOrderConfigs.cs) — EF mapper
+- [README.md](./examples/purchase-order-example/README.md) — Explanation of each piece
 
 ## Next Steps
 

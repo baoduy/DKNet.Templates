@@ -38,11 +38,13 @@ Assertion policy:
 
 Gather these first:
 
-- [ ] Feature name and target domain (for example: `CustomerProfiles`).
+- [ ] Feature name and target domain (for example: `ManualSample` / `PurchaseOrder`, `AutomatedSample` / `Product`).
 - [ ] Matching docs folder under `docs/features/<feature-name>/`.
 - [ ] Matching spec folder under `specs/<feature-id-or-name>/`.
-- [ ] API contract details: route, method, headers, expected response behavior.
+- [ ] API contract details: route, method, headers, expected response behavior — for a `POST`, check whether the target endpoint is hand-mapped with `.RequiredIdempotentKey()` (mirrors `PurchaseOrderV1Endpoint`, which requires an `X-Idempotency-Key` header on every scenario that creates a purchase order) or generator-driven via `Map<Entity>Crud()` (mirrors `ProductV1Endpoint`, which has no idempotency header at all — omit it from those scenarios).
 - [ ] Existing hooks/fixtures in `Minimal.App.BDDTests/Support/`.
+
+**Status on this branch**: no `.feature` files exist yet for either `PurchaseOrder` or `Product` — both samples' BDD coverage is owed at a later Verify cycle, not written at Build. Don't assume a `Features/ManualSample/` or `Features/AutomatedSample/` folder already has scenarios to extend.
 
 ---
 

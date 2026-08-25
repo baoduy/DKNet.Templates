@@ -24,28 +24,34 @@ An aggregate is a transactional consistency boundary: everything inside it is sa
 
 - If two pieces of data must always be consistent with each other *at the moment they're saved* (e.g. an order and its line items, where a total must match the sum of lines), they belong in the same aggregate.
 - If two pieces of data can be consistent *eventually*, a moment apart, they belong in separate aggregates, coordinated through a domain event — not a direct object reference.
-- Aggregates reference each other by ID (`Guid`), never by object reference. `CustomerProfile` does not hold a collection of `Order` — an `Order` holds a `CustomerId`.
+- Aggregates reference each other by ID (`Guid`), never by object reference. `PurchaseOrder` (`Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`) does not hold a `Customer` object — it holds a plain `CustomerName` string, no navigation property back to another aggregate.
 
 Keep aggregates small. A large aggregate means more contention (every mutation locks the whole thing) and usually signals a boundary was drawn around "things that seem related" rather than "things that must be consistent together."
 
 ## Entity vs. Value Object
 
-- **Entity** (in this codebase: `AggregateRoot` for the root, `DomainEntity` for non-root entities): has identity and a lifecycle. Two entities with identical property values are still different entities if their `Id` differs. `CustomerProfile` is an entity — two profiles with the same name and email are still two different customers.
+- **Entity** (in this codebase: `AggregateRoot` for the root, `DomainEntity` for non-root entities): has identity and a lifecycle. Two entities with identical property values are still different entities if their `Id` differs. `PurchaseOrder` is an entity — two orders with the same customer name and amount are still two different orders.
 - **Value object** (owned type, plain class with no `Id`): defined entirely by its values. Two value objects with identical properties are interchangeable. If a type never needs to be looked up or referenced independently of its parent entity, it's a value object — model it as a plain owned type (see `dknet-domain-entity` "Step 3: Create Owned Value Objects"), not as another `DomainEntity`.
 
 Ask: "Do I ever need to fetch or reference this thing on its own, independent of its parent?" Yes → entity. No → value object.
 
 ## Invariant Enforcement
 
-An invariant is a rule that must always hold true for an entity (e.g. "email is never empty," "quantity is never negative"). In this codebase, invariants are enforced by construction and by the entity's own mutation methods — never by a public setter:
+An invariant is a rule that must always hold true for an entity (e.g. "an already-cancelled order can't be cancelled again"). In this codebase, invariants are enforced by construction and by the entity's own mutation methods — never by a public setter:
 
 - Properties are `{ get; private set; }`. Nothing outside the entity can put it into an invalid state directly.
-- The constructor establishes the invariant for a new entity. `Update(...)` methods re-establish it for every mutation, and are the *only* path to changing mutable state (see `CustomerProfile.Update(...)` in `dknet-domain-entity`).
-- If a rule needs data external to the entity (e.g. "email must be unique across all profiles"), that's not an entity invariant — it's a cross-entity business rule, and it belongs in the command handler as a duplicate-check `Specification` query (see `dknet-appservices-actions` "Step 2: Create Action — Create.cs"), because the entity has no way to see other entities.
+- The constructor establishes the invariant for a new entity. Named mutation methods re-establish it for every change, and are the *only* path to changing mutable state — see `PurchaseOrder.ChangeAmount(...)` and `PurchaseOrder.Cancel(...)` in `dknet-domain-entity`.
+- `PurchaseOrder.Cancel(string userId)` is the clearest example of an invariant guarded outside the constructor: the *handler* (`CancelPurchaseOrderCommandHandler`, in `Minimal.AppServices/ManualSample/V1/Actions/Cancel.cs`) checks `order.Status == PurchaseOrderStatus.Cancelled` and fails the request before calling `Cancel` — a business rule enforced at the aggregate boundary, one call into the entity method away from being violated by a second caller who skips that check.
+- If a rule needs data external to the entity (e.g. "customer name must be unique across all orders"), that's not an entity invariant — it's a cross-entity business rule, and it belongs in the command handler as a duplicate-check `Specification` query (see `dknet-appservices-actions`), because the entity has no way to see other entities.
 
 ## When to Use a Domain Event
 
-Publish a domain event (`entity.AddEvent(new SomethingHappenedEvent(...))`, delivered via `Minimal.Infra/Services/EventPublisher.cs`) when **something outside this aggregate might care that this happened** — another aggregate needs to react, or an external system needs to be notified. Example: `ProfileCreatedEvent` after a new `CustomerProfile` is created.
+This codebase has two equally valid ways to raise the same kind of event — pick the one that matches how much control you need over the raise:
+
+- **Hand-raised** (`PurchaseOrder`): the constructor calls `AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))` directly, in application code you can step through in a debugger. Use this when the event's payload, timing, or "did this actually happen" condition needs logic more specific than "a tracked property changed."
+- **Declared** (`Product`): the class carries `[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]` and `[RaisesEvent(EventOperations.Updated, nameof(Price))]` — no line of application code calls `AddEvent` anywhere in `AutomatedSample/`. DKNet's EF Core save hook reads these declarations and raises the composed event records (`ProductCreatedEvent`, `ProductPriceUpdatedEvent`) after a successful `SaveChanges`, driven by the change tracker. Use this when the event is a straightforward "this property changed" notification and you're already using `[CrudCreate]`/`[CrudUpdate]` for the entity.
+
+Either way, publish a domain event (delivered via `Minimal.Infra/Services/EventPublisher.cs`) when **something outside this aggregate might care that this happened** — another aggregate needs to react, or an external system needs to be notified. `Product`'s declared `Created` event reaches an external Azure Service Bus subscriber (`ProductCreatedNotificationHandler`) exactly like a hand-raised one would.
 
 Do NOT reach for an event when the effect is entirely local to this one request:
 - Setting a computed field during the same handler → just do it in the handler or the entity method, no event needed.

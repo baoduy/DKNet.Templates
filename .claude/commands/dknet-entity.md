@@ -14,8 +14,8 @@ You are scaffolding the **Domain + Infra** layers of a vertical slice. Stop afte
 
 1. `.claude/skills/dknet-domain-entity/SKILL.md`
 2. `.claude/skills/dknet-efcore-config/SKILL.md`
-3. `src/ApiEndpoints/Minimal.Domains/Features/Profiles/Entities/CustomerProfile.cs` (exemplar)
-4. `src/ApiEndpoints/Minimal.Infra/Features/Profiles/Mappers/` (exemplar)
+3. `src/ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs` (exemplar — hand-written entity, raises its own event via `AddEvent(...)` in the constructor; no declarative attribute)
+4. `src/ApiEndpoints/Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` (exemplar mapper)
 
 ## Steps
 

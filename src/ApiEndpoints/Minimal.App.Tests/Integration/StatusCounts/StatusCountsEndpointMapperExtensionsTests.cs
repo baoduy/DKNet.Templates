@@ -1,7 +1,7 @@
 using DKNet.EfCore.Specifications.Repositories;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.Share.Generics;
-using Minimal.Domains.Features.LoyaltyMemberships.Entities;
+using Minimal.Domains.Features.ManualSample.Entities;
 
 namespace Minimal.App.Tests.Integration.StatusCounts;
 
@@ -11,7 +11,8 @@ namespace Minimal.App.Tests.Integration.StatusCounts;
 /// current <see cref="Minimal.Api.ApiEndpoints"/> config calls it, so there is no HTTP route to hit through
 /// the real host — this exercises the exact <c>GetStatusCounts</c> call its handler delegates to, against the
 /// same fully-wired DI/EF stack (row-level filters included) the real app uses, proving the relocation didn't
-/// break the underlying query.
+/// break the underlying query. Re-homed onto <c>PurchaseOrder</c>/<c>PurchaseOrderStatus</c> (the removed
+/// demo entity this test class originally used no longer exists).
 /// </summary>
 public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 {
@@ -23,17 +24,16 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
 
-        await repository.AddAsync(new LoyaltyMembership("Alice Nguyen", MembershipTier.Gold, 0, "seed"),
-            CancellationToken.None);
+        await repository.AddAsync(new PurchaseOrder("Acme Pte Ltd", 100m, "seed"), CancellationToken.None);
         await repository.SaveChangesAsync(CancellationToken.None);
 
-        var results = await repository.GetStatusCounts<LoyaltyMembership>(
-            new StatusPropertyInfo(nameof(LoyaltyMembership.Tier), typeof(MembershipTier)),
+        var results = await repository.GetStatusCounts<PurchaseOrder>(
+            new StatusPropertyInfo(nameof(PurchaseOrder.Status), typeof(PurchaseOrderStatus)),
             new GenericStatusCountsParameters());
 
-        results.ShouldContain(r => r.Type == nameof(MembershipTier) && r.Status == "GOLD" && r.Count == 1);
-        results.ShouldContain(r => r.Type == nameof(MembershipTier) && r.Status == "BRONZE" && r.Count == 0);
-        results.ShouldContain(r => r.Type == nameof(MembershipTier) && r.Status == "SILVER" && r.Count == 0);
+        results.ShouldContain(r => r.Type == nameof(PurchaseOrderStatus) && r.Status == "PLACED" && r.Count == 1);
+        results.ShouldContain(r => r.Type == nameof(PurchaseOrderStatus) && r.Status == "DRAFT" && r.Count == 0);
+        results.ShouldContain(r => r.Type == nameof(PurchaseOrderStatus) && r.Status == "CANCELLED" && r.Count == 0);
     }
 
     /// <summary>
@@ -49,21 +49,21 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
 
-        var recentMember = new LoyaltyMembership("Recent Nguyen", MembershipTier.Gold, 0, "seed");
-        var historicalMember = new LoyaltyMembership("Historical Tran", MembershipTier.Gold, 0, "seed");
+        var recentOrder = new PurchaseOrder("Recent Customer", 100m, "seed");
+        var historicalOrder = new PurchaseOrder("Historical Customer", 100m, "seed");
 
-        await repository.AddAsync(recentMember, CancellationToken.None);
-        await repository.AddAsync(historicalMember, CancellationToken.None);
-        repository.Entry(historicalMember).Property(x => x.CreatedOn).CurrentValue =
+        await repository.AddAsync(recentOrder, CancellationToken.None);
+        await repository.AddAsync(historicalOrder, CancellationToken.None);
+        repository.Entry(historicalOrder).Property(x => x.CreatedOn).CurrentValue =
             DateTimeOffset.UtcNow.AddDays(-90);
         await repository.SaveChangesAsync(CancellationToken.None);
 
-        var results = await repository.GetStatusCounts<LoyaltyMembership>(
-            new StatusPropertyInfo(nameof(LoyaltyMembership.Tier), typeof(MembershipTier)),
+        var results = await repository.GetStatusCounts<PurchaseOrder>(
+            new StatusPropertyInfo(nameof(PurchaseOrder.Status), typeof(PurchaseOrderStatus)),
             new GenericStatusCountsParameters());
 
         results.ShouldContain(r =>
-            r.Type == nameof(MembershipTier) && r.Status == "GOLD" && r.Count == 2,
+            r.Type == nameof(PurchaseOrderStatus) && r.Status == "PLACED" && r.Count == 2,
             "a 90-day-old record must still be counted when no From/To is supplied.");
     }
 
@@ -79,17 +79,17 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
 
-        var recentMember = new LoyaltyMembership("Recent Nguyen", MembershipTier.Gold, 0, "seed");
-        var historicalMember = new LoyaltyMembership("Historical Tran", MembershipTier.Gold, 0, "seed");
+        var recentOrder = new PurchaseOrder("Recent Customer", 100m, "seed");
+        var historicalOrder = new PurchaseOrder("Historical Customer", 100m, "seed");
 
-        await repository.AddAsync(recentMember, CancellationToken.None);
-        await repository.AddAsync(historicalMember, CancellationToken.None);
-        repository.Entry(historicalMember).Property(x => x.CreatedOn).CurrentValue =
+        await repository.AddAsync(recentOrder, CancellationToken.None);
+        await repository.AddAsync(historicalOrder, CancellationToken.None);
+        repository.Entry(historicalOrder).Property(x => x.CreatedOn).CurrentValue =
             DateTimeOffset.UtcNow.AddDays(-90);
         await repository.SaveChangesAsync(CancellationToken.None);
 
-        var results = await repository.GetStatusCounts<LoyaltyMembership>(
-            new StatusPropertyInfo(nameof(LoyaltyMembership.Tier), typeof(MembershipTier)),
+        var results = await repository.GetStatusCounts<PurchaseOrder>(
+            new StatusPropertyInfo(nameof(PurchaseOrder.Status), typeof(PurchaseOrderStatus)),
             new GenericStatusCountsParameters
             {
                 From = DateTimeOffset.UtcNow.AddDays(-7),
@@ -97,7 +97,7 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
             });
 
         results.ShouldContain(r =>
-            r.Type == nameof(MembershipTier) && r.Status == "GOLD" && r.Count == 1,
+            r.Type == nameof(PurchaseOrderStatus) && r.Status == "PLACED" && r.Count == 1,
             "the 90-day-old record must be excluded once an explicit From/To range narrows the window to the last 7 days.");
     }
 }

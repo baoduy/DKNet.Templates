@@ -119,9 +119,12 @@ Full usage reference (parameters, migrations, packaging): [`docs/template-usage.
 
 ## Adding a new feature (vertical slice)
 
-Follow the **CustomerProfiles/V1** pattern already in the template — domain entity, EF Core
-mapping, application action, endpoint, and its tests, end to end:
-[`docs/ddd-implementation-guide.md`](docs/ddd-implementation-guide.md).
+Two worked patterns ship in the template — a fully hand-written slice
+(`ManualSample`/`PurchaseOrder`) and one built from DKNet's declarative
+event/CRUD-generation attributes (`AutomatedSample`/`Product`). See
+[`docs/samples/manual-vs-automated.md`](docs/samples/manual-vs-automated.md) for which shape fits
+your feature, then follow [`docs/ddd-implementation-guide.md`](docs/ddd-implementation-guide.md)
+for the end-to-end steps — domain entity, EF Core mapping, application action, endpoint, and tests.
 
 See [AGENTS.md](AGENTS.md) for the condensed architecture reference used by AI coding agents.
 
@@ -134,7 +137,9 @@ See [AGENTS.md](AGENTS.md) for the condensed architecture reference used by AI c
 | [`docs/ddd-implementation-guide.md`](docs/ddd-implementation-guide.md) | Adding a vertical-slice feature, end to end — entity → EF mapping → domain event → action → endpoint → unit/BDD tests |
 | [`docs/template-features.md`](docs/template-features.md) | Every capability the template wires up out of the box, and where to configure it |
 | [`docs/template-usage.md`](docs/template-usage.md) | `dotnet new` parameters, run/test/migrate/pack commands |
-| [`docs/features/customer-profiles/`](docs/features/customer-profiles/) | Worked example the guides above reference |
+| [`docs/samples/manual-vs-automated.md`](docs/samples/manual-vs-automated.md) | Layer-by-layer comparison of the two worked samples the guides above reference |
+| [`docs/samples/manual-purchase-orders/`](docs/samples/manual-purchase-orders/) | Hand-written vertical slice — `PurchaseOrder` |
+| [`docs/samples/automated-products/`](docs/samples/automated-products/) | Generator-driven vertical slice — `Product` |
 
 > These guides are visible on GitHub but are **not** packaged into scaffolded solutions — the
 > nuspec's file list doesn't ship `docs/`. If you need this content inside a generated solution,
