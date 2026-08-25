@@ -118,7 +118,7 @@ Keep the two suites at different levels; do not duplicate the same behavior in b
   3. **Result-level integration** — handler failures asserted on the `Result` object (not-found, empty-id, "already existed") and EF model/schema/migration shape (`Architecture/MigrationSchemaTests`, `Integration/**` failure cases). BDD's HTTP-status/response-text assertions are coarser and would lose this intent (Rule 9).
 - **BDD owns user-facing HTTP behavior**: request→status→response-body scenarios, and domain-event side effects observed via log capture (e.g. the `ProductCreatedEventHandler`/`ProductCreatedNotificationHandler` log lines the automated sample emits). When a behavior is exercised end-to-end over HTTP, BDD is the stronger home — delete the xUnit integration duplicate.
 - **Schema/model assertions belong in xUnit, never BDD.** (`MigrationVerification.feature` was removed for this reason; `MigrationSchemaTests` already covers it.)
-- **Still owed** (BDD gaps, not yet ported): both samples' full suites — dev-qc authors unit and BDD coverage for `PurchaseOrder` and `Product` at Verify, not at Build; none exists yet on this branch.
+- **Still owed** (BDD gaps): static-seeding and external-broker scenarios — see `docs/samples/manual-vs-automated.md` for the current gap list; dev-qc extends coverage at Verify, not at Build.
 
 ## Gotchas
 

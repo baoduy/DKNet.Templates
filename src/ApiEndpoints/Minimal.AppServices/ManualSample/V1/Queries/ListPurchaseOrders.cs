@@ -9,6 +9,7 @@ public sealed record ListPurchaseOrdersQuery : Fluents.Queries.IWitPageResponse<
 {
     public int PageIndex { get; init; } = 1;
 
+    [Range(1, 100)]
     public int PageSize { get; init; } = 20;
 
     public string? CustomerName { get; init; }

@@ -1,7 +1,7 @@
 namespace Minimal.App.BDDTests.Support;
 
 /// <summary>
-/// Steps shared by more than one DRK-455 feature file (idempotency and loyalty-membership scenarios use
+/// Steps shared by more than one DRK-455 feature file (the PurchaseOrder and Product scenarios use
 /// the same precondition and rejection wording). Kept in one binding so the exact step text is not
 /// duplicated — and made ambiguous — across per-feature step classes.
 /// </summary>

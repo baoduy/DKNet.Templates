@@ -108,6 +108,22 @@ public class SampleInvariantTests
     }
 
     [Fact]
+    public void NoRemovedDemoEntityNames_ShouldAppearAnywhereUnderSrc()
+    {
+        var selfPath = Path.Combine(SrcDir, "ApiEndpoints/Minimal.App.Tests/Architecture/SampleInvariantTests.cs");
+
+        var offenders = Directory.GetFiles(SrcDir, "*", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(f => !string.Equals(f, selfPath, StringComparison.Ordinal))
+            .Where(f => ContainsAny(SafeReadAllText(f), "CustomerProfile", "LoyaltyMembership"))
+            .ToArray();
+
+        offenders.ShouldBeEmpty(
+            $"Removed demo entity name found outside SampleInvariantTests: {string.Join(", ", offenders)}");
+    }
+
+    [Fact]
     public void GeneratedCreateProductRequest_ShouldCarryNoActingUserProperty()
     {
         // Structural half of the security acceptance criterion (DRK-715 R1): the generated create request
@@ -128,6 +144,22 @@ public class SampleInvariantTests
 
     private static string SrcDir =>
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
+
+    private static string SafeReadAllText(string path)
+    {
+        try
+        {
+            return File.ReadAllText(path);
+        }
+        catch (IOException)
+        {
+            return string.Empty;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return string.Empty;
+        }
+    }
 
     private static bool ContainsAny(string haystack, params string[] needles) =>
         needles.Any(n => haystack.Contains(n, StringComparison.Ordinal));
