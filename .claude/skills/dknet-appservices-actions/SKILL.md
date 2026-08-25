@@ -79,14 +79,15 @@ public string? ByUser { get; set; }
 ```
 
 `AddContextualRequestPopulation` (wired in `Program.cs`) fills this in from the authenticated
-`ClaimsPrincipal` before validation and before the handler runs. `PurchaseOrderV1Endpoint` belt-and-
-suspenders this by also setting it explicitly in the route delegate before calling `bus.Send(...)`
-(`req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount`). Handlers still defensively check
-`string.IsNullOrEmpty(request.ByUser)` and fail the request if it's missing — see every
-`*CommandHandler` in `ManualSample/V1/Actions/`. This mechanism only works for a hand-written
-request; a **generated** `[CrudCreate]`/`[CrudUpdate]` request can never carry a `[FromClaim]`
-property, because the generator forwards only `System.ComponentModel.DataAnnotations` attributes
-(see "Generated alternative" below).
+`ClaimsPrincipal` before validation and before the handler runs — it is the only mechanism that
+sets `ByUser`; no endpoint stamps it by hand. It only falls back to `SharedConsts.SystemAccount`
+when `RequireAuthorization` is off. An authenticated caller whose token carries no
+`ClaimTypes.Name` claim is left with `ByUser` unset, which is why every `*CommandHandler` in
+`ManualSample/V1/Actions/` checks `string.IsNullOrEmpty(request.ByUser)` and fails the request if
+it's missing — that guard is the live no-claim path, not defensive dead code. This mechanism only
+works for a hand-written request; a **generated** `[CrudCreate]`/`[CrudUpdate]` request can never
+carry a `[FromClaim]` property, because the generator forwards only
+`System.ComponentModel.DataAnnotations` attributes (see "Generated alternative" below).
 
 ### File Locations
 

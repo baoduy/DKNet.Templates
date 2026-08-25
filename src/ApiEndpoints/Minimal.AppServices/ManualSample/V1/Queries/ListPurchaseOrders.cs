@@ -9,10 +9,21 @@ public sealed record ListPurchaseOrdersQuery : Fluents.Queries.IWitPageResponse<
 {
     public int PageIndex { get; init; } = 1;
 
-    [Range(1, 100)]
     public int PageSize { get; init; } = 20;
 
     public string? CustomerName { get; init; }
+}
+
+internal sealed class ListPurchaseOrdersQueryValidator : AbstractValidator<ListPurchaseOrdersQuery>
+{
+    #region Constructors
+
+    public ListPurchaseOrdersQueryValidator()
+    {
+        RuleFor(a => a.PageSize).InclusiveBetween(1, 100);
+    }
+
+    #endregion
 }
 
 internal sealed class ListPurchaseOrdersQueryHandler(IRepositorySpec repository, IMapper mapper)
