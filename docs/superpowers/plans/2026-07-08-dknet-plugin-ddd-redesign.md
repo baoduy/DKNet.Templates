@@ -1,5 +1,10 @@
 # DKNet Plugin DDD Redesign Implementation Plan
 
+> **2026-08-25 note:** This document is a historical record from when the template's demo
+> features were `CustomerProfile`/`LoyaltyMembership`. Those were removed; current worked
+> examples are the `PurchaseOrder` (hand-written) and `Product` (generator-driven) samples —
+> see `docs/samples/manual-vs-automated.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rebuild the `.claude-plugin/dknet-minimal` plugin's skill/agent/command set so Claude has both DDD tactical judgment (aggregate boundaries, entity vs. value object, invariants, domain events) and the existing per-layer mechanics, while dropping the unrelated Spec-Kit command set.

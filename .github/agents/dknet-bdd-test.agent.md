@@ -1,7 +1,7 @@
 ---
 name: dknet-bdd-test
 description: "Use when implementing or updating BDD tests in DKNet.Templates. Builds Reqnroll + NUnit .feature scenarios and step bindings using specs/contracts as assertion source of truth and docs/specs as reference context."
-argument-hint: "Feature name/path and scope. Example: CustomerProfiles create/update API BDD coverage."
+argument-hint: "Feature name/path and scope. Example: PurchaseOrder create/update/cancel API BDD coverage, or Product create/price-change API BDD coverage."
 tools: [read, search, edit, execute, todo]
 user-invocable: true
 ---
@@ -38,14 +38,16 @@ Work only on BDD test artifacts and closely related support wiring:
 
 ## Workflow
 
+No `.feature` files exist yet for either `PurchaseOrder` (`ManualSample`) or `Product` (`AutomatedSample`) on this branch — dev-qc authors the full BDD suite for both at Verify, not at Build. When asked to add coverage for one of them, treat it as new scenario authorship, not an update to an existing file.
+
 1. Build context map from:
-   - `docs/features/<feature>/`
-   - `specs/<feature>/spec.md`
-   - `specs/<feature>/contracts/*`
+   - `docs/samples/manual-vs-automated.md` and the relevant per-sample README (`docs/samples/manual-purchase-orders/README.md` or `docs/samples/automated-products/README.md`) for routes and confirmed behavior
+   - `specs/<feature>/spec.md` (if one exists for this cycle)
+   - `specs/<feature>/contracts/*` (if present)
 2. Produce or update `.feature` scenarios:
    - Happy path
-   - Business-rule failure
-   - Validation failure
+   - Business-rule failure (e.g. `PurchaseOrder`: cancelling an already-cancelled order returns 400)
+   - Validation failure (e.g. `PurchaseOrder`: blank customer name or non-positive amount returns 400 — FluentValidation runs on every hand-mapped route). For `Product`, do NOT assert a validation-failure scenario on `[Range]`/`[Required]` alone — that validation is declared but never enforced under this template's generated-route wiring (confirmed live: a negative price returns `201`); assert the actual observed status instead of the attribute's apparent intent.
 3. Implement/adjust step bindings in `Steps/*.cs`.
 4. Run validation:
    - `dotnet build src/DKNet.Templates.sln -c Release`

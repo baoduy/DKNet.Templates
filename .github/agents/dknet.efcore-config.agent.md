@@ -2,7 +2,7 @@
 description: "Use when: generating or updating EF Core entity configurations in the DKNet.Minimal.Template. Analyzes domain entities and creates Infra mapper configurations following DefaultEntityTypeConfiguration base class patterns and project conventions."
 name: "dknet.efcore-config"
 tools: [read, search, edit]
-argument-hint: "Entity name (e.g., CustomerProfile, Order) or comma-separated list of entity names"
+argument-hint: "Entity name (e.g., PurchaseOrder, Product) or comma-separated list of entity names"
 user-invocable: true
 ---
 
@@ -21,8 +21,10 @@ Before any analysis or edits:
 - DO NOT duplicate properties already handled by the base class (Id, CreatedBy, CreatedAt, UpdatedBy, UpdatedAt, IsDeleted)
 - DO NOT violate layer boundaries—configuration is an Infra concern only
 - DO NOT add business logic to EF configurations
-- ONLY use schema constants from `DomainSchemas` (e.g., `DomainSchemas.Profile`)
+- ONLY use schema constants from `DomainSchemas` (e.g., the `manual_sample`/`sample` schemas `PurchaseOrderConfigs`/`ProductConfigs` write to via `ToTable("...", "...")`)
 - ALWAYS execute using the `dknet-efcore-config` skill workflow instead of ad-hoc generation
+- Both worked samples' mappers are hand-written regardless of which CRUD path the entity uses — no generator in this template touches `IEntityTypeConfiguration<T>`, so `[CrudCreate]`/`[CrudUpdate]`/`[GenerateDto]` on the entity (see `Product`) changes nothing about how you write its config
+- **`UseAutoDataSeeding` dual-wiring gotcha**: if the entity has a `DataSeedingConfiguration<T>` (see `PurchaseOrderStaticData`), auto-discovery requires `.UseAutoDataSeeding([...])` to be wired into **both** `InfraSetup.AddInfraServices` (the DI-registered host path) and `InfraMigration.MigrateDb` (the startup-migration path) — they build two separate `CoreDbContext` instances. Wiring only one means seed rows apply during migration but never appear over HTTP (or vice versa), with no error anywhere. This template hit that exact bug once with `PurchaseOrderStaticData` and fixed it by adding the same `.UseAutoDataSeeding(...)` call to both extension methods — when reviewing or adding seed data, always check both call sites, not just one.
 
 ## Approach
 

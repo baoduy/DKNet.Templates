@@ -18,9 +18,9 @@ dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collec
 
 # Run a single test by fully-qualified name (xUnit) or display name (NUnit/Reqnroll)
 dotnet test src/ApiEndpoints/Minimal.App.Tests/Minimal.App.Tests.csproj \
-  --filter "FullyQualifiedName~CustomerProfile"
+  --filter "FullyQualifiedName~PurchaseOrder"
 dotnet test src/ApiEndpoints/Minimal.App.BDDTests/Minimal.App.BDDTests.csproj \
-  --filter "TestCategory=CustomerProfile"
+  --filter "TestCategory=PurchaseOrder"
 
 # Run (API only, no containers)
 dotnet run --project src/ApiEndpoints/Minimal.Api
@@ -54,33 +54,52 @@ Minimal.Share        → shared constants/options/base types (read by all layers
 Minimal.AppHost      → Aspire orchestration only (Redis + PostgreSQL + Minimal.Api), no business logic
 ```
 
-`Program.cs` startup order: bind `FeatureOptions` → `AddLogConfig` → `AddAzureAppConfig` → `AddFluentValidationConfig` → `RunMigrationAsync` → `AddOptions` → `AddAppConfig` → `UseAppConfig(a => a.UseEndpointConfigs())`. Middleware/services are composed in `Minimal.Api/Configs/AppConfig.cs` and `ServiceConfigs.cs`.
+`Program.cs` startup order: bind `FeatureOptions` → `AddLogConfig` → `AddAzureAppConfig` → `AddFluentValidationConfig` → `RunMigrationAsync` → `AddOptions` → `AddAppConfig` → `AddContextualRequestPopulation` → `UseAppConfig(a => a.UseEndpointConfigs())`. Middleware/services are composed in `Minimal.Api/Configs/AppConfig.cs` and `ServiceConfigs.cs`.
 
-### Feature vertical slice pattern
+### Feature vertical slice pattern — two shapes, pick one
 
-Mirror the existing `CustomerProfiles/V1` slice when adding a new feature:
+The template ships two complete worked examples of the same shape of feature — entity, event,
+event handler, CRUD, queries, endpoint — built two different ways. Read
+[`docs/samples/manual-vs-automated.md`](docs/samples/manual-vs-automated.md) before copying either;
+it states exactly what each layer costs or gives up.
+
+**Hand-written — mirror `ManualSample/PurchaseOrder`:**
 
 | Layer       | Location                                        | What goes here                                                          |
 |-------------|-------------------------------------------------|-------------------------------------------------------------------------|
-| Domains     | `Features/<Feature>/Entities/`                  | `AggregateRoot` subclass + owned types; mutation in methods             |
+| Domains     | `Features/<Feature>/Entities/`                  | `AggregateRoot` subclass; mutation in methods; raises its own events via `AddEvent(...)` |
 | Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — indexes, lengths, schema                |
 | Infra       | `Features/<Feature>/StaticData/`                | Seed data discovered by `UseAutoDataSeeding`                            |
-| AppServices | `<Feature>/V1/Actions/`                         | `*Request` (`[MapsFrom]`), `*CommandValidator`, `*CommandHandler` (sealed) |
+| AppServices | `<Feature>/V1/Actions/`                         | `*Request` (`[FromClaim]` for the acting user), `*CommandValidator` (FluentValidation), `*CommandHandler` (sealed) |
 | AppServices | `<Feature>/V1/Specs/`                           | Specification classes for duplicate/filter queries                      |
 | AppServices | `<Feature>/V1/Events/`                          | Domain event handlers                                                   |
-| AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | `[GenerateDto]` partial DTO                                             |
-| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`                                            |
+| AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | Hand-written DTO record — exposes exactly the fields you write into it  |
+| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; every route is a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call |
 
-Note: domain entity folder is `Features/Profiles/` (singular feature), but the `AppServices` slice uses `CustomerProfiles/V1/` — the two namespaces don't have to match.
+**Generator-driven — mirror `AutomatedSample/Product`:**
+
+| Layer       | Location                                        | What goes here                                                          |
+|-------------|-------------------------------------------------|-------------------------------------------------------------------------|
+| Domains     | `Features/<Feature>/Entities/`                  | `AggregateRoot` subclass; class-level `[RaisesEvent(...)]`; `[CrudCreate]` ctor; `[CrudUpdate]` method(s) |
+| Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — still hand-written, no generator produces this |
+| AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | One `[GenerateDto(typeof(Entity))] public sealed partial record <Feature>Dto;` |
+| AppServices | `<Feature>/V1/Events/`                          | Hand-written consumer for a declared event — the generator raises, it does not consume |
+| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension, nothing hand-mapped |
+| *(generated)* | `obj/Generated/.../<Entity>CrudRequests.g.cs`, `...Handlers.g.cs`, `...Endpoints.g.cs` | Requests, handlers, and route registration — not committed, inspect after a build |
+
+Note: the domain entity folder and the `AppServices` slice use the same feature folder name in both
+samples (`ManualSample`, `AutomatedSample`) — the two namespaces don't have to match in general.
 
 ### Key wiring points
 
-- **EF Core auto-discovery**: `UseAutoConfigModel` + `UseAutoDataSeeding` in `InfraSetup.AddInfraServices` — no manual `DbSet` declarations needed. Mappers (`IEntityTypeConfiguration<T>`) and `IDataSeedingConfiguration<T>` classes are picked up by assembly scan.
+- **EF Core auto-discovery**: `UseAutoConfigModel` + `UseAutoDataSeeding` in **both** `InfraSetup.AddInfraServices` (DI host path) and `InfraMigration.MigrateDb` (startup-migration path) — no manual `DbSet` declarations needed. Mappers (`IEntityTypeConfiguration<T>`) and `IDataSeedingConfiguration<T>` classes are picked up by assembly scan. Wiring seeding into only one of the two paths is a real bug this template hit once already (`PurchaseOrderStaticData` didn't appear over HTTP until `MigrateDb` got the same `.UseAutoDataSeeding(...)` call).
 - **Service registration**: Scrutor scans Infra; keep concrete repos/services `sealed` and place them under `.Repos` or `.Services` namespaces so the convention scan picks them up.
-- **Endpoint fluent helpers**: `MapGetList`, `MapGetById`, `MapPost`, `MapPut`, `MapDelete` from `FluentEndpointMapperExtensions.cs`. POST does NOT auto-add idempotency — call `.AddIdempotencyFilter()` explicitly (see `CustomerProfileV1Endpoint`); clients must then send `X-Idempotency-Key: {Guid}`.
-- **`ByUser` auto-fill**: `SetUserIdPropertyFilter` is added by `EndpointConfig.CreateGroup` — commands inheriting `BaseCommand` (or `RequestBase`) get the user ID injected without extra code.
-- **Mapster global config**: `Minimal.AppServices/AppSetup.cs`. DTOs use `[GenerateDto(...)]`. Lazy mapping after `SaveChanges` via `mapper.ResultOf<T>(entity)` / `mapper.LazyMap<T>()` from `AppServices/Extensions/LazyMapper`.
-- **Message bus**: `AddServiceBus` in `ServiceBusSetup.cs` always wires an in-memory child bus (`ImMemory`) for internal handlers. Azure Service Bus child bus (`AzureBus`) is added only when `ConnectionStrings:AzureBus` is non-empty. Domain events are published by `Minimal.Infra/Services/EventPublisher.cs`.
+- **Endpoint mapping helpers** (`DKNet.AspCore.Extensions`, not local to this template): hand-mapped routes use the raw minimal-API surface directly (see `PurchaseOrderV1Endpoint`); generator-driven routes call the package's generic `MapGetList<TEntity,TKey,TDto>`/`MapGetById`/`MapPost<TRequest,TDto>`/`MapPutById`/`MapDeleteById` (see the generated `ProductCrudEndpointExtensions.MapProductCrud()`). POST does NOT auto-add idempotency either way — call `.RequiredIdempotentKey()` explicitly (see `PurchaseOrderV1Endpoint`'s create route); clients then send `X-Idempotency-Key: {Guid}`. The automated sample's generated create route has no such call — it accepts a replayed request as a fresh create.
+- **`ByUser` / acting-user auto-fill**: `AddContextualRequestPopulation` (wired in `Program.cs`) populates any `[FromClaim(...)]`-decorated request property before validation and before the handler runs; it only falls back to `SharedConsts.SystemAccount` when `RequireAuthorization` is off. A **generated** CRUD request can never carry a `[FromClaim]` property — the generator forwards only `System.ComponentModel.DataAnnotations` attributes onto generated properties — so the automated sample's acting-user stamping goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `ServiceConfigs.AddAllAppServices` (`.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`) and applying to every entity on `CoreDbContext`, not just `Product`.
+- **Mapster global config**: `Minimal.AppServices/AppSetup.cs`. DTOs use `[GenerateDto(...)]` (generates every audited property by default — `Exclude`/`Include` to narrow) or a hand-written record (full control, see `PurchaseOrderDto`). Lazy mapping after `SaveChanges` via `mapper.ResultOf<T>(entity)` / `mapper.LazyMap<T>()` from `DKNet.SlimBus.Extensions.LazyMapper` (the template's former local copy under `AppServices/Extensions/LazyMapper` was removed — use the package's).
+- **Message bus**: `AddServiceBus` in `ServiceBusSetup.cs` always wires an in-memory child bus (`ImMemory`) for internal handlers. Azure Service Bus child bus (`AzureBus`) is added only when `ConnectionStrings:AzureBus` is non-empty — that's where `Product`'s `Produce<ProductCreatedEvent>`/`Consume<ProductCreatedEvent>` topology lives. Domain events are published by `Minimal.Infra/Services/EventPublisher.cs`, whether raised by hand (`AddEvent`, see `PurchaseOrder`) or declared (`[RaisesEvent]`, see `Product` — raised by DKNet's EF Core save hook, not application code).
+- **Declared-event naming convention**: `[RaisesEvent(EventOperations.X, nameof(Prop1), ...)]` on an entity composes the generated payload record's name as `<Entity><NarrowingProps><Operation>Event` — e.g. `[RaisesEvent(EventOperations.Updated, nameof(Price))]` on `Product` generates `ProductPriceUpdatedEvent`, **not** `ProductUpdatedEvent`. Verify the composed name against the compiled assembly (`strings bin/**/Minimal.Domains.dll | grep <Entity>`) before wiring a consumer to it — the record has no hand-written source file to read.
+- **Generated-route validation gap**: a `[Range]`/`[Required]`/etc. on a `[CrudCreate]`/`[CrudUpdate]` parameter *is* forwarded onto the generated request property, but is only *enforced* when the entity's create/update route is a **literal** `Map*(string, Delegate)` call the .NET 10 validation source generator can see in this repo's own source (true for hand-mapped routes like `PurchaseOrderV1Endpoint`; false for anything mapped through `DKNet.AspCore.Extensions`'s generic `Map*<TRequest,TDto>` wrapper, including every generated CRUD route). Don't assume a DataAnnotations attribute on a generated request is enforced without checking which mapping style its endpoint uses.
 
 ## Testing
 
@@ -97,9 +116,9 @@ Keep the two suites at different levels; do not duplicate the same behavior in b
   1. **Architecture/convention** — NetArchTest + reflection + csproj/source text scans (`Architecture/*`). Cannot be expressed as HTTP scenarios; never port to BDD.
   2. **Pure functional** — entity methods, validators, mappers, extensions, spec filters (`Unit/*`, plus `Test_*_Mapping`). No host, no DB, no HTTP. This *is* the functional layer; keep it here.
   3. **Result-level integration** — handler failures asserted on the `Result` object (not-found, empty-id, "already existed") and EF model/schema/migration shape (`Architecture/MigrationSchemaTests`, `Integration/**` failure cases). BDD's HTTP-status/response-text assertions are coarser and would lose this intent (Rule 9).
-- **BDD owns user-facing HTTP behavior**: request→status→response-body scenarios, and domain-event side effects observed via log capture (`LoyaltyMembershipEvents.feature`). When a behavior is exercised end-to-end over HTTP, BDD is the stronger home — delete the xUnit integration duplicate.
+- **BDD owns user-facing HTTP behavior**: request→status→response-body scenarios, and domain-event side effects observed via log capture (e.g. the `ProductCreatedEventHandler`/`ProductCreatedNotificationHandler` log lines the automated sample emits). When a behavior is exercised end-to-end over HTTP, BDD is the stronger home — delete the xUnit integration duplicate.
 - **Schema/model assertions belong in xUnit, never BDD.** (`MigrationVerification.feature` was removed for this reason; `MigrationSchemaTests` already covers it.)
-- **Still owed** (BDD gaps, not yet ported): CustomerProfiles GET-list/paging, update, delete, and versioned-route 404 scenarios currently live only as xUnit integration tests.
+- **Still owed** (BDD gaps, not yet ported): both samples' full suites — dev-qc authors unit and BDD coverage for `PurchaseOrder` and `Product` at Verify, not at Build; none exists yet on this branch.
 
 ## Gotchas
 
@@ -113,6 +132,7 @@ Keep the two suites at different levels; do not duplicate the same behavior in b
 ## Reference docs
 
 - `AGENTS.md` — full architecture reference (layer rules, message bus, command/mapping details).
-- `docs/features/customer-profiles/` — feature exemplar with architecture + API reference.
+- `docs/samples/manual-vs-automated.md` — layer-by-layer comparison of the two worked samples, including what the generator-driven sample gives up.
+- `docs/samples/manual-purchase-orders/`, `docs/samples/automated-products/` — thin per-sample READMEs (what each demonstrates, routes, how to delete it).
 - `.github/skills/` — guided skill catalog (domain-modeling, crud-operations, api-endpoints, BDD, etc.). See `.github/skills/CATALOG.md`.
 - `specs/` — Spec-Kit feature specs; workflow docs in `SPEC_KIT.md`.

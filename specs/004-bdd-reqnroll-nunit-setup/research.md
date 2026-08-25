@@ -4,6 +4,11 @@
 **Date**: 2026-03-31  
 **Status**: Complete — all NEEDS CLARIFICATION resolved
 
+> **2026-08-25 note:** This document is a historical record from when the template's demo
+> features were `CustomerProfile`/`LoyaltyMembership`. Those were removed; current worked
+> examples are the `PurchaseOrder` (hand-written) and `Product` (generator-driven) samples —
+> see `docs/samples/manual-vs-automated.md`.
+
 ---
 
 ## Decision 1: WebApplicationFactory Lifecycle Strategy

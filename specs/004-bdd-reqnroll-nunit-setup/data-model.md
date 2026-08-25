@@ -6,6 +6,11 @@
 
 > This feature has no new domain entities or EF Core migrations. The "data model" here describes the class hierarchy and relationships of the BDD test infrastructure.
 
+> **2026-08-25 note:** This document is a historical record from when the template's demo
+> features were `CustomerProfile`/`LoyaltyMembership`. Those were removed; current worked
+> examples are the `PurchaseOrder` (hand-written) and `Product` (generator-driven) samples —
+> see `docs/samples/manual-vs-automated.md`.
+
 ---
 
 ## Class Hierarchy

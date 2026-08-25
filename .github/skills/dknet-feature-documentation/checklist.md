@@ -16,7 +16,7 @@
 - [ ] **Vertical Slice Diagram** (`graph TD`) shows all layers (Api → AppServices → Domains → Infra)
 - [ ] **Sequence Diagram** shows the full request flow for at least one write operation (e.g., Create)
 - [ ] **Component Diagram** (`classDiagram`) shows key classes and their relationships
-- [ ] **State Diagram** (`stateDiagram-v2`) present if entity has status/state (Pending/Approved/Rejected etc.)
+- [ ] **State Diagram** (`stateDiagram-v2`) present if entity has status/state (e.g. `PurchaseOrder`'s `Draft`/`Placed`/`Cancelled`)
 - [ ] **Event Flow Diagram** shows publishers and subscribers
 - [ ] All diagrams use Mermaid (render in GitHub natively)
 - [ ] Layer responsibilities table lists each layer's role in this specific feature
@@ -28,7 +28,7 @@
 - [ ] Each endpoint has at least one `curl` example that can be copy-pasted
 - [ ] Error response table lists all possible error status codes and reasons
 - [ ] Common `ProblemDetails` error format documented at end
-- [ ] Custom action endpoints (approve, reject, etc.) documented
+- [ ] Custom action endpoints beyond plain CRUD (e.g. `PurchaseOrder`'s `POST {id}/cancel`) documented
 - [ ] GET list endpoint documents all query parameters (pagination, sorting, filtering)
 
 ## data-model.md (Data Model)
@@ -50,7 +50,7 @@
 
 ## Quality Standards
 - [ ] All file names are lowercase with hyphens (`api-reference.md`, not `ApiReference.md`)
-- [ ] Folder name uses kebab-case (`customer-profiles`, not `CustomerProfiles`)
+- [ ] Folder name uses kebab-case (`purchase-orders`, not `PurchaseOrders`)
 - [ ] All internal links work (relative links between docs)
 - [ ] No broken Mermaid diagrams (test by opening in VS Code Preview or GitHub)
 - [ ] JSON examples are valid (check with a formatter)
