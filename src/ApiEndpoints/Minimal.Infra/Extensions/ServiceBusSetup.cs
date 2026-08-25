@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Azure.Messaging.ServiceBus;
+using Minimal.Domains.Features.AutomatedSample.Entities;
 using Minimal.Infra.Contexts;
+using Minimal.Infra.Features.AutomatedSample.ExternalEvents;
 
 namespace Minimal.Infra.Extensions;
 
@@ -45,6 +47,11 @@ public static class ServiceBusSetup
                             }
                         };
                     });
+
+                azb.Produce<ProductCreatedEvent>(o => o.DefaultTopic("product-tp"));
+                azb.Consume<ProductCreatedEvent>(o => o.Path("product-tp")
+                    .SubscriptionName("product-sub")
+                    .WithConsumer<ProductCreatedNotificationHandler>());
             });
         return builder;
     }
