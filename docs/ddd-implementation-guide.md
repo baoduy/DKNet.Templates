@@ -290,9 +290,8 @@ internal sealed class PurchaseOrderV1Endpoint : IEndpointConfig
 
     public void Map(RouteGroupBuilder group)
     {
-        group.MapPost("/", async (CreatePurchaseOrderRequest req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+        group.MapPost("/", async (CreatePurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) =>
             {
-                req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
                 var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response(isCreated: true);
             })

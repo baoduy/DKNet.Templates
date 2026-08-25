@@ -36,6 +36,28 @@ public sealed class OpenApiDocumentRegressionTests(SwaggerOnApiFixture fixture) 
             .ShouldBe(["post"]);
     }
 
+    /// <summary>
+    /// Cancel and Delete bind their request via <c>[AsParameters]</c> (DRK-738), which puts <c>ByUser</c> in the
+    /// operation's own parameter list rather than a body schema — a different exclusion path
+    /// (<c>ContextualSourceOperationTransformer</c>) than the one JSON-body-bound routes use
+    /// (<c>ContextualSourceSchemaTransformer</c>). Both must still hide the <c>[FromClaim]</c>-declared member:
+    /// it is never caller-supplied, so it must never be advertised as caller input.
+    /// </summary>
+    [Fact]
+    public async Task Document_CancelAndDeleteRoutes_DoNotAdvertiseByUserAsAParameter()
+    {
+        using var doc = await FetchDocumentAsync();
+        var paths = doc.RootElement.GetProperty("paths");
+
+        var cancelParameters = paths.GetProperty("/v1/purchase-orders/{id}/cancel").GetProperty("post")
+            .GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString());
+        cancelParameters.ShouldBe(["id"]);
+
+        var deleteParameters = paths.GetProperty("/v1/purchase-orders/{id}").GetProperty("delete")
+            .GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString());
+        deleteParameters.ShouldBe(["id"]);
+    }
+
     [Fact]
     public async Task Document_PathIdParameter_IsRequiredUuidString()
     {

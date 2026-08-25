@@ -13,8 +13,9 @@ public sealed record CreatePurchaseOrderRequest : Fluents.Requests.IWitResponse<
     #region Properties
 
     /// <summary>
-    /// Gets or sets the identity of the acting user. Always overwritten by the endpoint from the authenticated
-    /// caller — a payload value is never trusted (R1).
+    /// Gets or sets the identity of the acting user. Overwritten by <c>AddContextualRequestPopulation</c> from
+    /// the caller's <see cref="ClaimTypes.Name" /> claim before validation and before the handler runs — a
+    /// payload value is never trusted (R1).
     /// </summary>
     [FromClaim(ClaimTypes.Name)]
     public string? ByUser { get; set; }
