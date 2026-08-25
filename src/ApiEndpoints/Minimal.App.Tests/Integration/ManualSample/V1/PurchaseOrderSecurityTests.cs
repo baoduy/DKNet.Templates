@@ -66,10 +66,10 @@ public sealed class PurchaseOrderSecurityTests(AuthOnApiFixture fixture) : IClas
         var dto = await updateResponse.Content.ReadFromJsonAsync<PurchaseOrderDto>(SharedConsts.JsonSerializerOptions);
         dto!.Amount.ShouldBe(500m);
 
-        // PurchaseOrder stamps UpdatedBy itself (PurchaseOrder.ChangeAmount -> SetUpdatedBy), independent of
-        // the known-accepted DataOwnerHook UpdatedBy bug (that bug affects entities that rely solely on the
-        // hook, i.e. Product — not this hand-written path). PurchaseOrderDto has no UpdatedBy field, so
-        // assert it on the entity directly.
+        // PurchaseOrder stamps UpdatedBy itself (PurchaseOrder.ChangeAmount -> SetUpdatedBy) — independent of
+        // DataOwnerHook either way (DKNet 10.1.12 also closed that hook's own UpdatedBy gap, see
+        // ProductSecurityTests.Update_ShouldStampUpdatedByFromAuthenticatedCallersOwnershipKey). PurchaseOrderDto
+        // has no UpdatedBy field, so assert it on the entity directly.
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
         var order = await repository.FirstOrDefaultAsync(new SpecGetPurchaseOrder(created.Id), CancellationToken.None);

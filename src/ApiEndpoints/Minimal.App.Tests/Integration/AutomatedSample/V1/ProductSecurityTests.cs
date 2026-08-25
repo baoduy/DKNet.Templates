@@ -55,4 +55,26 @@ public sealed class ProductSecurityTests(AuthOnApiFixture fixture) : IClassFixtu
         dto!.CreatedBy.ShouldBe(TestAuthHandler.CallerProfileId.ToString());
         dto.CreatedBy.ShouldNotBe("someone-else");
     }
+
+    [Fact]
+    public async Task Update_ShouldStampUpdatedByFromAuthenticatedCallersOwnershipKey()
+    {
+        // DKNet 10.1.12 closed DataOwnerHook's UpdatedBy/UpdatedOn gap (DRK-735) — this was previously a
+        // known-and-accepted limitation this cycle explicitly excused; now it's a real, testable guarantee.
+        await fixture.ResetDatabaseAsync();
+        var client = fixture.CreateClient();
+
+        var created = await (await client.PostAsJsonAsync("/v1/products", new { name = "Widget", price = 9.99m }))
+            .Content.ReadFromJsonAsync<ProductDto>();
+
+        var updateResponse = await client.PutAsJsonAsync(
+            $"/v1/products/{created!.Id}",
+            new { price = 12.50m, updatedBy = "someone-else" });
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var dto = await updateResponse.Content.ReadFromJsonAsync<ProductDto>();
+        dto!.Price.ShouldBe(12.50m);
+        dto.UpdatedBy.ShouldBe(TestAuthHandler.CallerProfileId.ToString());
+        dto.UpdatedBy.ShouldNotBe("someone-else");
+    }
 }
