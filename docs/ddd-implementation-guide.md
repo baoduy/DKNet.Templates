@@ -130,9 +130,9 @@ Each action file holds three things, in this order:
 1. **Request** — implements `Fluents.Requests.IWitResponse<TDto>` (or `INoResponse` for
    delete-style commands with no return value). Package: `DKNet.SlimBus.Extensions`.
    - `[FromClaim(ClaimTypes.Name)]` on `ByUser` auto-populates the acting user from the bearer
-     token via `AddContextualRequestPopulation` (wired in `Program.cs`) — the manual sample's
-     endpoint additionally re-assigns it by hand from `ClaimsPrincipal` before sending, so a
-     caller-supplied value in the body is never trusted either way.
+     token via `AddContextualRequestPopulation` (wired in `Program.cs`) — this is the single
+     mechanism, and it sets `ByUser` unconditionally, so a caller-supplied value in the body or
+     query string is always discarded, never trusted.
 2. **Validator** — `internal sealed class XCommandValidator : AbstractValidator<XRequest>`
    (FluentValidation). Runs automatically because every endpoint group calls
    `AddFluentValidationAutoValidation()` — you never call `Validate()` yourself. This only fires
@@ -364,9 +364,9 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
 - Coverage target ≥80% on every class you touch; `src/coverage.runsettings` scopes collection to
   `[DKNet*]`/`[Minimal*]` and excludes `*Tests`/`bin`/`obj`/`GlobalUsings.cs` — don't put real logic
   in an excluded path.
-- **No `ManualSample`/`AutomatedSample` test suite exists yet on this branch** — per this project's
-  Verify-stage policy, the full unit/BDD suite for both samples is authored at Verify, not at Build.
-  Use the two samples' production code as your reference shape, not a test file, until then.
+- `Unit/ManualSample/`, `Unit/AutomatedSample/`, `Integration/ManualSample/V1/`, and
+  `Integration/AutomatedSample/V1/` already hold tests for both samples — use them as your
+  reference shape alongside the production code; dev-qc extends this coverage at Verify.
 
 ## 11. BDD tests — `Minimal.App.BDDTests/Features/<Domain>/`
 
@@ -384,8 +384,8 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
   the system-account default (`SharedConsts.SystemAccount`) rather than a real claim — use the
   `@redis` / Redis-backed variant only when a scenario specifically needs a Redis-backed idempotency
   store.
-- Same "no suite yet" note as §10 applies — `Minimal.App.BDDTests/Features/` currently has no
-  `ManualSample`/`AutomatedSample` feature files; dev-qc authors them at Verify.
+- `Features/PurchaseOrders/PurchaseOrder.feature` and `Features/Products/Product.feature` exist
+  and are covered by the green BDD suite; a new action gets scenarios added there.
 
 ## Running the loop while you build
 

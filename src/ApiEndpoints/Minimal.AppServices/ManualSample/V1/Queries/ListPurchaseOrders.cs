@@ -34,6 +34,7 @@ internal sealed class ListPurchaseOrdersQueryValidator : AbstractValidator<ListP
     public ListPurchaseOrdersQueryValidator()
     {
         RuleFor(a => a.PageSize).InclusiveBetween(1, 100).When(a => a.PageSize.HasValue);
+        RuleFor(a => a.PageIndex).GreaterThan(0).When(a => a.PageIndex.HasValue);
     }
 
     #endregion
