@@ -19,7 +19,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{DE144418
 		global.json = global.json
 		Directory.Packages.props = Directory.Packages.props
 		coverage.runsettings = coverage.runsettings
-		..\SPEC_KIT.md = ..\SPEC_KIT.md
 		..\AGENTS.md = ..\AGENTS.md
 	EndProjectSection
 EndProject

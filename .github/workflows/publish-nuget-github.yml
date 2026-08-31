@@ -4,7 +4,6 @@ name: Build and Publish NuGet Package
   workflow_dispatch:
   push:
     branches:
-      - dev
       - main
 
 permissions:
