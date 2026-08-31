@@ -129,11 +129,14 @@ public class SampleInvariantTests
     {
         // The [CrudAction] Approve/Discontinue actions must stay fully generated (obj/Generated/, never
         // committed source) — same rule DKNetSlimBusGeneratorsPackage_ShouldBeReferenced protects for the
-        // create/update pair.
+        // create/update pair. Needles are type names, not declaration keywords: this repo's hand-written
+        // slices declare requests as `record` (not `class`) and handlers with a `CommandHandler` suffix
+        // (not a bare `Handler`) — see ManualSample/PurchaseOrder/Actions/Cancel.cs.
         var offenders = SourceFilesUnder("AutomatedSample")
             .Where(f => ContainsAny(File.ReadAllText(f),
-                "class ApproveProductRequest", "class DiscontinueProductRequest",
-                "class ApproveProductHandler", "class DiscontinueProductHandler"))
+                "ApproveProductRequest", "DiscontinueProductRequest",
+                "ApproveProductCommandHandler", "ApproveProductHandler",
+                "DiscontinueProductCommandHandler", "DiscontinueProductHandler"))
             .ToArray();
 
         offenders.ShouldBeEmpty(
