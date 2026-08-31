@@ -38,7 +38,7 @@ public class Product : AggregateRoot
   request's payload. `DataAnnotations` attributes on each parameter (`[Required]`, `[StringLength]`,
   `[Range]`) are forwarded 1:1 onto the generated request's matching property.
 - **`[CrudUpdate]` on a method** — same rule for the method's parameter list. `ChangePrice(decimal
-  price)` can only ever produce a request that changes price; a method that needs to change two
+  price)` can only ever produce a request that changes price. A method that needs to change two
   unrelated fields together needs two `[CrudUpdate]` methods (two routes), not one request with two
   fields.
 - **`[GenerateDto(typeof(Product))]`** — `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`:
@@ -48,24 +48,28 @@ public class Product : AggregateRoot
   public sealed partial record ProductDto;
   ```
 
-  One line, generates every audited property (`Id`, `Name`, `Price`, `IsDiscontinued`,
-  `CreatedBy`/`CreatedOn`/`LastModifiedBy`/`LastModifiedOn`/`UpdatedBy`/`UpdatedOn`) — there's no
-  "only expose what I chose" default; narrow with `Exclude`/`Include` on the attribute if a field
+  One line, and it generates every audited property (`Id`, `Name`, `Price`, `IsDiscontinued`,
+  `CreatedBy`/`CreatedOn`/`LastModifiedBy`/`LastModifiedOn`/`UpdatedBy`/`UpdatedOn`). There's no
+  "only expose what I chose" default — narrow with `Exclude`/`Include` on the attribute if a field
   shouldn't ship.
 
-Generated DTOs and `[MapsFrom]`-tagged hand-written DTOs both register with Mapster the same way —
+Generated DTOs and `[MapsFrom]`-tagged hand-written DTOs both register with Mapster the same way.
 `Minimal.AppServices/Extensions/MapsToExtensions.cs`'s `ScanMaps` reflects over the assembly for
 either attribute and calls `config.NewConfig(entityType, dtoType)` for each hit. That scan runs from
 `Minimal.AppServices/AppSetup.cs` at startup; no per-feature mapping registration is needed for
 either style.
 
-`DKNet.SlimBus.Generators` (the package behind `[CrudCreate]`/`[CrudUpdate]`) emits, per entity,
-under `obj/Generated/` (not committed — inspect after a build): the request records
-(`CreateProductRequest`, `ChangePriceProductRequest`), their handlers (`CreateProductHandler`,
-`ChangePriceProductHandler` in the `Minimal.AppServices.Crud` namespace), and — via
-`ProductCrudEndpointExtensions.MapProductCrud()` — the route registrations. What it does **not**
-generate, ever: the `IEntityTypeConfiguration<T>` mapping, and any event *consumer* (see
-`docs/efcore-events.md`). Those stay hand-written for both samples.
+`DKNet.SlimBus.Generators` (the package behind `[CrudCreate]`/`[CrudUpdate]`) emits three things per
+entity, under `obj/Generated/` (not committed to source control — inspect the output after a
+build):
+
+- The request records: `CreateProductRequest`, `ChangePriceProductRequest`.
+- Their handlers, in the `Minimal.AppServices.Crud` namespace: `CreateProductHandler`,
+  `ChangePriceProductHandler`.
+- The route registrations, via `ProductCrudEndpointExtensions.MapProductCrud()`.
+
+It never generates the `IEntityTypeConfiguration<T>` mapping, or any event *consumer* (see
+[`docs/efcore-events.md`](efcore-events.md)). Those stay hand-written for both samples.
 
 ## End-to-end trace, both samples
 
@@ -77,13 +81,13 @@ generate, ever: the `IEntityTypeConfiguration<T>` mapping, and any event *consum
 | Handler | `CreatePurchaseOrderCommandHandler`/`UpdatePurchaseOrderCommandHandler` (`Minimal.AppServices/ManualSample/V1/Actions/`) | Generated `CreateProductHandler`/`ChangePriceProductHandler` (`Minimal.AppServices.Crud` namespace) |
 | Domain entity method | `new PurchaseOrder(...)` / `order.ChangeAmount(...)` | `new Product(request.Name, request.Price)` / `product.ChangePrice(request.Price)` |
 | Repository / `SaveChanges` | `IRepositorySpec.AddAsync`/implicit update via change tracking, same `CoreDbContext` | Same repository abstraction, same `CoreDbContext` |
-| Event | `AddEvent(new PurchaseOrderCreatedEvent(...))` inside the constructor | `[RaisesEvent]`-declared, raised by DKNet's save hook — see `docs/efcore-events.md` |
+| Event | `AddEvent(new PurchaseOrderCreatedEvent(...))` inside the constructor | `[RaisesEvent]`-declared, raised by DKNet's save hook — see [`docs/efcore-events.md`](efcore-events.md) |
 | Response DTO | Hand-written `PurchaseOrderDto` mapped via `mapper.ResultOf<PurchaseOrderDto>(order)` | Generated `ProductDto` mapped the same way through the `ScanMaps`-registered Mapster config |
 
 The hand-written path's explicit actions — `Minimal.AppServices/ManualSample/V1/Actions/Create.cs`,
-`Update.cs`, `Cancel.cs`, `Delete.cs` — are the contrast: `Cancel.cs` rejects an already-cancelled
+`Update.cs`, `Cancel.cs`, `Delete.cs` — are the contrast. `Cancel.cs` rejects an already-cancelled
 order with a domain-specific failure, and `Delete.cs` 404s via `NotFoundError` before deleting.
-Neither shape is available on the generated path — a generic delete-by-id either deletes the row or
+Neither shape is available on the generated path: a generic delete-by-id either deletes the row or
 404s, with nowhere to hang a pre-delete rule.
 
 ## Data seeding
@@ -100,21 +104,23 @@ internal sealed class PurchaseOrderStaticData : DataSeedingConfiguration<Purchas
 ```
 
 `UseAutoConfigModel`/`UseAutoDataSeeding` pick up every such class (and every
-`IEntityTypeConfiguration<T>`) by assembly scan — wired in **both** places that build a
+`IEntityTypeConfiguration<T>`) by assembly scan. This is wired in **both** places that build a
 `CoreDbContext`, and both must carry the call for seeding to actually run:
 
 - `Minimal.Infra/Extensions/InfraSetup.cs` → `AddInfraServices` (the DI-registered context the
   running app uses)
 - `Minimal.Infra/Extensions/InfraMigration.cs` → `MigrateDb` (the startup-migration path)
 
-Missing the call in either one is a real bug this template already hit once — seeding worked from
-one path and silently not the other. The caveat that still stands: **no test fixture in this repo
-wires `.UseAutoDataSeeding(...)`.** Neither the xUnit `Support.ApiFixture` nor the BDD
-`BddApiFactory` calls it — that wiring exists only in `InfraMigration.MigrateDb` and
-`InfraSetup.AddInfraServices`, the real app's composition root. The one test that exercises seeded
-data for real (`Minimal.App.Tests/Integration/ManualSample/V1/InfraMigrationSeedingTests.cs`) does
-so by calling `InfraMigration.MigrateDb` directly against an ephemeral Postgres container — every
-other test fixture starts from an empty database.
+Missing the call in either one is a real bug this template already hit once: seeding worked from
+one path and silently not the other.
+
+One caveat still stands: **no test fixture in this repo wires `.UseAutoDataSeeding(...)`.** Neither
+the xUnit `Support.ApiFixture` nor the BDD `BddApiFactory` calls it. That wiring exists only in
+`InfraMigration.MigrateDb` and `InfraSetup.AddInfraServices`, the real app's composition root. The
+one test that exercises seeded data for real,
+`Minimal.App.Tests/Integration/ManualSample/V1/InfraMigrationSeedingTests.cs`, calls
+`InfraMigration.MigrateDb` directly against an ephemeral Postgres container. Every other test
+fixture starts from an empty database.
 
 ## Sequences
 
@@ -133,10 +139,13 @@ public enum Sequences
 ```
 
 `ISequenceServices`/its base `SequenceService` (`Minimal.Infra/Services/SequenceService.cs`) wrap
-one sequence member each: `NextValueAsync()` calls `dbContext.NextSeqValueWithFormat(sequence)` on
-Postgres, formatting the next value with the pattern above (e.g. `T26082500001`), and falls back to
-a plain `Guid` when the context isn't Npgsql (so unit tests without a real Postgres don't need one).
-Neither `PurchaseOrder` nor `Product` uses a sequence today — this capability exists for a future
-generated entity that needs a human-readable, sequential identifier instead of a `Guid`; declare a
+one sequence member each. `NextValueAsync()` calls `dbContext.NextSeqValueWithFormat(sequence)` on
+Postgres, formatting the next value with the pattern above (e.g. `T26082500001`). It falls back to
+a plain `Guid` when the context isn't Npgsql, so unit tests without a real Postgres don't need one.
+
+Neither `PurchaseOrder` nor `Product` uses a sequence today. This capability exists for a future
+generated entity that needs a human-readable, sequential identifier instead of a `Guid`. Declare a
 new `Sequences` member and a `SequenceService` subclass the same way `IMembershipService`/
 `MembershipService` do for `Sequences.Membership`.
+</content>
+</invoke>

@@ -1,10 +1,10 @@
 # EF Core Domain Events
 
-How this template wires `DKNet.EfCore.Events`: events are collected on the entity during a unit of
-work and dispatched only after `SaveChanges` succeeds — a handler never runs against a write that
-gets rolled back. For the package's own API surface (the `AddEvent`/`IEventPublisher` contracts,
-`RaisesEventAttribute` shape, `EventOperations` enum), see `DKNet.EfCore.Events` in the main
-`DKNet` repo; this page covers only how the template's own code uses it.
+How this template wires `DKNet.EfCore.Events`. Events are collected on the entity during a unit of
+work and dispatched only after `SaveChanges` succeeds, so a handler never runs against a write that
+gets rolled back. For the package's own API surface — the `AddEvent`/`IEventPublisher` contracts,
+the `RaisesEventAttribute` shape, the `EventOperations` enum — see `DKNet.EfCore.Events` in the main
+`DKNet` repo. This page covers only how the template's own code uses it.
 
 The interceptor that turns tracked entity changes into published events is registered once, for
 every entity on `CoreDbContext`, in `AddServiceBus`:
@@ -15,8 +15,9 @@ service.AddSlimBusEfCoreInterceptor<CoreDbContext>()
     .AddSlimMessageBus(mbb => { ... });
 ```
 
-Both samples publish through the same interceptor and the same `Minimal.Infra/Services/EventPublisher.cs`
-— the only difference between them is *how* the event gets raised.
+Both samples publish through the same interceptor and the same
+`Minimal.Infra/Services/EventPublisher.cs`. The only difference between them is *how* the event
+gets raised.
 
 ## Manual style — raise it yourself
 
@@ -41,9 +42,10 @@ The event itself is a plain hand-written record next to the entity —
 public sealed record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, decimal Amount);
 ```
 
-The handler is hand-written too — `Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs`,
-an `IHandler<PurchaseOrderCreatedEvent>` that logs at `Information`. Nothing about the manual style
-is generated: you write the raise call, the payload shape, and the consumer.
+The handler is hand-written too —
+`Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs`, an
+`IHandler<PurchaseOrderCreatedEvent>` that logs at `Information`. Nothing about the manual style is
+generated: you write the raise call, the payload shape, and the consumer.
 
 ## Attribute style — declare it
 
@@ -57,7 +59,7 @@ public class Product : AggregateRoot
 ```
 
 DKNet's EF Core save hook reads these declarations off the change tracker after a successful save
-and raises the events itself — no code in `Product` or anywhere in `AutomatedSample/` calls
+and raises the events itself. No code in `Product`, or anywhere in `AutomatedSample/`, calls
 `AddEvent`. Each attribute composes its own payload record type at compile time; neither type has a
 hand-written source file:
 
@@ -66,11 +68,16 @@ hand-written source file:
 - `[RaisesEvent(EventOperations.Updated, nameof(Price))]` → `ProductPriceUpdatedEvent`. The naming
   convention folds the narrowing property into the name — it is **not** `ProductUpdatedEvent`.
 
-The `Updated` rule only fires when `Price` actually changed on that save — calling `ChangePrice`
-with the same value the entity already has does not raise `ProductPriceUpdatedEvent`; the hook
-compares against the change tracker's original value, not "was the setter called".
+**What you might expect:** calling `ChangePrice` raises `ProductPriceUpdatedEvent` on every call.
 
-The handler is still hand-written — `Minimal.AppServices/AutomatedSample/V1/Events/ProductEventHandlers.cs`'s
+**What actually happens:** the `Updated` rule only fires when `Price` actually changed on that save.
+Calling `ChangePrice` with the value the entity already holds does not raise the event.
+
+**Why:** the save hook compares the property's current value against the change tracker's original
+value, not whether the setter was called.
+
+The handler is still hand-written —
+`Minimal.AppServices/AutomatedSample/V1/Events/ProductEventHandlers.cs`'s
 `ProductCreatedEventHandler`. The attribute generator's job stops at declaring and raising; it never
 generates a consumer.
 
@@ -85,6 +92,8 @@ generates a consumer.
 
 ## Ordering and transaction guarantee
 
-Events dispatch **after** `SaveChanges` completes successfully, for both styles — a handler failure
-does not roll back the write that raised it. If a handler needs to fail the request, it belongs in
-the request validator or the domain method instead of in the event handler.
+Events dispatch **after** `SaveChanges` completes successfully, for both styles. A handler failure
+does not roll back the write that raised it. If a handler needs to fail the request, that check
+belongs in the request validator or the domain method instead of in the event handler.
+</content>
+</invoke>

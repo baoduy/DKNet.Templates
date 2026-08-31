@@ -1,10 +1,14 @@
 # Template Feature List
 
-Everything `dotnet new dknet-minimal` wires up before you write a line of feature code.
+Everything `dotnet new dknet-minimal` wires up before you write a line of feature code. For the
+full list of DKNet NuGet packages behind these features, see
+[`docs/dknet-packages.md`](dknet-packages.md).
+
 Toggles live in `Minimal.Share/Options/FeatureOptions.cs`, bound from the `FeatureManagement`
-config section — treat that class as the source of truth over any given `appsettings.json`,
-whose checked-in keys have drifted for a couple of flags (see the note at the end). For the full
-list of DKNet NuGet packages behind these features, see [`docs/dknet-packages.md`](dknet-packages.md).
+config section. Treat that class as the source of truth over any given `appsettings.json`: its
+checked-in keys have drifted for a couple of flags, noted at the end of this page.
+
+## What gets wired
 
 | Feature | What it gives you | Configure it in |
 |---|---|---|
@@ -28,9 +32,9 @@ list of DKNet NuGet packages behind these features, see [`docs/dknet-packages.md
 ## Also always on
 
 - **xUnit + Shouldly** unit/integration tests (`Minimal.App.Tests`) alongside the BDD suite above.
-- **Contextual claim population** (`[FromClaim]`) — request properties are filled from the
-  authenticated caller's claims by the endpoint pipeline, overwriting anything the caller sent.
-  Audit-field stamping (`CreatedBy`/`UpdatedBy`) is the same principle applied at save time — see
+- **Contextual claim population** fills request properties tagged `[FromClaim]` from the
+  authenticated caller's claims, via the endpoint pipeline, overwriting anything the caller sent.
+  Audit-field stamping (`CreatedBy`/`UpdatedBy`) applies the same principle at save time. See
   [`docs/auditing-and-data-ownership.md`](auditing-and-data-ownership.md).
 - **NetArchTest architecture tests** (`Minimal.App.Tests/Architecture/`) enforcing internal/sealed
   visibility, max-length on every mapped string, and Npgsql-only package references — these fail
@@ -58,6 +62,6 @@ list of DKNet NuGet packages behind these features, see [`docs/dknet-packages.md
 | `RunDbMigrationWhenAppStart` | `false` |
 
 > The generated `Minimal.Api/appsettings.json` currently sets a couple of these under drifted key
-> names (`EnableServiceBusProcess`, `EnableAzureAppConfiguration` instead of `EnableServiceBus` /
-> `EnableAzureAppConfig`), so those two JSON entries silently no-op against the class defaults above.
-> When changing a flag, verify the key against `FeatureOptions.cs`, not the checked-in JSON.
+> names: `EnableServiceBusProcess` and `EnableAzureAppConfiguration`, instead of `EnableServiceBus`
+> and `EnableAzureAppConfig`. Those two JSON entries silently no-op against the class defaults
+> above. When changing a flag, verify the key against `FeatureOptions.cs`, not the checked-in JSON.

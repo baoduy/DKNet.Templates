@@ -16,6 +16,7 @@ namespace Minimal.Domains.Features.AutomatedSample.Entities;
 /// </remarks>
 [RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]
 [RaisesEvent(EventOperations.Updated, nameof(Price))]
+[RaisesEvent(EventOperations.Updated, nameof(IsDiscontinued))]
 public class Product : AggregateRoot
 {
     #region Constructors
@@ -60,6 +61,9 @@ public class Product : AggregateRoot
     /// <param name="price">The new unit price. Must be positive.</param>
     [CrudUpdate]
     public void ChangePrice([Range(0.01, double.MaxValue)] decimal price) => Price = price;
+    
+    [CrudUpdate]
+    public void Approve(string byUser) => SetUpdatedBy(byUser);
 
     #endregion
 }

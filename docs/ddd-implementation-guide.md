@@ -19,6 +19,27 @@ layer by layer, what the automated shape costs you before you pick it.
 > Path of truth: `src/ApiEndpoints/` (inner projects are prefixed `Minimal.*` in this repo;
 > a generated solution renames them to `<YourApp>.*`).
 
+## At a glance: the eleven stages
+
+Each stage below adds one layer of the feature, in the order you'll actually write it.
+
+| # | Stage | Where it lives |
+|---|-------|-----------------|
+| 1 | Layer map | — |
+| 2 | Domain entity | `Minimal.Domains/Features/<Feature>/Entities/` |
+| 3 | EF Core mapping | `Minimal.Infra/Features/<Feature>/Mappers/` |
+| 4 | Application action | `Minimal.AppServices/<Feature>/V1/Actions/` |
+| 5 | Query specs | `Minimal.AppServices/<Feature>/V1/Specs/` |
+| 6 | DTO and Mapster wiring | `Minimal.AppServices/<Feature>/V1/<Feature>Dto.cs` |
+| 7 | Lazy mapping | `DKNet.SlimBus.Extensions.LazyMapper` |
+| 8 | Domain event and handler | `Minimal.AppServices/<Feature>/V1/Events/` |
+| 9 | Endpoint | `Minimal.Api/ApiEndpoints/<Feature>V1Endpoint.cs` |
+| 10 | Unit / integration tests | `Minimal.App.Tests/Integration/<Feature>/V1/` |
+| 11 | BDD tests | `Minimal.App.BDDTests/Features/<Domain>/` |
+
+Each section below also calls out an "automated alternative": what `AutomatedSample`/`Product`
+does instead of that stage, and what it gives up by skipping it.
+
 ## 1. Layer map
 
 ```
@@ -62,16 +83,17 @@ public sealed class PurchaseOrder : AggregateRoot
 
 Rules that matter:
 
-- `AggregateRoot` → `DomainEntity` → `AuditedEntity<Guid>` (from `DKNet.EfCore.Abstractions`) supplies
-  `Id`, `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn` — don't redeclare them. `base(byUser)`
-  stamps `CreatedBy` immediately at construction.
+- `AggregateRoot` → `DomainEntity` → `AuditedEntity<Guid>` (from `DKNet.EfCore.Abstractions`)
+  supplies `Id`, `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn` — don't redeclare them.
+  `base(byUser)` stamps `CreatedBy` immediately at construction.
 - Every property setter is `private`. All mutation goes through entity methods (`ChangeAmount`,
   `Cancel`) — never expose a public setter and never mutate from a handler.
-  `Minimal.App.Tests/Architecture/*` (NetArchTest) enforces shape rules like this; a public setter
-  or a non-`sealed`/non-`internal` handler fails the architecture test suite, not just review.
-- Folder name and feature name don't have to match: both samples happen to use the same name for
-  the domain folder and the `AppServices` slice (`ManualSample`, `AutomatedSample`) — pick whichever
-  reads better for your feature.
+  `Minimal.App.Tests/Architecture/*` (NetArchTest) enforces shape rules like this. A public
+  setter or a non-`sealed`/non-`internal` handler fails the architecture test suite, not just
+  review.
+- Folder name and feature name don't have to match. Both samples happen to use the same name for
+  the domain folder and the `AppServices` slice (`ManualSample`, `AutomatedSample`) — pick
+  whichever reads better for your feature.
 
 **Automated alternative** (`Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`): the
 entity carries class-level `[RaisesEvent(EventOperations.Created, Include = [...])]` /
@@ -100,17 +122,17 @@ internal sealed class PurchaseOrderConfigs : DefaultEntityTypeConfiguration<Purc
 }
 ```
 
-- No manual `DbSet` and no manual `modelBuilder.ApplyConfiguration(...)` call anywhere — every
+- No manual `DbSet` and no manual `modelBuilder.ApplyConfiguration(...)` call anywhere. Every
   `IEntityTypeConfiguration<T>` under the assembly is picked up automatically by
   `UseAutoConfigModel`, wired in **both** `Minimal.Infra/Extensions/InfraSetup.cs`
   (`AddInfraServices`, the DI host path) **and** `InfraMigration.cs` (`MigrateDb`, the
-  startup-migration path) — wiring only one of the two is a real bug this template hit once
-  already (seed data silently not appearing over HTTP). Class must stay `internal sealed`
+  startup-migration path). Wiring only one of the two is a real bug this template hit once
+  already — seed data silently didn't appear over HTTP. The class must stay `internal sealed`
   (architecture tests check this) so it's only ever reached through the scan, never referenced
   directly.
-- Give every `string` property an explicit `HasMaxLength` — an unconstrained string fails
+- Give every `string` property an explicit `HasMaxLength`. An unconstrained string fails
   `InfraTests` and, on PostgreSQL, would otherwise map to unbounded `text`.
-- Store an enum as a string (`HasConversion<string>()`) — an architecture test
+- Store an enum as a string (`HasConversion<string>()`). An architecture test
   (`AllEnumProperties_StoringToDb_ShouldHaveStringConversion`) enforces this on every enum property.
 - Optional seed data: drop an `IDataSeedingConfiguration<T>` next to the mapper, under
   `StaticData/` (see `Minimal.Infra/Features/ManualSample/StaticData/PurchaseOrderStaticData.cs`).
@@ -129,36 +151,36 @@ Each action file holds three things, in this order:
 
 1. **Request** — implements `Fluents.Requests.IWitResponse<TDto>` (or `INoResponse` for
    delete-style commands with no return value). Package: `DKNet.SlimBus.Extensions`.
-   - `[FromClaim(ClaimTypes.Name)]` on `ByUser` auto-populates the acting user from the bearer
-     token via `AddContextualRequestPopulation` (wired in `Program.cs`) — this is the single
-     mechanism, and it sets `ByUser` unconditionally, so a caller-supplied value in the body or
-     query string is always discarded, never trusted.
+   `[FromClaim(ClaimTypes.Name)]` on `ByUser` auto-populates the acting user from the bearer
+   token via `AddContextualRequestPopulation` (wired in `Program.cs`). This is the single
+   mechanism, and it sets `ByUser` unconditionally, so a caller-supplied value in the body or
+   query string is always discarded, never trusted.
 2. **Validator** — `internal sealed class XCommandValidator : AbstractValidator<XRequest>`
-   (FluentValidation). Runs automatically because every endpoint group calls
+   (FluentValidation). It runs automatically because every endpoint group calls
    `AddFluentValidationAutoValidation()` — you never call `Validate()` yourself. This only fires
-   for **literal** `Map*` route registrations (see §9) — a route mapped through a generic
-   library wrapper never reaches it.
+   for **literal** `Map*` route registrations (see §9). A route mapped through a generic library
+   wrapper never reaches it.
 3. **Handler** — `internal sealed class XCommandHandler(...) : Fluents.Requests.IHandler<XRequest, TDto>`,
-   constructor-injecting whatever it needs (`IRepositorySpec`, `IMapper`, feature-specific services).
-   `OnHandle` does the real work:
+   constructor-injecting whatever it needs (`IRepositorySpec`, `IMapper`, feature-specific
+   services). `OnHandle` does the real work:
    - Query via a `Specification<TEntity>` for lookup/uniqueness checks (see §5).
    - Construct or mutate the entity through its own constructor/methods only — never set a
      property directly from a handler.
-   - `repository.AddAsync(entity, ct)` / `repository.Delete(entity)` — no `SaveChanges` inside the
+   - `repository.AddAsync(entity, ct)` / `repository.Delete(entity)`. No `SaveChanges` inside the
      handler; the DKNet SlimBus pipeline calls it after the handler returns.
    - Return `mapper.ResultOf<TDto>(entity)` (from `DKNet.SlimBus.Extensions.LazyMapper`, see §7)
      rather than `Result.Ok(mapper.Map<TDto>(entity))` when the DTO needs a value only available
-     after `SaveChanges` (e.g. a DB-generated `Id`); use the latter (see `Update.cs`) when nothing
-     about the DTO depends on that.
+     after `SaveChanges` — for example, a DB-generated `Id`. Use the latter (see `Update.cs`) when
+     nothing about the DTO depends on that.
 
 Handler and validator classes must be `internal sealed` — same architecture-test rule as the
 EF config.
 
-**Automated alternative**: none of this section exists for `AutomatedSample/Product`. `[CrudCreate]`
-on the entity's constructor and `[CrudUpdate]` on a method generate the request, validator-equivalent
-(DataAnnotations forwarded from the constructor/method parameters), and handler for you — see
-`Minimal.AppServices/obj/Generated/DKNet.SlimBus.Generators/.../ProductCrudRequests.g.cs` and
-`...Handlers.g.cs` after a build. The forwarded DataAnnotations attributes are **not enforced**
+**Automated alternative**: none of this section exists for `AutomatedSample`/`Product`.
+`[CrudCreate]` on the entity's constructor and `[CrudUpdate]` on a method generate the request,
+validator-equivalent (DataAnnotations forwarded from the constructor/method parameters), and
+handler for you — see `Minimal.AppServices/obj/Generated/DKNet.SlimBus.Generators/.../ProductCrudRequests.g.cs`
+and `...Handlers.g.cs` after a build. The forwarded DataAnnotations attributes are **not enforced**
 under this template's endpoint-registration convention — see §9 and the comparison doc's "Request
 validation" row before relying on one.
 
@@ -185,14 +207,14 @@ internal sealed class SpecGetPurchaseOrder : Specification<PurchaseOrder>
 One spec class per query shape, built from `DKNet.EfCore.Specifications`. Handlers ask
 `IRepositorySpec` for `AnyAsync(spec, ...)` / `FirstOrDefaultAsync(spec, ...)` /
 `ToPagedListAsync(spec, ...)` — never write a raw LINQ query against the `DbContext` from a
-handler. The `WHERE FALSE` gotcha above is a real bug this template hit once already when a spec's
-predicate builder was never given a starting clause — check for it in any spec that supports "no
-filter at all" as a valid call shape.
+handler. The `WHERE FALSE` gotcha above is a real bug this template hit once already, when a
+spec's predicate builder was never given a starting clause. Check for it in any spec that
+supports "no filter at all" as a valid call shape.
 
-**Automated alternative**: no hand-written spec exists for `Product` — `GetById`/`GetList`/`Delete`
+**Automated alternative**: no hand-written spec exists for `Product`. `GetById`/`GetList`/`Delete`
 map to `DKNet.AspCore.Extensions`'s generic `MapGetById<TEntity,TKey,TDto>`/`MapGetList`/
-`MapDeleteById`, which query directly against `IEntity<TKey>` with no per-entity spec at all (no
-filter parameter is available on the generated list route either).
+`MapDeleteById`, which query directly against `IEntity<TKey>` with no per-entity spec at all — no
+filter parameter is available on the generated list route either.
 
 ## 6. DTO and Mapster wiring — `Minimal.AppServices/<Feature>/V1/<Feature>Dto.cs`
 
@@ -223,16 +245,16 @@ public sealed partial record ProductDto;
 One line. `[GenerateDto]` (source generator, `DKNet.EfCore.DtoGenerator`) emits every audited
 property from the entity at compile time — `Name`, `Price`, `IsDiscontinued`, `CreatedBy`,
 `CreatedOn`, `LastModifiedBy`, `LastModifiedOn`, `UpdatedBy`, `UpdatedOn`, `Id` for `Product`. Use
-`Exclude`/`Include` on the attribute to narrow the shape; the default is "everything audited", not
+`Exclude`/`Include` on the attribute to narrow the shape. The default is "everything audited", not
 "only what I chose to expose" — decide explicitly whether that's acceptable for your entity before
 reaching for this shape.
 
 ## 7. Lazy mapping — `DKNet.SlimBus.Extensions.LazyMapper`
 
 `mapper.ResultOf<TDto>(entity)` wraps the entity in an `IResult<TDto>` that only calls
-`mapper.Map<TDto>(entity)` when the caller reads `.Value` — i.e. after the pipeline's
+`mapper.Map<TDto>(entity)` when the caller reads `.Value` — that is, after the pipeline's
 `SaveChangesAsync()` has run and any DB-generated values (sequence-assigned IDs, defaults) are
-populated on the entity. Use it for create actions; a plain `Result.Ok(mapper.Map<TDto>(entity))`
+populated on the entity. Use it for create actions. A plain `Result.Ok(mapper.Map<TDto>(entity))`
 (see `Update.cs`) is fine when nothing about the DTO depends on `SaveChanges` having run yet. This
 template previously carried a private copy of this helper under `AppServices/Extensions/LazyMapper`;
 it now uses the package's own version — both samples' generated and hand-written handlers alike
@@ -256,12 +278,11 @@ internal sealed class PurchaseOrderCreatedEventHandler(ILogger<PurchaseOrderCrea
 - The event is a plain `sealed record`. `entity.AddEvent(...)` in the constructor/method queues it;
   `Minimal.Infra/Services/EventPublisher.cs` forwards every queued event onto
   `IMessageBus.Publish(...)` after `SaveChanges`.
-- A subscriber is any class implementing `Fluents.EventsConsumers.IHandler<TEvent>` — put it in
-  `AppServices` (in-process concerns, e.g. logging) or `Infra`
-  (`Minimal.Infra/Features/<Feature>/ExternalEvents/`, e.g.
-  `ProductCreatedNotificationHandler.cs`) for anything backed by an external system. No manual DI
-  registration — both projects' assemblies are scanned by `AddServiceBus` in
-  `Minimal.Infra/Extensions/ServiceBusSetup.cs`.
+- A subscriber is any class implementing `Fluents.EventsConsumers.IHandler<TEvent>`. Put it in
+  `AppServices` for in-process concerns such as logging, or in `Infra`
+  (`Minimal.Infra/Features/<Feature>/ExternalEvents/`, e.g. `ProductCreatedNotificationHandler.cs`)
+  for anything backed by an external system. No manual DI registration is needed — both projects'
+  assemblies are scanned by `AddServiceBus` in `Minimal.Infra/Extensions/ServiceBusSetup.cs`.
 - Two buses exist: an in-memory child bus that is **always** wired, and an Azure Service Bus child
   bus that is only added when `ConnectionStrings:AzureBus` is non-empty. Wire a subscriber's
   `Produce<TEvent>`/`Consume<TEvent>` topic/subscription in `ServiceBusSetup.cs` the same way
@@ -270,13 +291,13 @@ internal sealed class PurchaseOrderCreatedEventHandler(ILogger<PurchaseOrderCrea
 **Automated alternative**: no hand-written event record exists for `Product`. Class-level
 `[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]` /
 `[RaisesEvent(EventOperations.Updated, nameof(Price))]` on the entity compose
-`ProductCreatedEvent`/`ProductPriceUpdatedEvent` at compile time — note the second name folds the
-narrowing property in (`Product`+`Price`+`Updated`+`Event`), it is **not** `ProductUpdatedEvent`.
-Neither type has source you can read; confirm a composed name against the compiled assembly
-(`strings bin/**/Minimal.Domains.dll | grep <Entity>`) before wiring a consumer. The generator
-raises the event automatically via DKNet's EF Core save hook — nothing in the sample calls
-`AddEvent`. A hand-written consumer is still required either way; the generator only declares and
-raises, it never generates one.
+`ProductCreatedEvent`/`ProductPriceUpdatedEvent` at compile time. Note that the second name folds
+the narrowing property in (`Product`+`Price`+`Updated`+`Event`) — it is **not**
+`ProductUpdatedEvent`. Neither type has source you can read; confirm a composed name against the
+compiled assembly (`strings bin/**/Minimal.Domains.dll | grep <Entity>`) before wiring a consumer.
+The generator raises the event automatically via DKNet's EF Core save hook — nothing in the sample
+calls `AddEvent`. A hand-written consumer is still required either way; the generator only
+declares and raises, it never generates one.
 
 ## 9. Endpoint — `Minimal.Api/ApiEndpoints/<Feature>V1Endpoint.cs`
 
@@ -302,15 +323,15 @@ internal sealed class PurchaseOrderV1Endpoint : IEndpointConfig
 ```
 
 - `IEndpointConfig` comes from the `DKNet.AspCore.Extensions` NuGet package, not this repo. Every
-  route here is a **literal** call against the raw minimal-API surface (`group.MapPost(...)`, etc.)
-  — that literalness matters: it's what lets .NET 10's automatic validation source generator see
-  the route at all (see the callout below).
+  route here is a **literal** call against the raw minimal-API surface (`group.MapPost(...)`, etc.).
+  That literalness matters: it's what lets .NET 10's automatic validation source generator see the
+  route at all (see the callout below).
 - **No manual registration list exists anywhere.** Every non-abstract class implementing
   `IEndpointConfig` in the API assembly is discovered and mapped by `UseEndpointConfigs` (called
   once from `Program.cs`) — adding the class is the whole registration step.
-- Route becomes `/v{Version}{GroupEndpoint}` when API versioning is enabled (the default) — e.g.
-  `/v1/purchase-orders`, not `/api/v1/purchase-orders`.
-- POST does **not** add idempotency by itself — call `.RequiredIdempotentKey()` explicitly on any
+- The route becomes `/v{Version}{GroupEndpoint}` when API versioning is enabled, which is the
+  default — e.g. `/v1/purchase-orders`, not `/api/v1/purchase-orders`.
+- POST does **not** add idempotency by itself. Call `.RequiredIdempotentKey()` explicitly on any
   POST that must be idempotent; callers then must send an `X-Idempotency-Key: {Guid}` header.
 - `[FromClaim]` population on request properties (see §4) is wired per endpoint group
   automatically via `AddContextualRequestPopulation` — no extra call needed on the `Map` method
@@ -335,8 +356,8 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
 > **Validation gap to know before you pick this shape.** .NET 10's automatic minimal-API validation
 > for complex-type parameters only activates through the `Microsoft.Extensions.Validation.ValidationsGenerator`
 > source generator, and that generator only recognizes **literal** `Map*(string, Delegate)` calls in
-> the compiling project's own source — exactly what §9's manual example does, and exactly what the
-> generic `MapPost<TRequest,TDto>` wrapper above does *not* let it see through. A `[Range]`/
+> the compiling project's own source. That is exactly what §9's manual example does, and exactly what
+> the generic `MapPost<TRequest,TDto>` wrapper above does *not* let it see through. A `[Range]`/
 > `[Required]` forwarded onto a generated request property is therefore never evaluated for a
 > generator-mapped route. Confirmed live: `POST /v1/products` with a negative price returns `201`,
 > not `400`. Don't assume a DataAnnotations attribute on a `[CrudCreate]`/`[CrudUpdate]` parameter is
@@ -355,17 +376,17 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
   through a `Specification`. Reach for `fixture.CreateClient()` and a real HTTP call only when
   claim-population or endpoint-registration behavior specifically is what you're testing.
 - Domain events land off the request thread (the in-memory bus runs with blocking publish
-  disabled) — poll for their effect with `Eventually.IsTrueAsync(...)`
+  disabled). Poll for their effect with `Eventually.IsTrueAsync(...)`
   (`Minimal.App.TestSupport/Eventually.cs`) instead of asserting immediately after `Send`.
 - Shape rules — internal/sealed classes, no public entity property in a DTO, max length on every
   string, no `SqlServer` package reference, Npgsql only, enum stored as string — are enforced
   separately by `Minimal.App.Tests/Architecture/*` (NetArchTest). A new feature that violates one of
   these fails the build, not a code review.
-- Coverage target ≥80% on every class you touch; `src/coverage.runsettings` scopes collection to
-  `[DKNet*]`/`[Minimal*]` and excludes `*Tests`/`bin`/`obj`/`GlobalUsings.cs` — don't put real logic
-  in an excluded path.
+- Coverage target is at least 80% on every class you touch. `src/coverage.runsettings` scopes
+  collection to `[DKNet*]`/`[Minimal*]` and excludes `*Tests`/`bin`/`obj`/`GlobalUsings.cs` — don't
+  put real logic in an excluded path.
 - `Unit/ManualSample/`, `Unit/AutomatedSample/`, `Integration/ManualSample/V1/`, and
-  `Integration/AutomatedSample/V1/` already hold tests for both samples — use them as your
+  `Integration/AutomatedSample/V1/` already hold tests for both samples. Use them as your
   reference shape alongside the production code; dev-qc extends this coverage at Verify.
 
 ## 11. BDD tests — `Minimal.App.BDDTests/Features/<Domain>/`
@@ -377,11 +398,11 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
   (`[BeforeTestRun]`) and resets the database before every scenario (`[BeforeScenario(Order = 0)]`),
   so scenarios don't leak state into each other.
 - Every POST that opts into idempotency (the manual sample's create route) needs a fresh
-  `X-Idempotency-Key: {Guid.NewGuid()}` header per request, generated in the `[When]` step —
-  reusing a key across scenarios returns the first call's cached result. The automated sample's
+  `X-Idempotency-Key: {Guid.NewGuid()}` header per request, generated in the `[When]` step.
+  Reusing a key across scenarios returns the first call's cached result. The automated sample's
   generated create route has no such requirement.
 - `BddApiFactory` runs with `RequireAuthorization = false`, so `[FromClaim]` properties fall back to
-  the system-account default (`SharedConsts.SystemAccount`) rather than a real claim — use the
+  the system-account default (`SharedConsts.SystemAccount`) rather than a real claim. Use the
   `@redis` / Redis-backed variant only when a scenario specifically needs a Redis-backed idempotency
   store.
 - `Features/PurchaseOrders/PurchaseOrder.feature` and `Features/Products/Product.feature` exist

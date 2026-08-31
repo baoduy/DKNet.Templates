@@ -1,13 +1,14 @@
 # DKNet Package Inventory
 
 The DKNet family ships one NuGet package per capability, each with its own reference doc in the
-[DKNet repo](https://github.com/baoduy/DKNet). This page lists only what this template actually wires
-up — for the full API surface of any package, follow its link.
+[DKNet repo](https://github.com/baoduy/DKNet). This page lists only what this template actually
+wires up. Follow a package's link for its full API surface.
 
 ## Wired by this template
 
-Verified against the `.csproj` files under `src/` (not `Directory.Packages.props`, which pins versions
-for a few packages nothing references — see the note at the end).
+This table is verified against the `.csproj` files under `src/`, not against
+`Directory.Packages.props`. That file pins versions for a few packages nothing references — see
+the note at the end.
 
 | Package | What it gives you | Where the template wires it | DKNet doc |
 |---|---|---|---|
@@ -18,8 +19,10 @@ for a few packages nothing references — see the note at the end).
 | **DKNet.EfCore.DataAuthorization** | `IDataOwnerProvider`/`IDataOwnerDbContext`, the `DataOwnerHook` that stamps ownership and audit fields on save | `Minimal.AppServices/Share/IPrincipalProvider.cs` implements `IDataOwnerProvider`; `.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()` in `Minimal.Api/Configs/ServiceConfigs.cs`; `Minimal.Infra/Contexts/OwnedDataContext.cs` implements `IDataOwnerDbContext`. See [auditing-and-data-ownership.md](./auditing-and-data-ownership.md) for the full save-pipeline story. | [docs/EfCore/DKNet.EfCore.DataAuthorization.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.DataAuthorization.md) |
 | **DKNet.EfCore.DtoGenerator** | Source-generates a DTO record from `[GenerateDto(typeof(Entity))]`, mapped automatically | `[GenerateDto(typeof(Product))]` on `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs` | [docs/EfCore/DKNet.EfCore.DtoGenerator.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.DtoGenerator.md) |
 | **DKNet.EfCore.Events** | `AddEventPublisher<TDbContext, TPublisher>()` — publishes domain events raised on aggregates during `SaveChanges` | `.AddEventPublisher<CoreDbContext, EventPublisher>()` in `Minimal.Infra/Extensions/InfraSetup.cs` | [docs/EfCore/DKNet.EfCore.Events.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.Events.md) |
+| **DKNet.EfCore.Extensions** | `UseAutoConfigModel` / `UseAutoDataSeeding` — assembly-scan discovery of `IEntityTypeConfiguration<T>` mappers and `IDataSeedingConfiguration<T>` seeders, so no manual `DbSet` or seeding registration is needed | `.UseAutoConfigModel(...)` + `.UseAutoDataSeeding(...)` in both `Minimal.Infra/Extensions/InfraSetup.cs` and `Minimal.Infra/Extensions/InfraMigration.cs`; seeding configuration types imported via `Minimal.Infra/GlobalUsings.cs` | [docs/EfCore/DKNet.EfCore.Extensions.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.Extensions.md) |
 | **DKNet.EfCore.Relational.Helpers** | `DbContextHelpers` — table-existence checks, raw connection access, schema/table-name lookup | Referenced by `Minimal.Infra.csproj`; no call site in the checked-in template source today — it's a ready import for developer code that needs those helpers | [docs/EfCore/DKNet.EfCore.Relational.Helpers.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.Relational.Helpers.md) |
 | **DKNet.EfCore.Specifications** | `Specification<T>`, `IRepositorySpec`, keyset paging — composable query filters over a repository | `.AddSpecRepo<CoreDbContext>()` in `Minimal.Infra/Extensions/InfraSetup.cs`; `Minimal.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs` extends `Specification<PurchaseOrder>`; `IRepositorySpec` used throughout `Minimal.AppServices/ManualSample/V1/Actions/` | [docs/EfCore/DKNet.EfCore.Specifications.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.Specifications.md) |
+| **DKNet.Fw.Extensions** | Core framework helpers, including the `TypeExtractors` fluent assembly-scanning API (`.Extract().Classes().NotAbstract()...`) | `Minimal.AppServices/Extensions/MapsToExtensions.cs` uses `DKNet.Fw.Extensions.TypeExtractors` to discover `[MapsFrom]`/`[GenerateDto]` DTO types and register their Mapster configs | [docs/Core/DKNet.Fw.Extensions.md](https://github.com/baoduy/DKNet/blob/dev/docs/Core/DKNet.Fw.Extensions.md) |
 | **DKNet.SlimBus.Extensions** | `Fluents.Requests`/`Fluents.Queries` interfaces for SlimMessageBus handlers, `AddSlimBusEfCoreInterceptor<TDbContext>()` | `.AddSlimBusEfCoreInterceptor<CoreDbContext>()` in `Minimal.Infra/Extensions/ServiceBusSetup.cs`; `Fluents.Requests.IWitResponse<T>`/`IHandler` implemented across `Minimal.AppServices/ManualSample/V1/Actions/` and `Minimal.AppServices/AutomatedSample/V1/` | [docs/Messaging/DKNet.SlimBus.Extensions.md](https://github.com/baoduy/DKNet/blob/dev/docs/Messaging/DKNet.SlimBus.Extensions.md) |
 | **DKNet.SlimBus.Generators** | Roslyn source generator: from `[CrudCreate]`/`[CrudUpdate]` on an entity plus its `[GenerateDto]` DTO, emits the request records, handlers, and a `Map{Entity}Crud()` endpoint-mapping extension for a full CRUD slice | Analyzer-only reference on `Minimal.AppServices.csproj`; triggered by `[CrudCreate]`/`[CrudUpdate]` on `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs` plus `[GenerateDto(typeof(Product))]` on `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`; the generated `MapProductCrud()` is called from `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` — this is the entire `AutomatedSample` slice, no hand-written request/handler exists for it | [docs/Messaging/DKNet.SlimBus.Generators.md](https://github.com/baoduy/DKNet/blob/dev/docs/Messaging/DKNet.SlimBus.Generators.md) |
 

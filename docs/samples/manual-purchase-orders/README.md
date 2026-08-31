@@ -6,10 +6,13 @@
 
 ## What it demonstrates
 
-The full vertical-slice pattern written entity-to-endpoint by hand: a `PurchaseOrder` aggregate
-that raises its own creation event via `AddEvent`, FluentValidation-backed create/update requests,
-a business rule that rejects cancelling an already-cancelled order, a filtered/paged list query,
-and static reference-data seeding.
+This sample implements the full vertical-slice pattern by hand, from entity to endpoint. It shows:
+
+- A `PurchaseOrder` aggregate that raises its own creation event via `AddEvent`.
+- FluentValidation-backed create and update requests.
+- A business rule that rejects cancelling an already-cancelled order.
+- A filtered, paged list query.
+- Static reference-data seeding.
 
 For the line-by-line trade-off against the automated sample, see
 [`docs/samples/manual-vs-automated.md`](../manual-vs-automated.md).
@@ -33,11 +36,11 @@ Base path `/v1/purchase-orders`:
 - **Static seed data** — 3 fixed-id purchase orders via `PurchaseOrderStaticData`, discovered by
   `UseAutoDataSeeding` and visible over `GET /v1/purchase-orders` on a fresh database.
 
-It does **not** carry external broker publish/subscribe — its domain event stays on the in-memory
-bus only (see the automated sample for that capability).
+It does **not** carry external broker publish/subscribe. Its domain event stays on the in-memory
+bus only; see the automated sample for that capability.
 
 ## Deleting this sample
 
 Remove `src/ApiEndpoints/**/ManualSample/**`, `src/ApiEndpoints/Minimal.Api/ApiEndpoints/ManualSample/`,
-and this `docs/samples/manual-purchase-orders/` folder, then drop its EF Core mapping/seed classes
+and this `docs/samples/manual-purchase-orders/` folder. Then drop its EF Core mapping/seed classes
 from the next migration. No other feature depends on it.
