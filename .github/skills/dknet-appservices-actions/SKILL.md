@@ -66,7 +66,7 @@ There is no `RequestBase` class in this codebase. A hand-written request instead
 public string? ByUser { get; set; }
 ```
 
-`AddContextualRequestPopulation` (wired once in `Program.cs`) populates any `[FromClaim(...)]` property before validation and before the handler runs, falling back to `SharedConsts.SystemAccount` only when `RequireAuthorization` is off. See `CreatePurchaseOrderRequest` for the real usage. Every handler in the manual sample still re-checks `string.IsNullOrEmpty(request.ByUser)` defensively before touching the entity — copy that guard.
+`AddContextualRequestPopulation` (wired once in `Program.cs`) populates any `[FromClaim(...)]` property before validation and before the handler runs, falling back to `SharedConsts.SystemAccount` only when `RequireAuthorization` is off. See `CreatePurchaseOrderRequest` for the real usage. An authenticated caller with no `ClaimTypes.Name` claim is left with `ByUser` unset, so every handler in the manual sample re-checks `string.IsNullOrEmpty(request.ByUser)` before touching the entity — that guard is the live no-claim path, not defensive dead code — copy it.
 
 ### File Locations
 

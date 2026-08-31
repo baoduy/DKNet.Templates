@@ -1,77 +1,293 @@
-## Manual vs. automated: what each sample writes, and what the developer gives up
+# Manual vs. Automated: A Layer-by-Layer Comparison
 
-Two samples live side by side under `src/ApiEndpoints/`, implementing the same shape of feature —
-entity, event, event handler, CRUD, queries, endpoint — by two different means:
+The template ships two complete samples under `src/ApiEndpoints/`. Both implement the same shape of
+feature — entity, event, event handler, CRUD, queries, endpoint — but by different means:
 
-- **`PurchaseOrder`** (`ManualSample/`) — every layer is hand-written. No declarative
-  event/CRUD/DTO-generation attribute is used anywhere in it.
-- **`Product`** (`AutomatedSample/`) — every layer the DKNet 10.1.12 generators can produce is
-  declared, not written: `[RaisesEvent]` for events, `[CrudCreate]`/`[CrudUpdate]` +
-  `[GenerateDto]` for the request/handler/route/DTO shapes.
+| Sample | Location | Approach |
+|--------|----------|----------|
+| **PurchaseOrder** | `ManualSample/` | Every layer is hand-written. No declarative event/CRUD/DTO-generation attribute is used anywhere. |
+| **Product** | `AutomatedSample/` | Every layer the DKNet 10.1.13 generators can produce is declared, not written: `[RaisesEvent]` for events, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` + `[GenerateDto]` for the request/handler/route/DTO shapes. |
 
-This document is the layer-by-layer account of that difference, and — where the automated sample
-produces a layer instead of writing it — what control or visibility the developer gives up in
-exchange. Every claim below is checked against the code on this branch; generated type names are
-taken from the compiled output (`Minimal.AppServices/obj/Generated/...` and, for the two event
-record types the `Minimal.Domains` project doesn't emit to disk, from a `strings` scan of
-`Minimal.Domains.dll` confirming both `ProductCreatedEvent` and `ProductPriceUpdatedEvent` exist as
-real compiled types).
+This document walks through that difference layer by layer and, wherever the automated sample
+*produces* a layer instead of writing it, explains what control or visibility you give up in
+exchange.
 
-### Layer-by-layer
+> **How these claims were verified.** Every statement below is checked against the code on this
+> branch. Generated type names come from the compiled output
+> (`Minimal.AppServices/obj/Generated/...`). The two event record types that `Minimal.Domains`
+> doesn't emit to disk were confirmed by a `strings` scan of `Minimal.Domains.dll`, which shows both
+> `ProductCreatedEvent` and `ProductPriceUpdatedEvent` as real compiled types.
 
-| Layer | Manual sample (`PurchaseOrder`) writes | Automated sample (`Product`) | What the developer gives up |
-|---|---|---|---|
-| **Domain entity** | `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs` — full `AggregateRoot` subclass: two public constructors (create + internal rehydration for seeding), `ChangeAmount`, `Cancel`, a `PurchaseOrderStatus` enum. ~55 lines. | Hand-written too — `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`, ~45 lines. The generators need a real entity to attach attributes to; there is no "generate the entity" mode. | — (not a produced layer; both hand-write it) |
-| **Domain event definition** | `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrderCreatedEvent.cs` — a one-line hand-written `record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, decimal Amount)`. | Produced. `[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]` and `[RaisesEvent(EventOperations.Updated, nameof(Price))]` on `Product` compose two payload record types at compile time: `ProductCreatedEvent` (`Id`, `Name`, `Price`) and `ProductPriceUpdatedEvent`. Note the second name: the narrowing property (`Price`) folds into the composed name — it is **not** `ProductUpdatedEvent`. Neither type has a hand-written source file; both exist only as compiler output (confirmed via `strings Minimal.Domains.dll \| grep ProductCreatedEvent`). | Naming is out of your hands — the convention form composes `<Entity><Label?><NarrowingProps><Operation>Event`, and two updates on different properties would need distinct label segments to avoid a collision, not distinct hand-chosen names. You cannot add a field the generator didn't put in `Include`/infer without switching to the type-naming form (`[RaisesEvent(typeof(SomeDto), ...)]` against a `[GenerateDto]` record you own). |
-| **Event raising** | `PurchaseOrder`'s constructor calls `AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))` by hand — visible, one line, in the constructor body. | Nothing raises anything in `AutomatedSample/` source (`grep -rE 'AddEvent\|record .*Event\b'` returns no hits). The declared `[RaisesEvent]` rules are read and raised by DKNet's EF Core save hook after a successful `SaveChanges`, driven purely by entity state at save time. | You cannot single-step from "constructor runs" to "event raised" in a debugger the way you can with `AddEvent` — the raise happens inside a hook that inspects the change tracker, not inside code you wrote. The `Updated` rule's "did it actually change" check is also implicit: the hook decides, you don't write the comparison. |
-| **Event handler (internal bus)** | `Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs` — hand-written `IHandler<PurchaseOrderCreatedEvent>`, logs at Information. | Also hand-written — `Minimal.AppServices/AutomatedSample/V1/Events/ProductEventHandlers.cs` (`ProductCreatedEventHandler`). The `[RaisesEvent]` generator only declares and raises the event; it does not generate a consumer for it. | — (not a produced layer for either sample; the generator's boundary stops at declaring/raising) |
-| **Create request + validator + handler** | `Minimal.AppServices/ManualSample/V1/Actions/Create.cs` — `CreatePurchaseOrderRequest` (`ByUser` via `[FromClaim(ClaimTypes.Name)]`, `CustomerName` `[Required][StringLength(200)]`, `Amount`), a `CreatePurchaseOrderCommandValidator` (FluentValidation: `NotEmpty().Length(1,200)`, `Amount` `GreaterThan(0)`), and a `CreatePurchaseOrderCommandHandler` that constructs the aggregate and calls `repository.AddAsync`. ~40 lines of business logic you own end to end. | Produced. `[CrudCreate]` on `Product`'s constructor + the one `[GenerateDto(typeof(Product))]` `ProductDto` generate `CreateProductRequest` (`Name` `[Required][StringLength(150)]`, `Price` `[Range(0.01, double.MaxValue)]` — both DataAnnotations forwarded 1:1 from the constructor's parameter attributes) and `CreateProductHandler` (`Minimal.AppServices.Crud` namespace) which calls `new Product(request.Name, request.Price)` and `repository.AddAsync`. | Two real costs: (1) **validation that looks wired is not** — see the dedicated Request validation row below, this is the sample's sharpest gap; (2) the request shape is a mechanical 1:1 of the constructor's parameter list — you cannot add a request-only field (a captcha token, a client correlation id) without adding it to the constructor's signature too, because the generator has no separate "extra request field" hook. |
-| **Read / get-by-id** | `Minimal.AppServices/ManualSample/V1/Queries/GetPurchaseOrderById.cs` — hand-written `GetPurchaseOrderByIdQuery` + handler, looks up via `SpecGetPurchaseOrder`, returns `null` on miss (endpoint maps that to 404). | Produced entirely — no hand-written query, handler, or spec exists for it. `ProductCrudEndpointExtensions.MapProductCrud()` wires `group.MapGetById<Product, Guid, ProductDto>()`, a **generic** library extension from `DKNet.AspCore.Extensions` that works against any `IEntity<TKey>` — no per-entity code is generated for GetById at all, generated or otherwise. | Filtering/shaping beyond "by primary key" isn't available — there is no query object to add a parameter to. If a future requirement needs `GetById` to also check tenant ownership or expand a related entity, you must drop that one route to a hand-written one; the generated GetById is all-or-nothing. |
-| **List / query** | `Minimal.AppServices/ManualSample/V1/Queries/ListPurchaseOrders.cs` — `ListPurchaseOrdersQuery` (`PageIndex`, `PageSize`, `CustomerName` filter) + handler using `SpecGetPurchaseOrder(byCustomerName: ...)` and `ToPagedListAsync`. Custom filter parameter, your choice. | Produced — same generic `group.MapGetList<Product, Guid, ProductDto>()`. No filter parameter exists; the generic list route pages over every row with no per-entity query surface. | No filtering, no sort parameter, no custom page-size ceiling — whatever the generic list endpoint supports is what you get. Adding a `?name=` filter for `Product` means abandoning the generated list route for a hand-written one. |
-| **Update request + handler** | `Minimal.AppServices/ManualSample/V1/Actions/Update.cs` — `UpdatePurchaseOrderRequest` (`Id`, `Amount`), validator (`Amount > 0`; deliberately **no** `NotEmpty` rule on `Id` — a real bug found and fixed during this sample's build, see below), handler fetches via spec, 404s via `NotFoundError` on miss, else `order.ChangeAmount(...)`. | Produced. `[CrudUpdate]` on `Product.ChangePrice(decimal price)` generates `ChangePriceProductRequest : IWithKey<Guid>` (`Id` bound from route, `Price` `[Range(...)]`) and `ChangePriceProductHandler`, which 404s via `NotFoundError` on a missing id — same failure shape as the manual sample. | The generated update method maps 1:1 to one method's parameter list — `ChangePrice(decimal price)` can only ever produce a request that changes price. A method that legitimately needs to change two unrelated fields together needs two `[CrudUpdate]` methods (two routes) or a hand-written one; there is no "partial update, arbitrary field set" shape available. |
-| **Delete request + handler** | `Minimal.AppServices/ManualSample/V1/Actions/Delete.cs` — `DeletePurchaseOrderRequest : INoResponse` + handler, 404 via `NotFoundError` on miss, else `repository.Delete(order)`. | Produced — `group.MapDeleteById<Product, Guid>()`, the same generic library extension pattern as GetById/GetList. No generated or hand-written delete handler exists for `Product` at all. | No pre-delete business rule is possible (the manual sample's `Cancel` demonstrates exactly this shape — reject an already-cancelled order with a domain-specific 400). A generic delete-by-id either deletes or 404s; there is nowhere to hang a "can this row be deleted" check without abandoning the generated route. |
-| **DTO** | `Minimal.AppServices/ManualSample/V1/PurchaseOrderDto.cs` — hand-written `record` with exactly the 5 fields the API should expose (`Id`, `CustomerName`, `Amount`, `Status`, `CreatedBy`). No `[GenerateDto]`. | Produced. `[GenerateDto(typeof(Product))] public sealed partial record ProductDto;` — one line — generates every audited property on the entity: `Name`, `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`, `LastModifiedBy`, `LastModifiedOn`, `UpdatedBy`, `UpdatedOn`, `Id`. | You cannot omit a field from the response shape without an explicit `Exclude`/`Include` on `[GenerateDto]` — the default is "everything audited", not "only what I chose to expose". `ProductDto` here ships `CreatedOn`/`LastModifiedOn`/`UpdatedOn`/`UpdatedBy` to every caller by default; the manual sample's DTO exposes none of those because nobody wrote them into it. |
-| **Endpoint registration & route mapping** | `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs` — every route is a literal `group.MapPost(...)`/`MapGet(...)`/`MapPut(...)`/`MapDelete(...)` call against the raw minimal-API surface, ~90 lines, `GroupEndpoint => "/purchase-orders"` → base route `/v1/purchase-orders`. | `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` — 9 lines: one `group.MapProductCrud()` call (the generated `ProductCrudEndpointExtensions`) plus a `.WithDescription`. `GroupEndpoint => "/products"` → base route `/v1/products`. | Route shapes, HTTP verbs, and status codes are the generator's/library's choice, not yours — you get `GET {id}` / `GET /` / `POST /` / `PUT {id}` / `DELETE {id}` exactly as `MapProductCrud` composes them, with no ability to rename a segment or change a verb without excluding that op (`CrudMapOptions.Exclude`) and hand-writing the replacement. It also means the automatic .NET 10 minimal-API validation source generator cannot see these routes at all — see the Request validation row. |
-| **EF mapping / configuration** | `Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` — hand-written `IEntityTypeConfiguration<PurchaseOrder>`: index on `CustomerName`, max length 200, `Amount` precision `(18,2)`, `Status` stored as string, table `manual_sample.PurchaseOrders`. | Hand-written too — `Minimal.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs`: unique index on `Name`, max length 150, `Price` precision `(18,2)`, table `sample.Products`. | — (not a produced layer; none of the three generators in this template touch `IEntityTypeConfiguration`) |
-| **Static seed data** | `Minimal.Infra/Features/ManualSample/StaticData/PurchaseOrderStaticData.cs` — a `DataSeedingConfiguration<PurchaseOrder>` with 3 fixed-`Guid` rows, discovered by `UseAutoDataSeeding`. (A real platform bug was found and fixed while building this: seeding only fired from the DI-registered `CoreDbContext` in `InfraSetup`, never from the one `InfraMigration.MigrateDb` builds for the startup migration — fixed by wiring `.UseAutoDataSeeding(...)` into `MigrateDb` too, commit `a0f50da`. That fix is platform-wide, not specific to either sample.) | None. No `DataSeedingConfiguration<Product>` exists — static seeding was not part of this sample's scope; the automated sample instead demonstrates the external-broker capability the manual sample doesn't carry (see below). | Not a generator limitation — a deliberate scope split between the two samples (§2 of this cycle's brief: manual carries idempotency + static seeding, automated carries the external broker). Nothing about `[CrudCreate]`/`[GenerateDto]` would prevent a `Product` seed file; none was written. |
-| **External broker publish/subscribe** | None. `PurchaseOrder` events stay on the in-memory bus only — no `Produce`/`Consume` wiring for it in `ServiceBusSetup.cs`. | `Minimal.Infra/Extensions/ServiceBusSetup.cs` wires `azb.Produce<ProductCreatedEvent>(o => o.DefaultTopic("product-tp"))` and `azb.Consume<ProductCreatedEvent>(o => o.Path("product-tp").SubscriptionName("product-sub").WithConsumer<ProductCreatedNotificationHandler>())`; `Minimal.Infra/Features/AutomatedSample/ExternalEvents/ProductCreatedNotificationHandler.cs` is the hand-written external subscriber. Proves a **declaratively raised** event (nothing calls `AddEvent` for it) still reaches an external topic exactly like a hand-raised one would. | Not exercised by an automated test in this suite: `ProductCreatedNotificationHandler` is registered only on the `AzureBus` child bus (`ServiceBusSetup.AddAzureBus`), wired only when `ConnectionStrings:AzureBus` is non-empty — neither the xUnit host nor the BDD host ever sets it (no broker/emulator is started in this suite), and the "ImMemory" child bus the tests do run against is a separate bus with its own consumer registration, so publishing on it does not reach this handler. `ProductCreatedNotificationHandlerTests` (`Unit/AutomatedSample`) covers the handler's own behaviour directly. Produce → topic → consume against a real or emulated broker remains an untested path. |
-| **Request idempotency** | The create route calls `.RequiredIdempotentKey()` — callers must send `X-Idempotency-Key: {Guid}`; a replayed key returns the original response instead of creating a duplicate. Confirmed live: same key twice → same id/body. | None. The generated `MapPost<CreateProductRequest, ProductDto>("/")` call inside `ProductCrudEndpointExtensions` does not call `.RequiredIdempotentKey()` or any idempotency filter, and nothing in `ProductV1Endpoint` adds one by hand. | A duplicate-submit or client-retry-after-timeout on `POST /v1/products` silently creates two products — there is no protection, and adding one means dropping the generated create route for a hand-mapped one (the same trade-off as every other "the generic route doesn't do X" row above). |
-| **Request validation** | FluentValidation validators (`CreatePurchaseOrderCommandValidator`, `UpdatePurchaseOrderCommandValidator`) run for every hand-mapped route and are enforced: blank customer name, non-positive amount, and a missing `X-Idempotency-Key` header all confirmed live to return `400`. | **Declared but never evaluated — not a soft gap, a permanent one under this template's own wiring.** `CreateProductRequest.Price` genuinely carries `[Range(0.01, double.MaxValue)]` (attribute forwarding works exactly as documented — inspect `ProductCrudRequests.g.cs`). Nothing evaluates it: .NET 10's automatic minimal-API validation for complex-type parameters only activates through the `Microsoft.Extensions.Validation.ValidationsGenerator` source generator, itself gated on `<EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>` (not set here). Even with that flag forced on, that generator only recognizes **literal** `Map*(string, Delegate)` calls written in the compiling project's own source — which is exactly what the manual sample's `PurchaseOrderV1Endpoint` does, so its FluentValidation-backed rules run. The automated sample instead maps through `DKNet.AspCore.Extensions`'s generic `MapPost<TRequest,TResponse>`, compiled inside a precompiled package; the source generator cannot see through that library wrapper to the delegate it builds internally. Empirically: `POST /v1/products` with `price: -1` returns `201`, not `400`. | This is the clearest concrete cost in the whole document. Fixing it would mean either hand-writing a FluentValidation validator for a generator-owned request (which defeats the point of using the generator) or changing `DKNet.AspCore.Extensions` itself (a different repository) — both forbidden for this sample. Pick the automated path only for entities where the DataAnnotations rules you can express are genuinely optional, or accept you must drop to a hand-mapped route the moment validation matters. |
-| **Acting-user attribution (`CreatedBy`/`UpdatedBy`)** | `ByUser` is threaded explicitly: `[FromClaim(ClaimTypes.Name)]` on the request, then the endpoint overwrites it again from `ClaimsPrincipal` before sending (`req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount`), then `PurchaseOrder`'s constructor calls `base(byUser)`, which sets `CreatedBy` immediately — visible, traceable, in your own code. | The generator forwards only `System.ComponentModel.DataAnnotations` attributes, so `[FromClaim]` (namespace `DKNet.AspCore.Extensions.ModelBinding`) can never reach a generated property — `[CrudCreate]`'s constructor deliberately takes no acting-user parameter at all. Instead, `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` stamps `CreatedBy`/`CreatedOn` on insert and `UpdatedBy`/`UpdatedOn` on modify, both from `IDataOwnerProvider` on save, wired once at the composition root: `Minimal.Api/Configs/ServiceConfigs.cs` — `.AddScoped<IPrincipalProvider, PrincipalProvider>().AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`. A payload claiming `"createdBy": "someone-else"` or `"updatedBy": "someone-else"` has no property to land on at all. | You lose visibility, not safety: the generated request genuinely cannot carry a forged acting user (arguably a stronger guarantee than the manual sample's "the endpoint remembers to overwrite it"), but you can no longer see *where* `CreatedBy`/`UpdatedBy` get set by reading the sample's own files — it happens in a save hook wired at the composition root, shared by every entity, not in `AutomatedSample/`. (As of DKNet `10.1.12`, `DataOwnerHook` stamps `UpdatedBy`/`UpdatedOn` on modify as well as `CreatedBy`/`CreatedOn` on insert — verified live over HTTP against `Product`'s `PUT` route; the gap tracked on `10.1.11` is closed.) |
-| **Schema migration** | Both samples share one EF Core migration baseline generated against `CoreDbContext` (produced by the sibling `[D711-3] Build: single clean migration baseline` sub-task, covering `manual_sample.PurchaseOrders` and `sample.Products` together). | Same baseline, same sub-task. | — (not a produced layer distinguishing the two samples — one shared migration covers both) |
-| **Unit tests** | `Unit/ManualSample/*` (`PurchaseOrderTests`, `PurchaseOrderValidatorsTests`, `SpecGetPurchaseOrderTests`, `PurchaseOrderStaticDataTests`) plus `Integration/ManualSample/V1/*` (`PurchaseOrderActionsIntegrationTests`, `PurchaseOrderSecurityTests`). Proves the entity/validator/spec logic in isolation and, over a real DB, the handler-level `Result` failures (not-found, empty id) and security-header behaviour. | `Unit/AutomatedSample/*` (`ProductTests`, `ProductCreatedNotificationHandlerTests`) plus `Integration/AutomatedSample/V1/ProductSecurityTests.cs`. Proves the entity's `[RaisesEvent]`/`[CrudCreate]`/`[CrudUpdate]` behaviour and the hand-written external-broker notification handler. | — (both suites authored by dev-qc at Verify per this project's policy; the file split mirrors the manual/automated layout, not a behavioural difference). `Architecture/SampleInvariantTests.cs` covers both samples together (layer-boundary and naming-convention rules), so it isn't listed under either column. |
-| **BDD tests** | `Features/PurchaseOrders/PurchaseOrder.feature` + `Steps/PurchaseOrderSteps.cs` — HTTP-level create/get/list/update/cancel/delete scenarios, including the idempotent-replay case and the missing-idempotency-key rejection. | `Features/Products/Product.feature` + `Steps/ProductSteps.cs` — the same HTTP-level CRUD scenarios, plus one that pins the sample's own documented validation gap (a negative price still returns `201`) and one asserting the `ProductCreatedEvent` internal-bus side effect via log capture. | — (same process-split note as above) |
+## At a glance: which one should I copy?
 
-### Two real bugs the manual sample's hand-written code surfaced (and fixed)
+**Copy the manual sample (`PurchaseOrder`)** when the feature needs any of the following. Each one
+maps to a trade-off explained later in this document:
 
-Writing every layer by hand means bugs surface in code you wrote, where you can fix them directly —
-both are called out here because the comparison table above assumes they're already fixed:
+- Idempotent writes (safe client retries)
+- Request validation that is actually enforced
+- A business rule that conditionally blocks an operation (e.g. "cannot cancel twice")
+- A filtered or customized list query
+- A response DTO that deliberately hides fields
 
-1. `SpecGetPurchaseOrder` with no filter compiled to `WHERE FALSE` — the underlying predicate
-   builder needs at least one `.And()`/`.Or()` call to "start". Fixed by forcing a `true` predicate
-   when neither `byId` nor `byCustomerName` is supplied (`Minimal.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs`).
-2. `UpdatePurchaseOrderRequest.Id` was validated as "must not be empty" against the raw request
-   body, but the route supplies `Id` from the URL, not the JSON body, and auto-validation ran
-   before the route value was patched in. Fixed by dropping the redundant rule — an unknown/empty
-   id now correctly 404s from the repository lookup instead of 400ing from the validator.
+**Copy the automated sample (`Product`)** for a genuinely plain CRUD entity — one where
+DataAnnotations can express every validation rule you care about (or you don't need them enforced),
+and where exposing every audited field in the DTO is acceptable. In exchange you write an entity,
+one DTO line, and a handful of attributes instead of roughly 14 hand-written files, and you get a
+stronger acting-user guarantee.
+
+That generated shape is not limited to plain create/update/list/delete: **named domain actions come
+with it.** `[CrudAction]` publishes a business operation — approve, discontinue — at the entity's
+by-id route plus a segment, with the verb and segment under your control, and no hand-written
+request, handler or route registration. The trade-off is the one in the first list above: an action
+still has nowhere to hang a pre-condition, so an operation that must *refuse* (rather than just
+run) is still a reason to copy the manual sample.
+
+The rest of this document is the evidence behind that guidance.
+
+## How each request flows
+
+Both samples run the same request through the same vertical slice. The difference is *who authors
+each stage* — you, a compile-time generator, or a generic library route with no per-entity code
+behind it.
+
+**Legend:** blue = hand-written · amber = generated at compile time · purple = generic library
+route, no per-entity code.
+
+```mermaid
+flowchart TB
+    classDef hand fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a;
+    classDef gen fill:#fef3c7,stroke:#b45309,color:#78350f;
+    classDef lib fill:#ede9fe,stroke:#6d28d9,color:#4c1d95;
+
+    subgraph MANUAL["Manual — PurchaseOrder (every layer hand-written)"]
+        direction TB
+        Mreq["HTTP POST /v1/purchase-orders"]
+        M1["Endpoint: literal MapPost/MapGet/...<br/>+ .RequiredIdempotentKey()"]:::hand
+        M2["CreatePurchaseOrderRequest<br/>+ FluentValidation — enforced"]:::hand
+        M3["CreatePurchaseOrderCommandHandler"]:::hand
+        M4["PurchaseOrder aggregate<br/>ctor calls AddEvent(...)"]:::hand
+        M5["EF Core mapper + SaveChanges"]:::hand
+        M6["PurchaseOrderDto — 5 hand-picked fields"]:::hand
+        Mev["PurchaseOrderCreatedEvent<br/>→ in-memory handler"]:::hand
+        Mreq --> M1 --> M2 --> M3 --> M4 --> M5 --> M6
+        M5 -. raised on save .-> Mev
+    end
+
+    subgraph AUTO["Automated — Product (declared, then generated)"]
+        direction TB
+        Areq["HTTP POST /v1/products"]
+        A1["Endpoint: one MapProductCrud() call"]:::gen
+        A2["CreateProductRequest — generated<br/>[Range] present, NOT enforced"]:::lib
+        A3["CreateProductHandler — generated"]:::gen
+        A4["Product aggregate<br/>[RaisesEvent] declared"]:::hand
+        A5["EF Core mapper + SaveChanges"]:::hand
+        A6["ProductDto — every audited field"]:::gen
+        Aev["EF save hook reads [RaisesEvent]<br/>→ ProductCreatedEvent"]:::gen
+        Ain["in-memory handler"]:::hand
+        Aext["Azure topic →<br/>ProductCreatedNotificationHandler"]:::hand
+        Areq --> A1 --> A2 --> A3 --> A4 --> A5 --> A6
+        A5 -. raised on save .-> Aev
+        Aev --> Ain
+        Aev --> Aext
+    end
+```
+
+Read the two lanes stage for stage. The amber and purple nodes in the automated lane are exactly
+the layers you no longer write — and exactly where the trade-offs below live. The blue nodes in
+*both* lanes are the layers no generator touches.
+
+<script type="module">
+  // GitHub Pages' default Jekyll doesn't render ```mermaid fences; load mermaid ourselves.
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  document.querySelectorAll('code.language-mermaid').forEach(code => {
+    const pre = document.createElement('pre');
+    pre.className = 'mermaid';
+    pre.textContent = code.textContent;
+    code.closest('pre').replaceWith(pre);
+  });
+  await mermaid.run();
+</script>
+
+## Layers both samples hand-write
+
+No generator in this template produces these layers. The automated sample writes them by hand just
+like the manual one, so they carry no trade-off:
+
+- **Domain entity.** `Product.cs` (~45 lines) is as hand-written as `PurchaseOrder.cs` (~55 lines).
+  The generators attach to a real entity; there is no "generate the entity" mode.
+- **EF Core mapping.** `ProductConfigs.cs` (unique index on `Name`, length 150, `Price` precision
+  `(18,2)`, table `sample.Products`) is hand-written, same as `PurchaseOrderConfigs.cs`. None of
+  the three generators touch `IEntityTypeConfiguration`.
+- **Internal event handler.** `ProductCreatedEventHandler` is hand-written. `[RaisesEvent]` only
+  *declares and raises* an event; it never generates a consumer.
+- **Schema migration.** One shared EF Core baseline against `CoreDbContext` covers
+  `manual_sample.PurchaseOrders` and `sample.Products` together.
+- **Tests.** `Unit/AutomatedSample/*` and `Integration/AutomatedSample/*` mirror the manual layout;
+  `Architecture/SampleInvariantTests.cs` covers both samples' layer-boundary and naming rules
+  together.
+
+## Layers the automated sample generates
+
+Each of these is a layer `Product` *declares* (via an attribute) and the DKNet 10.1.13 generators
+emit at compile time — the amber and purple nodes in the diagram:
+
+- **Event definitions.** `[RaisesEvent(EventOperations.Created, Include = [...])]` and
+  `[RaisesEvent(EventOperations.Updated, nameof(Price))]` compose `ProductCreatedEvent`
+  (`Id`, `Name`, `Price`) and `ProductPriceUpdatedEvent`. Neither has a source file; both exist
+  only as compiler output.
+- **Event raising.** Nothing in `AutomatedSample/` calls `AddEvent`. DKNet's EF Core save hook
+  reads the `[RaisesEvent]` rules and raises the event after a successful `SaveChanges`, driven by
+  change-tracker state.
+- **Create/Update requests and handlers.** `[CrudCreate]` on the constructor and `[CrudUpdate]` on
+  `ChangePrice(decimal)` generate `CreateProductRequest`/`CreateProductHandler` and
+  `ChangePriceProductRequest`/`ChangePriceProductHandler`. Both return 404 via `NotFoundError` —
+  the same failure shape as the manual handlers.
+- **Domain-action requests, handlers and routes.** `[CrudAction]` on a method publishes a named
+  business operation at the entity's by-id route plus one segment, generating its request, handler
+  and route the same way. `Product` carries two: `[CrudAction("approval")] Approve(string byUser)`
+  → `POST /v1/products/{id}/approval`, and
+  `[CrudAction(Verb = CrudActionVerb.Put)] Discontinue()` → `PUT /v1/products/{id}/discontinue`.
+  Both answer `200` with `ProductDto`. The manual sample's equivalent — `Cancel.cs` plus its
+  literal `MapPost(".../cancel")` — is hand-written in full. See
+  [`docs/crud-attributes.md`](../crud-attributes.md#domain-actions-with-crudaction) for declaring
+  one, and trade-off 4 below for what a generated action cannot do that `Cancel` does.
+- **Get-by-id / list / delete routes.** No per-entity code at all. `MapProductCrud()` wires the
+  *generic* `MapGetById`/`MapGetList`/`MapDeleteById<Product, Guid, ...>` extensions from
+  `DKNet.AspCore.Extensions`.
+- **DTO.** `[GenerateDto(typeof(Product))] public sealed partial record ProductDto;` — one line —
+  generates every audited property: `Name`, `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`,
+  `LastModifiedBy`, `LastModifiedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
+- **Endpoint registration.** `ProductV1Endpoint.cs` is 9 lines (one `MapProductCrud()` plus
+  `.WithDescription`) versus ~90 lines of literal `Map*` calls in `PurchaseOrderV1Endpoint.cs`.
+
+## The trade-offs
+
+Each trade-off below corresponds to an amber or purple node in the diagram. They are ordered
+sharpest first.
+
+### 1. Request validation that looks wired but never runs (the sharpest gap)
+
+**What you'd expect:** `CreateProductRequest.Price` carries `[Range(0.01, double.MaxValue)]` —
+attribute forwarding works exactly as documented (inspect `ProductCrudRequests.g.cs`) — so a
+negative price should be rejected.
+
+**What actually happens:** nothing evaluates the attribute. Empirically, `POST /v1/products` with
+`price: -1` returns `201 Created`, not `400`.
+
+**Why:** .NET 10's automatic minimal-API validation for complex-type parameters only activates
+through the `Microsoft.Extensions.Validation.ValidationsGenerator` source generator, which is
+gated on `<EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>` (not set here).
+Even with that flag forced on, the generator only recognizes **literal** `Map*(string, Delegate)`
+calls in the compiling project's own source. The manual sample writes exactly those literal calls,
+so its FluentValidation rules run. The automated sample maps through
+`DKNet.AspCore.Extensions`'s generic `MapPost<TRequest,TResponse>` — compiled inside a precompiled
+package the source generator cannot see through.
+
+**Your options:** fixing this means either hand-writing a validator for a generator-owned request
+(defeating the point) or changing `DKNet.AspCore.Extensions` itself (a different repo) — both out
+of scope here. Pick the automated path only where the DataAnnotations rules you can express are
+genuinely optional, or accept that you must drop to a hand-mapped route the moment validation
+matters.
+
+### 2. No idempotency on POST
+
+The manual create route calls `.RequiredIdempotentKey()`: a replayed `X-Idempotency-Key` returns
+the original response instead of creating a duplicate (confirmed live — same key twice returns the
+same id and body).
+
+The generated `MapPost<CreateProductRequest, ProductDto>` adds no such filter, and nothing in
+`ProductV1Endpoint` adds one by hand. A duplicate submit or client retry on `POST /v1/products`
+**silently creates two products**. Adding protection means dropping the generated create route.
+
+### 3. The DTO exposes every audited field by default
+
+`ProductDto` ships `CreatedOn`, `LastModifiedOn`, `UpdatedOn`, and `UpdatedBy` to every caller,
+because the generator's default is "everything audited", not "only what I chose". Narrowing the
+shape requires an explicit `Exclude`/`Include` on `[GenerateDto]`. By contrast, the manual
+`PurchaseOrderDto` exposes exactly 5 fields — because nobody wrote the others into it.
+
+### 4. No filtered list, no custom get-by-id, no pre-delete business rule
+
+The generic routes are all-or-nothing:
+
+- **List** pages over every row with no filter, sort, or page-size ceiling. Adding a `?name=`
+  filter means abandoning the generated list route for a hand-written query (the manual
+  `ListPurchaseOrdersQuery` has a `CustomerName` filter).
+- **Get-by-id** has no query object to extend. A future "also check tenant ownership" or "expand a
+  related entity" forces that one route back to hand-written.
+- **Delete** either deletes or returns 404; there is nowhere to hang a "can this row be deleted?"
+  check. The manual sample's `Cancel` demonstrates exactly this — rejecting an already-cancelled
+  order with a domain-specific 400.
+- **Domain actions** inherit the same gap. A generated `[CrudAction]` handler loads the row, calls
+  the method and saves; there is no place to fail a pre-condition first. `PUT
+  /v1/products/{id}/discontinue` on an already-discontinued product is a `200` no-op, not a domain
+  failure. Everything else the generated path gives up — unenforced validation, no idempotency,
+  the every-audited-field DTO — applies to actions unchanged.
+
+### 5. Event names follow a convention, and requests can't carry extra fields
+
+The `[RaisesEvent]` convention composes event names as
+`<Entity><Label?><NarrowingProps><Operation>Event` — hence `ProductPriceUpdatedEvent`, **not**
+`ProductUpdatedEvent`. Two updates on different properties need distinct label segments to avoid a
+collision; you don't get to hand-choose names. Adding a field the generator didn't
+`Include`/infer means switching to the type-naming form
+(`[RaisesEvent(typeof(SomeDto), ...)]` against a `[GenerateDto]` record you own).
+
+Likewise, a generated request is a mechanical 1:1 of the source signature: `CreateProductRequest`
+mirrors the constructor's parameters, and `ChangePriceProductRequest` can only ever change price.
+You cannot add a request-only field (a captcha token, a client correlation id) without also adding
+it to the constructor. A method that needs to change two unrelated fields together needs two
+`[CrudUpdate]` methods (two routes) — or a hand-written one.
+
+### 6. Acting-user attribution: you lose visibility, not safety
+
+The generator forwards only `System.ComponentModel.DataAnnotations` attributes, so `[FromClaim]`
+(namespace `DKNet.AspCore.Extensions.ModelBinding`) can never reach a generated property — the
+`[CrudCreate]` constructor takes no acting-user parameter.
+
+Instead, `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` stamps `CreatedBy`/`CreatedOn` on
+insert and `UpdatedBy`/`UpdatedOn` on modify, reading the user from `IDataOwnerProvider`. It is
+wired once at the composition root (`ServiceConfigs.cs`). A payload claiming
+`"createdBy": "someone-else"` has no property to land on, so the forgery guarantee is *identical*
+to the manual sample's `[FromClaim]` population.
+
+What you actually lose is the ability to see *where* attribution happens by reading
+`AutomatedSample/` — it lives in a shared save hook. (As of DKNet `10.1.13`, `DataOwnerHook`
+stamps on modify as well as insert — verified live over `Product`'s `PUT` route.)
+
+### 7. The external-broker path is real but untested here
+
+`ServiceBusSetup.cs` wires `azb.Produce<ProductCreatedEvent>(...)` /
+`azb.Consume<ProductCreatedEvent>(...)`, and `ProductCreatedNotificationHandler` is the
+hand-written external subscriber. This proves a *declaratively raised* event still reaches an
+external topic exactly like a hand-raised one.
+
+However, that handler registers only on the `AzureBus` child bus, which is wired only when
+`ConnectionStrings:AzureBus` is non-empty — and neither the xUnit nor the BDD host ever sets it.
+The in-memory bus the tests run against is a separate bus. `ProductCreatedNotificationHandlerTests`
+covers the handler's own behaviour directly, but the full Produce → topic → Consume path against a
+real or emulated broker remains untested.
+
+(The manual sample carries no external-broker wiring at all — a deliberate scope split, not a
+generator limitation. Static seeding is the mirror image of that split: the manual sample seeds 3
+`PurchaseOrder` rows via `UseAutoDataSeeding`, while no `Product` seed file was written — though
+nothing about the generators would prevent one.)
+
+## Appendix: two real bugs the manual sample surfaced (and fixed)
+
+Writing every layer by hand means bugs surface in code you wrote, where you can fix them directly.
+Both are recorded here because the comparison above assumes they are already fixed:
+
+1. **Empty spec compiled to `WHERE FALSE`.** `SpecGetPurchaseOrder` with no filter matched nothing,
+   because the underlying predicate builder needs at least one `.And()`/`.Or()` call to "start".
+   Fixed by forcing a `true` predicate when neither `byId` nor `byCustomerName` is supplied
+   (`Minimal.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs`).
+2. **Validator ran before the route value arrived.** `UpdatePurchaseOrderRequest.Id` was validated
+   as "must not be empty" against the raw request body, but the route supplies `Id` from the URL,
+   not the JSON body — and auto-validation ran before the route value was patched in. Fixed by
+   dropping the redundant rule; an unknown or empty id now correctly returns 404 from the
+   repository lookup instead of 400 from the validator.
 
 Neither class of bug is possible in the automated sample's create/update path, because there is no
-hand-written spec or validator for the generator to get wrong — that absence is itself part of what
-"produced" buys you, symmetric with the validation gap above costing you elsewhere.
-
-### When to pick which
-
-Pick the **manual** shape (`PurchaseOrder`) when a feature needs any of: idempotent writes,
-enforced request validation beyond what a DataAnnotations attribute can express, a business rule
-that blocks an operation conditionally (an already-cancelled order, a locked record), a filtered
-list query, or a response DTO that deliberately hides fields. Every one of those is a "gives up" row
-above for the generated path today.
-
-Pick the **automated** shape (`Product`) for a genuinely plain CRUD entity — one whose validation
-rules are fully expressible as DataAnnotations *and* where you either don't route through a generic
-library wrapper (so the .NET 10 validation generator can still see the route) or don't need that
-validation enforced at all, and where "delete every field on the entity in the DTO by default" is
-acceptable. It buys real speed (an entity, one DTO line, two attributes vs. ~14 hand-written files)
-and a stronger acting-user guarantee, at the cost of every row marked "gives up" above — most
-sharply, request validation that looks wired but silently never runs under this template's own
-endpoint-registration convention.
+hand-written spec or validator for a developer to get wrong. That absence is part of what
+"generated" buys you — symmetric with the validation gap above costing you elsewhere.

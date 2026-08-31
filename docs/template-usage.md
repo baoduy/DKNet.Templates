@@ -1,5 +1,8 @@
 # Template Usage Reference
 
+How to install `DKNet.Minimal.Template`, scaffold a new solution from it, and run, test, migrate,
+and publish that solution.
+
 ## Install
 
 ```bash
@@ -55,9 +58,10 @@ MyCompany.MyService/
     └── MyCompany.MyService.App.BDDTests/  # Reqnroll + NUnit BDD tests
 ```
 
-Plus, copied unchanged into every generated solution: `.claude/`, `.claude-plugin/`, `.github/`,
-`.specify/`, `AGENTS.md`, `SPEC_KIT.md` — the same AI-assistant agents/skills/prompts and Spec-Kit
-workflow the template itself is built with (see [`template-features.md`](./template-features.md)).
+The scaffold also copies `.claude/`, `.claude-plugin/`, `.github/`, `.specify/`, `AGENTS.md`, and
+`SPEC_KIT.md` unchanged into every generated solution. These are the same AI-assistant
+agents/skills/prompts and Spec-Kit workflow the template itself is built with. See
+[`template-features.md`](./template-features.md) for details.
 
 ## Run
 
@@ -81,7 +85,8 @@ dotnet test <Name>.ApiEndpoints/<Name>.App.BDDTests --filter "TestCategory=<Feat
 
 ## EF Core migrations
 
-From inside `<Name>.ApiEndpoints/` (scripts always target `CoreDbContext` in `<Name>.Infra`):
+Run these from inside `<Name>.ApiEndpoints/`. The scripts always target `CoreDbContext` in
+`<Name>.Infra`.
 
 ```bash
 ./add-migration.sh <MigrationName>

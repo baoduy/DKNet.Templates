@@ -13,7 +13,9 @@ namespace Minimal.App.Tests.Integration.ManualSample.V1;
 /// The manual sample's half of the cycle's sharpest acceptance point: a write whose payload claims
 /// <c>"byUser": "someone-else"</c> must be attributed to the authenticated caller, not the payload value.
 /// Exercised over real HTTP against <see cref="AuthOnApiFixture"/> so the model-binding pipeline
-/// (<c>[FromClaim]</c> + <c>AddContextualRequestPopulation</c>, then the endpoint's own overwrite) runs for real.
+/// (<c>[FromClaim]</c> + <c>AddContextualRequestPopulation</c>) runs for real — contextual population is the
+/// single mechanism, and <c>ContextualRequestPopulationService.Populate</c> sets <c>ByUser</c> unconditionally,
+/// so a caller-supplied value in the body or query string is always discarded, never trusted.
 /// </summary>
 public sealed class PurchaseOrderSecurityTests(AuthOnApiFixture fixture) : IClassFixture<AuthOnApiFixture>
 {
@@ -70,6 +72,35 @@ public sealed class PurchaseOrderSecurityTests(AuthOnApiFixture fixture) : IClas
         // DataOwnerHook either way (DKNet 10.1.12 also closed that hook's own UpdatedBy gap, see
         // ProductSecurityTests.Update_ShouldStampUpdatedByFromAuthenticatedCallersOwnershipKey). PurchaseOrderDto
         // has no UpdatedBy field, so assert it on the entity directly.
+        using var scope = fixture.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
+        var order = await repository.FirstOrDefaultAsync(new SpecGetPurchaseOrder(created.Id), CancellationToken.None);
+        order!.UpdatedBy.ShouldBe(TestAuthHandler.CallerName);
+        order.UpdatedBy.ShouldNotBe("someone-else");
+    }
+
+    [Fact]
+    public async Task Cancel_ShouldAttributeUpdatedByToAuthenticatedCaller_IgnoringQueryStringByUser()
+    {
+        await fixture.ResetDatabaseAsync();
+        var client = fixture.CreateClient();
+
+        using var createRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/purchase-orders")
+        {
+            Content = JsonContent.Create(new { customerName = "Acme Pte Ltd", amount = 100m })
+        };
+        createRequest.Headers.Add("X-Idempotency-Key", Guid.NewGuid().ToString());
+        var created = await (await client.SendAsync(createRequest)).Content
+            .ReadFromJsonAsync<PurchaseOrderDto>(SharedConsts.JsonSerializerOptions);
+
+        // CancelPurchaseOrderRequest binds via [AsParameters] (PurchaseOrderV1Endpoint.cs:76), which makes
+        // ByUser bindable from the query string too — this is the composition the body-only assertions above
+        // don't cover.
+        var cancelResponse = await client.PostAsync($"/v1/purchase-orders/{created!.Id}/cancel?byUser=someone-else", null);
+
+        cancelResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // PurchaseOrderDto has no UpdatedBy field, so assert it on the entity directly (see the Update test above).
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
         var order = await repository.FirstOrDefaultAsync(new SpecGetPurchaseOrder(created.Id), CancellationToken.None);

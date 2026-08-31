@@ -50,13 +50,15 @@ This template ships two worked examples of this layer, and either is a legitimat
 **Hand-mapped** (`PurchaseOrderV1Endpoint`) — every route is a literal call against the raw minimal-API surface, dispatching through `IMessageBus.Send(request)` by hand:
 
 ```csharp
-group.MapPost("/", async (CreatePurchaseOrderRequest req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) => { ... })
+group.MapPost("/", async (CreatePurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) => { ... })
 group.MapGet("/", async ([AsParameters] ListPurchaseOrdersQuery query, IMessageBus bus, CancellationToken ct) => { ... })
 group.MapGet("{id:guid}", async (Guid id, IMessageBus bus, CancellationToken ct) => { ... })
-group.MapPut("{id:guid}", async (Guid id, UpdatePurchaseOrderRequest req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) => { ... })
-group.MapPost("{id:guid}/cancel", async (Guid id, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) => { ... })
-group.MapDelete("{id:guid}", async (Guid id, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) => { ... })
+group.MapPut("{id:guid}", async (Guid id, UpdatePurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) => { ... })
+group.MapPost("{id:guid}/cancel", async ([AsParameters] CancelPurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) => { ... })
+group.MapDelete("{id:guid}", async ([AsParameters] DeletePurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) => { ... })
 ```
+
+`ByUser` on every request above comes only from `[FromClaim(ClaimTypes.Name)]` + `AddContextualRequestPopulation` (wired in `Program.cs`) — the endpoint never assigns it by hand. That population mechanism only runs over the endpoint delegate's *bound* parameters, so a request with a `[FromClaim]` property (`Cancel`/`Delete`) must be bound with `[AsParameters]` rather than constructed inside the lambda, or population never touches it. `ContextualSourceOperationTransformer` then strips `ByUser` from the OpenAPI parameter list for `[AsParameters]`-bound types, so it never shows up as a caller-supplied field.
 
 **Generator-driven** (`ProductV1Endpoint`) — one call, produced by `DKNet.SlimBus.Generators` from `Product`'s `[CrudCreate]`/`[CrudUpdate]` declarations:
 
@@ -125,11 +127,9 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
     {
         group.MapPost("/", async (
                 Create{Entity}Request req,
-                ClaimsPrincipal user,
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
-                req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
                 var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response(isCreated: true);
             })
@@ -154,26 +154,20 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
         group.MapPut("{id:guid}", async (
                 Guid id,
                 Update{Entity}Request req,
-                ClaimsPrincipal user,
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
-                var result = await bus.Send(
-                    req with { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-                    cancellationToken: ct);
+                var result = await bus.Send(req with { Id = id }, cancellationToken: ct);
                 return result.Response();
             })
             .WithDescription("Update {entity}");
 
         group.MapDelete("{id:guid}", async (
-                Guid id,
-                ClaimsPrincipal user,
+                [AsParameters] Delete{Entity}Request req,
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
-                var result = await bus.Send(
-                    new Delete{Entity}Request { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-                    cancellationToken: ct);
+                var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response();
             })
             .WithDescription("Delete {entity}");
@@ -231,14 +225,11 @@ For a business action beyond basic CRUD — mirrors `PurchaseOrderV1Endpoint`'s
 
 ```csharp
 group.MapPost("{id:guid}/cancel", async (
-        Guid id,
-        ClaimsPrincipal user,
+        [AsParameters] Cancel{Entity}Request req,
         IMessageBus bus,
         CancellationToken ct) =>
     {
-        var result = await bus.Send(
-            new Cancel{Entity}Request { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-            cancellationToken: ct);
+        var result = await bus.Send(req, cancellationToken: ct);
         return result.Response();
     })
     .WithDescription("Cancel {entity}");

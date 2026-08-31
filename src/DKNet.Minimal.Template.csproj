@@ -94,10 +94,6 @@
          Pack="true"
          PackagePath="content/"
          Link="AGENTS.md" />
-    <Content Include="$(MSBuildProjectDirectory)/../SPEC_KIT.md"
-         Pack="true"
-         PackagePath="content/"
-         Link="SPEC_KIT.md" />
         <Content Include="$(MSBuildProjectDirectory)/../.github/agents/**/*"
           Pack="true"
           PackagePath="content/" />

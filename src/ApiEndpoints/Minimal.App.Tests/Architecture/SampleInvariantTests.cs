@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Minimal.AppServices;
 
 namespace Minimal.App.Tests.Architecture;
@@ -18,7 +19,7 @@ public class SampleInvariantTests
     public void ManualSample_ShouldNotUseAnyDeclarativeGenerationAttribute()
     {
         var offenders = SourceFilesUnder("ManualSample")
-            .Where(f => ContainsAny(File.ReadAllText(f), "[RaisesEvent", "[CrudCreate]", "[CrudUpdate]", "[GenerateDto"))
+            .Where(f => ContainsAny(File.ReadAllText(f), "[RaisesEvent", "[CrudCreate]", "[CrudUpdate]", "[CrudAction", "[GenerateDto"))
             .ToArray();
 
         offenders.ShouldBeEmpty(
@@ -121,6 +122,56 @@ public class SampleInvariantTests
 
         offenders.ShouldBeEmpty(
             $"Removed demo entity name found outside SampleInvariantTests: {string.Join(", ", offenders)}");
+    }
+
+    [Fact]
+    public void AutomatedSample_ShouldNotHandWriteActionRequestsOrHandlers()
+    {
+        // The [CrudAction] Approve/Discontinue actions must stay fully generated (obj/Generated/, never
+        // committed source) — same rule DKNetSlimBusGeneratorsPackage_ShouldBeReferenced protects for the
+        // create/update pair. Needles are type names, not declaration keywords: this repo's hand-written
+        // slices declare requests as `record` (not `class`) and handlers with a `CommandHandler` suffix
+        // (not a bare `Handler`) — see ManualSample/PurchaseOrder/Actions/Cancel.cs.
+        var offenders = SourceFilesUnder("AutomatedSample")
+            .Where(f => ContainsAny(File.ReadAllText(f),
+                "ApproveProductRequest", "DiscontinueProductRequest",
+                "ApproveProductCommandHandler", "ApproveProductHandler",
+                "DiscontinueProductCommandHandler", "DiscontinueProductHandler"))
+            .ToArray();
+
+        offenders.ShouldBeEmpty(
+            $"Approve/Discontinue must stay generator-produced — found a hand-written request or handler in: {string.Join(", ", offenders)}");
+    }
+
+    [Fact]
+    public void ProductV1Endpoint_ShouldMapOnlyTheGeneratedCrudExtension()
+    {
+        // Guards against a hand-mapped route creeping in alongside MapProductCrud() for the new actions —
+        // e.g. a literal group.MapPost(".../approval", ...) would defeat the "nothing hand-mapped" claim in
+        // docs/samples/manual-vs-automated.md.
+        var path = Path.Combine(SrcDir, "ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs");
+        var content = File.ReadAllText(path);
+
+        content.ShouldContain("group.MapProductCrud();");
+        // ProductV1Endpoint must map only the generated MapProductCrud() extension — no hand-mapped route.
+        Regex.Matches(content, @"group\.Map\w+").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void ManualVsAutomatedDoc_LayersTheAutomatedSampleGenerates_ListsDomainActions()
+    {
+        var docPath = Path.GetFullPath(Path.Combine(SrcDir, "..", "docs", "samples", "manual-vs-automated.md"));
+        File.Exists(docPath).ShouldBeTrue();
+
+        var content = File.ReadAllText(docPath);
+        var sectionStart = content.IndexOf("## Layers the automated sample generates", StringComparison.Ordinal);
+        sectionStart.ShouldBeGreaterThanOrEqualTo(0);
+
+        var nextSectionStart = content.IndexOf("\n## ", sectionStart + 1, StringComparison.Ordinal);
+        var section = nextSectionStart > 0 ? content[sectionStart..nextSectionStart] : content[sectionStart..];
+
+        // The generated-layers enumeration must list the [CrudAction] domain-action layer.
+        section.ShouldContain("[CrudAction]");
     }
 
     [Fact]

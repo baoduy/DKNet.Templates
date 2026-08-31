@@ -1,19 +1,23 @@
 using System.Net.Http.Json;
+using DKNet.EfCore.Specifications.Extensions;
+using DKNet.EfCore.Specifications.Repositories;
 using Minimal.App.TestSupport;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.ManualSample.V1;
+using Minimal.AppServices.ManualSample.V1.Specs;
 using Minimal.Share;
 
 namespace Minimal.App.Tests.Integration.EndpointConfig;
 
 /// <summary>
 /// Re-homes the platform coverage <c>EndpointStampingAndVersioningTests</c> (deleted with the removed demo
-/// entity's teardown) onto <c>PurchaseOrder</c>: the versioning gate governing route shape, and the
-/// endpoint's own <c>user.Identity?.Name ?? SharedConsts.SystemAccount</c> attribution — falling back to
-/// <see cref="SharedConsts.SystemAccount" /> both when authorization is off (anonymous caller) and when the
-/// caller is authenticated but its token carries no <see cref="System.Security.Claims.ClaimTypes.Name" /> claim.
-/// Payload-spoofing resistance is already covered by <c>PurchaseOrderSecurityTests</c>; this class does not
-/// duplicate it.
+/// entity's teardown) onto <c>PurchaseOrder</c>: the versioning gate governing route shape, and acting-user
+/// attribution — sourced entirely from <c>[FromClaim]</c> + <c>AddContextualRequestPopulation</c>, never
+/// stamped by the endpoint itself. <see cref="SharedConsts.SystemAccount" /> is only ever the resolved value
+/// when <c>RequireAuthorization</c> is off (anonymous caller); an authenticated caller whose token carries no
+/// <see cref="System.Security.Claims.ClaimTypes.Name" /> claim gets an unresolved (null) <c>ByUser</c> and the
+/// write is refused — never attributed to <see cref="SharedConsts.SystemAccount" />. Payload-spoofing
+/// resistance is already covered by <c>PurchaseOrderSecurityTests</c>; this class does not duplicate it.
 /// </summary>
 public sealed class PurchaseOrderStampingAndVersioningTests
 {
@@ -49,8 +53,9 @@ public sealed class PurchaseOrderStampingAndVersioningTests
     }
 
     /// <summary>
-    /// <c>RequireAuthorization</c> off → <c>user.Identity?.Name</c> is null on the anonymous caller, so the
-    /// endpoint's own fallback stamps <see cref="SharedConsts.SystemAccount" />.
+    /// <c>RequireAuthorization</c> off → <c>Identity?.Name</c> is null on the anonymous caller, so contextual
+    /// population resolves <c>ByUser</c> to its configured <c>SystemAccountFallback</c> (<c>Program.cs:23</c>) —
+    /// the endpoint stamps nothing itself.
     /// </summary>
     [Fact]
     public async Task AuthorizationOff_CreateIsAttributedToSystemAccount()
@@ -67,24 +72,28 @@ public sealed class PurchaseOrderStampingAndVersioningTests
     }
 
     /// <summary>
-    /// <c>RequireAuthorization</c> on but the caller's token carries no <c>ClaimTypes.Name</c> claim →
-    /// <c>user.Identity?.Name</c> is still null despite the caller being authenticated, so the same
-    /// <see cref="SharedConsts.SystemAccount" /> fallback applies. Distinct from the automated sample's
-    /// <c>DataOwnerHook</c> path (see <c>ProductSecurityTests</c>) — the manual sample never relies on
-    /// <c>[FromClaim]</c> population for this attribution, it is stamped inline by the endpoint.
+    /// <c>RequireAuthorization</c> on but the caller's token carries no <c>ClaimTypes.Name</c> claim → the
+    /// <c>[FromClaim]</c> resolver cannot resolve <c>ByUser</c>, and an authenticated-but-unresolved member never
+    /// receives the <see cref="SharedConsts.SystemAccount" /> fallback (that only applies when authorization is
+    /// off — see <see cref="AuthorizationOff_CreateIsAttributedToSystemAccount" />) — it holds its default
+    /// (<see langword="null" />) instead, so the handler's own <c>string.IsNullOrEmpty(ByUser)</c> guard refuses
+    /// the write. Distinct from the automated sample's <c>DataOwnerHook</c> path (see
+    /// <c>ProductSecurityTests</c>).
     /// </summary>
     [Fact]
-    public async Task AuthenticatedCallerWithNoNameClaim_CreateFallsBackToSystemAccount_NotA500()
+    public async Task AuthenticatedCallerWithNoNameClaim_CreateIsRefused_NeverAttributedToSystemAccount()
     {
         using var fixture = new AuthOnNoNameClaimApiFixture();
         await fixture.InitializeAsync();
         var client = fixture.CreateClient();
 
         using var response = await CreateAsync(client, VersionedCreateUrl);
-        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        var dto = await response.Content.ReadFromJsonAsync<PurchaseOrderDto>(SharedConsts.JsonSerializerOptions);
-        dto!.CreatedBy.ShouldBe(SharedConsts.SystemAccount);
+        using var scope = fixture.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
+        var count = await repository.CountAsync(new SpecGetPurchaseOrder(), CancellationToken.None);
+        count.ShouldBe(0, "a refused write must not create a row attributed to anyone, System included.");
     }
 
     private static async Task<HttpResponseMessage> CreateAsync(HttpClient client, string url)

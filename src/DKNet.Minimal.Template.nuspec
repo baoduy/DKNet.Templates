@@ -39,7 +39,6 @@
     <file src="coverage.runsettings" target="content\" />
     <file src="DKNet.Templates.sln" target="content\" />
     <file src="..\AGENTS.md" target="content\" />
-    <file src="..\SPEC_KIT.md" target="content\" />
     <file src="..\.github\agents\**\*" target="content\.github\agents\" />
     <file src="..\.github\prompts\**\*" target="content\.github\prompts\" />
     <file src="..\.github\skills\**\*" target="content\.github\skills\" />

@@ -51,7 +51,7 @@ This project currently ships two real, different ways to do this — pick the on
 
 ### Hand-mapped routes: no fluent entity/DTO helper
 
-`PurchaseOrderV1Endpoint` maps every route with the raw minimal-API surface directly — `group.MapPost("/", async (CreatePurchaseOrderRequest req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) => {...})`. Inside the lambda, the endpoint itself stamps the acting user from `ClaimsPrincipal` as a second safety net (`req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount`), then calls `bus.Send(req, cancellationToken: ct)` and returns `result.Response(isCreated: true)` (or `result.Response()` for non-create). This is the current convention for any hand-written feature — there is no generic `MapPost<TReq,TDto>()`-style call to reach for here; that call shape now exists only inside the generator's own output (see below).
+`PurchaseOrderV1Endpoint` maps every route with the raw minimal-API surface directly — `group.MapPost("/", async (CreatePurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) => {...})`. The acting user is never stamped by the endpoint itself; `req.ByUser` (a `[FromClaim(ClaimTypes.Name)]` property) is populated by `AddContextualRequestPopulation` before the lambda runs. The lambda just calls `bus.Send(req, cancellationToken: ct)` and returns `result.Response(isCreated: true)` (or `result.Response()` for non-create). Population only runs over the endpoint delegate's *bound* parameters, so a request carrying `[FromClaim]` that the lambda would otherwise construct itself (`Cancel`/`Delete`) must instead be bound with `[AsParameters]`. This is the current convention for any hand-written feature — there is no generic `MapPost<TReq,TDto>()`-style call to reach for here; that call shape now exists only inside the generator's own output (see below).
 
 POST does **not** auto-add idempotency — call `.RequiredIdempotentKey()` explicitly on the route you want protected; clients then send `X-Idempotency-Key: {Guid}`. A replayed key returns the original response instead of creating a duplicate.
 
@@ -101,11 +101,9 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
     {
         group.MapPost("/", async (
                 Create{Entity}Request req,
-                ClaimsPrincipal user,
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
-                req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
                 var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response(isCreated: true);
             })
@@ -130,26 +128,20 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
         group.MapPut("{id:guid}", async (
                 Guid id,
                 Update{Entity}Request req,
-                ClaimsPrincipal user,
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
-                var result = await bus.Send(
-                    req with { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-                    cancellationToken: ct);
+                var result = await bus.Send(req with { Id = id }, cancellationToken: ct);
                 return result.Response();
             })
             .WithDescription("Update {entity}");
 
         group.MapDelete("{id:guid}", async (
-                Guid id,
-                ClaimsPrincipal user,
+                [AsParameters] Delete{Entity}Request req,
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
-                var result = await bus.Send(
-                    new Delete{Entity}Request { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-                    cancellationToken: ct);
+                var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response();
             })
             .WithDescription("Delete {entity}");
@@ -164,9 +156,8 @@ This mirrors `PurchaseOrderV1Endpoint` exactly (base route `/v1/purchase-orders`
 ### Step 2: Idempotency (POST only, if needed)
 
 ```csharp
-group.MapPost("/", async (Create{Entity}Request req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+group.MapPost("/", async (Create{Entity}Request req, IMessageBus bus, CancellationToken ct) =>
     {
-        req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
         var result = await bus.Send(req, cancellationToken: ct);
         return result.Response(isCreated: true);
     })
@@ -209,11 +200,9 @@ internal sealed class PurchaseOrderV1Endpoint : IEndpointConfig
     {
         group.MapPost("/", async (
                 CreatePurchaseOrderRequest req,
-                ClaimsPrincipal user,
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
-                req.ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount;
                 var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response(isCreated: true);
             })
@@ -234,29 +223,23 @@ internal sealed class PurchaseOrderV1Endpoint : IEndpointConfig
             })
             .WithDescription("Get purchase order by id");
 
-        group.MapPut("{id:guid}", async (Guid id, UpdatePurchaseOrderRequest req, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+        group.MapPut("{id:guid}", async (Guid id, UpdatePurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) =>
             {
-                var result = await bus.Send(
-                    req with { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-                    cancellationToken: ct);
+                var result = await bus.Send(req with { Id = id }, cancellationToken: ct);
                 return result.Response();
             })
             .WithDescription("Update purchase order amount");
 
-        group.MapPost("{id:guid}/cancel", async (Guid id, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+        group.MapPost("{id:guid}/cancel", async ([AsParameters] CancelPurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) =>
             {
-                var result = await bus.Send(
-                    new CancelPurchaseOrderRequest { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-                    cancellationToken: ct);
+                var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response();
             })
             .WithDescription("Cancel purchase order");
 
-        group.MapDelete("{id:guid}", async (Guid id, ClaimsPrincipal user, IMessageBus bus, CancellationToken ct) =>
+        group.MapDelete("{id:guid}", async ([AsParameters] DeletePurchaseOrderRequest req, IMessageBus bus, CancellationToken ct) =>
             {
-                var result = await bus.Send(
-                    new DeletePurchaseOrderRequest { Id = id, ByUser = user.Identity?.Name ?? SharedConsts.SystemAccount },
-                    cancellationToken: ct);
+                var result = await bus.Send(req, cancellationToken: ct);
                 return result.Response();
             })
             .WithDescription("Delete purchase order");
@@ -315,7 +298,7 @@ Pick this shape only when the entity's validation is fully expressible as DataAn
 - [ ] `Version` returns correct API version integer
 - [ ] `GroupEndpoint` uses kebab-case with leading `/`
 - [ ] Hand-mapped routes use the raw minimal-API surface (`MapPost`/`MapGet`/`MapPut`/`MapDelete` with a literal lambda) and dispatch through `bus.Send(...)`
-- [ ] The endpoint re-stamps `ByUser` from `ClaimsPrincipal` before sending, as a second safety net alongside `[FromClaim]`
+- [ ] The endpoint never assigns `ByUser` itself — `[FromClaim]` + `AddContextualRequestPopulation` is the only mechanism; a request carrying it that the lambda would otherwise construct (`Cancel`/`Delete`) is bound with `[AsParameters]` instead
 - [ ] DTO type alias added if namespace conflicts: `using {Entity}Dto = ...`
 - [ ] All endpoints have `.WithDescription()` for OpenAPI docs
 - [ ] Create route calls `.RequiredIdempotentKey()` if duplicate submits must be rejected

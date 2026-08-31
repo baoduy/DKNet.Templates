@@ -11,11 +11,13 @@ namespace Minimal.App.Tests.Integration.ManualSample.V1;
 
 /// <summary>
 /// Pins the <c>@integration Scenario: Seeded purchase-order reference data is available on a freshly started
-/// application</c> acceptance point against the real code path that broke once already (DRK-722): unlike
-/// <see cref="Support.AutoSeedingApiFixture"/> (which wires <c>.UseAutoDataSeeding(...)</c> into a separate,
-/// InMemory-only test setup), this test runs <see cref="InfraMigration.MigrateDb"/> itself — the exact method
-/// the real app calls at startup — against a real, ephemeral Postgres container, then reads the result back
-/// over HTTP. It fails if <c>.UseAutoDataSeeding(...)</c> is ever removed from <see cref="InfraMigration.MigrateDb"/>.
+/// application</c> acceptance point against the real code path that broke once already (DRK-722): no test
+/// fixture in this repo wires <c>.UseAutoDataSeeding(...)</c> — neither the xUnit <see cref="Support.ApiFixture"/>
+/// nor the BDD <c>BddApiFactory</c> (see <see cref="Minimal.App.Tests.Unit.ManualSample.PurchaseOrderStaticDataTests"/>) — that
+/// wiring lives only in the real app's composition root, which is exactly what this test exercises: it runs
+/// <see cref="InfraMigration.MigrateDb"/> itself — the exact method the real app calls at startup — against a
+/// real, ephemeral Postgres container, then reads the result back over HTTP. It fails if
+/// <c>.UseAutoDataSeeding(...)</c> is ever removed from <see cref="InfraMigration.MigrateDb"/>.
 /// </summary>
 public sealed class InfraMigrationSeedingTests : IAsyncLifetime
 {

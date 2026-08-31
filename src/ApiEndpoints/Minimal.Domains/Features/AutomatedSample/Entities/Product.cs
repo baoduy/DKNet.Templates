@@ -13,9 +13,13 @@ namespace Minimal.Domains.Features.AutomatedSample.Entities;
 /// by the DKNet events hook on save — nothing here raises an event by hand. The <c>[CrudCreate]</c>
 /// constructor's parameter list becomes the generated create request's payload, so it deliberately carries
 /// no acting-user parameter — that would make the acting user caller-settable.
+/// A <c>[CrudAction]</c> method publishes a POST at the by-id route plus a segment, returning 200 with the
+/// entity DTO. <see cref="Approve"/> overrides the segment (<c>approval</c>) while keeping the default POST
+/// verb; <see cref="Discontinue"/> keeps the default method-derived segment but overrides the verb to PUT.
 /// </remarks>
 [RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]
 [RaisesEvent(EventOperations.Updated, nameof(Price))]
+[RaisesEvent(EventOperations.Updated, nameof(IsDiscontinued))]
 public class Product : AggregateRoot
 {
     #region Constructors
@@ -60,6 +64,19 @@ public class Product : AggregateRoot
     /// <param name="price">The new unit price. Must be positive.</param>
     [CrudUpdate]
     public void ChangePrice([Range(0.01, double.MaxValue)] decimal price) => Price = price;
+
+    /// <summary>
+    /// Approves the product, stamping the acting user.
+    /// </summary>
+    /// <param name="byUser">The approving user.</param>
+    [CrudAction("approval")]
+    public void Approve(string byUser) => SetUpdatedBy(byUser);
+
+    /// <summary>
+    /// Discontinues the product. Idempotent — calling it again is a no-op.
+    /// </summary>
+    [CrudAction(Verb = CrudActionVerb.Put)]
+    public void Discontinue() => IsDiscontinued = true;
 
     #endregion
 }

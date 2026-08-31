@@ -6,8 +6,10 @@ namespace Minimal.App.Tests.Integration.OpenApi;
 /// Re-homes the platform coverage <c>OpenApiDocumentRegressionTests</c> (deleted with the removed demo
 /// entities' teardown) onto the manual sample's hand-mapped
 /// <c>PurchaseOrderV1Endpoint</c> routes — document title, the versioned-and-resolved path shape, and the
-/// <c>{id}</c> path parameter's schema. The automated sample's generated <c>Product</c> routes are not pinned
-/// here since their exact shape comes from a source generator, not from committed source.
+/// <c>{id}</c> path parameter's schema. The automated sample's generated <c>Product</c> CRUD routes are not
+/// pinned here since their exact shape comes from a source generator, not from committed source — except its
+/// two <c>[CrudAction]</c> routes below, whose published verb is a settleable contract from <c>Product.cs</c>
+/// itself (see docs/crud-attributes.md#domain-actions-with-crudaction).
 /// </summary>
 public sealed class OpenApiDocumentRegressionTests(SwaggerOnApiFixture fixture) : IClassFixture<SwaggerOnApiFixture>
 {
@@ -34,6 +36,56 @@ public sealed class OpenApiDocumentRegressionTests(SwaggerOnApiFixture fixture) 
             .ShouldBe(["delete", "get", "put"]);
         paths.GetProperty("/v1/purchase-orders/{id}/cancel").EnumerateObject().Select(m => m.Name)
             .ShouldBe(["post"]);
+    }
+
+    /// <summary>
+    /// Cancel and Delete bind their request via <c>[AsParameters]</c> (DRK-738), which puts <c>ByUser</c> in the
+    /// operation's own parameter list rather than a body schema — a different exclusion path
+    /// (<c>ContextualSourceOperationTransformer</c>) than the one JSON-body-bound routes use
+    /// (<c>ContextualSourceSchemaTransformer</c>). Both must still hide the <c>[FromClaim]</c>-declared member:
+    /// it is never caller-supplied, so it must never be advertised as caller input.
+    /// </summary>
+    [Fact]
+    public async Task Document_CancelAndDeleteRoutes_DoNotAdvertiseByUserAsAParameter()
+    {
+        using var doc = await FetchDocumentAsync();
+        var paths = doc.RootElement.GetProperty("paths");
+
+        var cancelParameters = paths.GetProperty("/v1/purchase-orders/{id}/cancel").GetProperty("post")
+            .GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString());
+        cancelParameters.ShouldBe(["id"]);
+
+        var deleteParameters = paths.GetProperty("/v1/purchase-orders/{id}").GetProperty("delete")
+            .GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString());
+        deleteParameters.ShouldBe(["id"]);
+    }
+
+    /// <summary>
+    /// The generated Product approval action publishes only POST at its by-id-plus-segment route
+    /// (docs/samples/manual-vs-automated.md's domain-action section) — no PUT is ever registered for it.
+    /// </summary>
+    [Fact]
+    public async Task Document_ProductApprovalPath_PublishesOnlyPost()
+    {
+        using var doc = await FetchDocumentAsync();
+        var paths = doc.RootElement.GetProperty("paths");
+
+        paths.GetProperty("/v1/products/{id}/approval").EnumerateObject().Select(m => m.Name)
+            .ShouldBe(["post"]);
+    }
+
+    /// <summary>
+    /// The generated Product discontinue action overrides its verb to PUT — no POST is ever registered
+    /// for it, unlike the default-verb approval action above.
+    /// </summary>
+    [Fact]
+    public async Task Document_ProductDiscontinuePath_PublishesOnlyPut()
+    {
+        using var doc = await FetchDocumentAsync();
+        var paths = doc.RootElement.GetProperty("paths");
+
+        paths.GetProperty("/v1/products/{id}/discontinue").EnumerateObject().Select(m => m.Name)
+            .ShouldBe(["put"]);
     }
 
     [Fact]

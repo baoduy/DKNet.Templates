@@ -22,6 +22,8 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
     {
         group.WithDescription("Automated sample — Product CRUD generated from [CrudCreate]/[CrudUpdate]/[RaisesEvent].");
         group.MapProductCrud();
+        
+        
     }
 
     #endregion

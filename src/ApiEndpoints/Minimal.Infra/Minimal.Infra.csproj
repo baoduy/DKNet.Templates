@@ -20,6 +20,7 @@
         <PackageReference Include="SlimMessageBus.Host.Memory"/>
         <PackageReference Include="SlimMessageBus.Host.Serialization.SystemTextJson"/>
         <PackageReference Include="DKNet.EfCore.Events"/>
+        <PackageReference Include="DKNet.EfCore.Extensions"/>
         <PackageReference Include="DKNet.EfCore.Relational.Helpers"/>
         <PackageReference Include="DKNet.SlimBus.Extensions"/>
     </ItemGroup>
