@@ -6,7 +6,7 @@ feature — entity, event, event handler, CRUD, queries, endpoint — but by dif
 | Sample | Location | Approach |
 |--------|----------|----------|
 | **PurchaseOrder** | `ManualSample/` | Every layer is hand-written. No declarative event/CRUD/DTO-generation attribute is used anywhere. |
-| **Product** | `AutomatedSample/` | Every layer the DKNet 10.1.12 generators can produce is declared, not written: `[RaisesEvent]` for events, `[CrudCreate]`/`[CrudUpdate]` + `[GenerateDto]` for the request/handler/route/DTO shapes. |
+| **Product** | `AutomatedSample/` | Every layer the DKNet 10.1.13 generators can produce is declared, not written: `[RaisesEvent]` for events, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` + `[GenerateDto]` for the request/handler/route/DTO shapes. |
 
 This document walks through that difference layer by layer and, wherever the automated sample
 *produces* a layer instead of writing it, explains what control or visibility you give up in
@@ -32,8 +32,15 @@ maps to a trade-off explained later in this document:
 **Copy the automated sample (`Product`)** for a genuinely plain CRUD entity — one where
 DataAnnotations can express every validation rule you care about (or you don't need them enforced),
 and where exposing every audited field in the DTO is acceptable. In exchange you write an entity,
-one DTO line, and two attributes instead of roughly 14 hand-written files, and you get a stronger
-acting-user guarantee.
+one DTO line, and a handful of attributes instead of roughly 14 hand-written files, and you get a
+stronger acting-user guarantee.
+
+That generated shape is not limited to plain create/update/list/delete: **named domain actions come
+with it.** `[CrudAction]` publishes a business operation — approve, discontinue — at the entity's
+by-id route plus a segment, with the verb and segment under your control, and no hand-written
+request, handler or route registration. The trade-off is the one in the first list above: an action
+still has nowhere to hang a pre-condition, so an operation that must *refuse* (rather than just
+run) is still a reason to copy the manual sample.
 
 The rest of this document is the evidence behind that guidance.
 
@@ -121,7 +128,7 @@ like the manual one, so they carry no trade-off:
 
 ## Layers the automated sample generates
 
-Each of these is a layer `Product` *declares* (via an attribute) and the DKNet 10.1.12 generators
+Each of these is a layer `Product` *declares* (via an attribute) and the DKNet 10.1.13 generators
 emit at compile time — the amber and purple nodes in the diagram:
 
 - **Event definitions.** `[RaisesEvent(EventOperations.Created, Include = [...])]` and
@@ -135,6 +142,15 @@ emit at compile time — the amber and purple nodes in the diagram:
   `ChangePrice(decimal)` generate `CreateProductRequest`/`CreateProductHandler` and
   `ChangePriceProductRequest`/`ChangePriceProductHandler`. Both return 404 via `NotFoundError` —
   the same failure shape as the manual handlers.
+- **Domain-action requests, handlers and routes.** `[CrudAction]` on a method publishes a named
+  business operation at the entity's by-id route plus one segment, generating its request, handler
+  and route the same way. `Product` carries two: `[CrudAction("approval")] Approve(string byUser)`
+  → `POST /v1/products/{id}/approval`, and
+  `[CrudAction(Verb = CrudActionVerb.Put)] Discontinue()` → `PUT /v1/products/{id}/discontinue`.
+  Both answer `200` with `ProductDto`. The manual sample's equivalent — `Cancel.cs` plus its
+  literal `MapPost(".../cancel")` — is hand-written in full. See
+  [`docs/crud-attributes.md`](../crud-attributes.md#domain-actions-with-crudaction) for declaring
+  one, and trade-off 4 below for what a generated action cannot do that `Cancel` does.
 - **Get-by-id / list / delete routes.** No per-entity code at all. `MapProductCrud()` wires the
   *generic* `MapGetById`/`MapGetList`/`MapDeleteById<Product, Guid, ...>` extensions from
   `DKNet.AspCore.Extensions`.
@@ -202,6 +218,11 @@ The generic routes are all-or-nothing:
 - **Delete** either deletes or returns 404; there is nowhere to hang a "can this row be deleted?"
   check. The manual sample's `Cancel` demonstrates exactly this — rejecting an already-cancelled
   order with a domain-specific 400.
+- **Domain actions** inherit the same gap. A generated `[CrudAction]` handler loads the row, calls
+  the method and saves; there is no place to fail a pre-condition first. `PUT
+  /v1/products/{id}/discontinue` on an already-discontinued product is a `200` no-op, not a domain
+  failure. Everything else the generated path gives up — unenforced validation, no idempotency,
+  the every-audited-field DTO — applies to actions unchanged.
 
 ### 5. Event names follow a convention, and requests can't carry extra fields
 
@@ -231,7 +252,7 @@ wired once at the composition root (`ServiceConfigs.cs`). A payload claiming
 to the manual sample's `[FromClaim]` population.
 
 What you actually lose is the ability to see *where* attribution happens by reading
-`AutomatedSample/` — it lives in a shared save hook. (As of DKNet `10.1.12`, `DataOwnerHook`
+`AutomatedSample/` — it lives in a shared save hook. (As of DKNet `10.1.13`, `DataOwnerHook`
 stamps on modify as well as insert — verified live over `Product`'s `PUT` route.)
 
 ### 7. The external-broker path is real but untested here

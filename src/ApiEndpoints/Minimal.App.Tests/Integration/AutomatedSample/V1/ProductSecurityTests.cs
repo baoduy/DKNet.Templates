@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Minimal.App.TestSupport;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.AutomatedSample.V1;
+using Minimal.Domains.Features.AutomatedSample.Entities;
 
 namespace Minimal.App.Tests.Integration.AutomatedSample.V1;
 
@@ -76,5 +77,31 @@ public sealed class ProductSecurityTests(AuthOnApiFixture fixture) : IClassFixtu
         dto!.Price.ShouldBe(12.50m);
         dto.UpdatedBy.ShouldBe(TestAuthHandler.CallerProfileId.ToString());
         dto.UpdatedBy.ShouldNotBe("someone-else");
+    }
+
+    /// <remarks>
+    /// Unlike create/update, <c>approval</c> is a <c>[CrudAction]</c> route: <see cref="Product.Approve"/>
+    /// calls <c>SetUpdatedBy(byUser)</c> directly, which writes <c>UpdatedBy</c>/<c>UpdatedOn</c> together —
+    /// <c>DataOwnerHook</c> treats that as an explicit modifier already supplied for the change set and
+    /// leaves it untouched (see <c>DataOwnerHook.HasExplicitModifier</c>). So, deliberately and unlike
+    /// create/update, the payload's acting user wins here — the standing guarantee documented in
+    /// <c>docs/samples/automated-products/README.md</c>.
+    /// </remarks>
+    [Fact]
+    public async Task Approve_ShouldStampUpdatedByFromThePayloadsActingUser()
+    {
+        await fixture.ResetDatabaseAsync();
+        var client = fixture.CreateClient();
+
+        var created = await (await client.PostAsJsonAsync("/v1/products", new { name = "Widget", price = 9.99m }))
+            .Content.ReadFromJsonAsync<ProductDto>();
+
+        var approveResponse = await client.PostAsJsonAsync(
+            $"/v1/products/{created!.Id}/approval",
+            new { byUser = "someone-else" });
+
+        approveResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var dto = await approveResponse.Content.ReadFromJsonAsync<ProductDto>();
+        dto!.UpdatedBy.ShouldBe("someone-else");
     }
 }

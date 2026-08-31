@@ -15,7 +15,7 @@ production-ready .NET 10 microservices using vertical-slice DDD/CQRS.
 
 - [DDD Implementation Guide](ddd-implementation-guide.md) — add one vertical-slice feature, entity
   to endpoint.
-- [CRUD Attributes](crud-attributes.md) — build a full CRUD slice from three attributes
+- [CRUD Attributes](crud-attributes.md) — build a full CRUD slice from four attributes, domain actions included
   (generator-driven).
 - [Querying and Specifications](querying-and-specifications.md) — the read side, from HTTP request
   to paged projection.

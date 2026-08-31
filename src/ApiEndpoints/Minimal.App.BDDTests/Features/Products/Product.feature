@@ -47,3 +47,26 @@ Feature: Product CRUD lifecycle (automated sample)
     Then the response status is 204
     When I get that product
     Then the response status is 404
+
+  Scenario: Approving a product stamps the acting user and returns its details
+    Given a product exists named "Approvable" with price 12.00
+    When I approve that product as "alice"
+    Then the response status is 200
+    And the product response has name "Approvable" and price 12.00
+    And the product response was approved by "alice"
+
+  Scenario: Discontinuing a product marks it discontinued
+    Given a product exists named "Retiring" with price 8.00
+    When I discontinue that product
+    Then the response status is 200
+    And the product response is discontinued
+
+  Scenario: Repeating discontinue is a 200 no-op, not a rejection
+    # docs/samples/manual-vs-automated.md #4: a generated action has nowhere to hang a pre-condition, so
+    # discontinuing an already-discontinued product succeeds again instead of failing.
+    Given a product exists named "Retiring Twice" with price 8.00
+    When I discontinue that product
+    Then the response status is 200
+    When I discontinue that product
+    Then the response status is 200
+    And the product response is discontinued
