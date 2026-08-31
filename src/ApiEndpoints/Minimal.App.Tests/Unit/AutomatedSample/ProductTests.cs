@@ -62,5 +62,38 @@ public class ProductTests
         range!.Minimum.ShouldBe(0.01);
     }
 
+    [Fact]
+    public void Approve_ShouldStampTheActingUser()
+    {
+        var product = new Product("Widget", 9.99m);
+
+        product.Approve("alice");
+
+        product.UpdatedBy.ShouldBe("alice");
+    }
+
+    [Fact]
+    public void Discontinue_ShouldMarkTheProductDiscontinued()
+    {
+        var product = new Product("Widget", 9.99m);
+
+        product.Discontinue();
+
+        product.IsDiscontinued.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Discontinue_CalledTwice_ShouldStayDiscontinued_NotThrow()
+    {
+        // docs/samples/manual-vs-automated.md #4: a generated action has nowhere to hang a pre-condition,
+        // so repeating Discontinue is a no-op, never a rejection.
+        var product = new Product("Widget", 9.99m);
+
+        product.Discontinue();
+        product.Discontinue();
+
+        product.IsDiscontinued.ShouldBeTrue();
+    }
+
     #endregion
 }

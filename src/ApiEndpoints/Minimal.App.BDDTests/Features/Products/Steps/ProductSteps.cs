@@ -49,6 +49,20 @@ public sealed class ProductSteps(HttpClient client, ScenarioState state, BddApiF
         state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
     }
 
+    [When(@"I approve that product as ""(.*)""")]
+    public async Task WhenIApproveThatProductAs(string byUser)
+    {
+        state.Response = await client.PostAsJsonAsync($"/v1/products/{_lastId}/approval", new { byUser });
+        state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
+    }
+
+    [When("I discontinue that product")]
+    public async Task WhenIDiscontinueThatProduct()
+    {
+        state.Response = await client.PutAsJsonAsync($"/v1/products/{_lastId}/discontinue", new { });
+        state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
+    }
+
     #endregion
 
     #region Given
@@ -89,6 +103,12 @@ public sealed class ProductSteps(HttpClient client, ScenarioState state, BddApiF
     [Then("a log line reports the automated sample product was created")]
     public void ThenALogLineReportsTheAutomatedSampleProductWasCreated() =>
         factory.LogCapture.Messages.ShouldContain(m => m.Contains("AutomatedSample product created", StringComparison.Ordinal));
+
+    [Then(@"the product response was approved by ""(.*)""")]
+    public void ThenTheProductResponseWasApprovedBy(string byUser) => Deserialize().UpdatedBy.ShouldBe(byUser);
+
+    [Then("the product response is discontinued")]
+    public void ThenTheProductResponseIsDiscontinued() => Deserialize().IsDiscontinued.ShouldBeTrue();
 
     #endregion
 
