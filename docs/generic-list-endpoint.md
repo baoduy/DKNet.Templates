@@ -26,7 +26,7 @@ public void Map(RouteGroupBuilder group)
 }
 ```
 
-So `GET /api/v1/products` is a fully capable list endpoint even though no list handler, validator, or
+So `GET /v1/products` is a fully capable list endpoint even though no list handler, validator, or
 query object was hand-written anywhere in the slice.
 
 Signature (from the package):
@@ -67,7 +67,7 @@ Each `filter` value is a colon-delimited triple parsed into a `ListFilter(Field,
 Repeat the parameter to combine conditions with **AND**:
 
 ```
-GET /api/v1/products?filter=Price:GreaterThan:100&filter=IsDiscontinued:Equal:false
+GET /v1/products?filter=Price:GreaterThan:100&filter=IsDiscontinued:Equal:false
 ```
 
 ### Operations
@@ -112,7 +112,7 @@ property on `TModel`. If it is not, the request fails with `400 Bad Request` and
 and the entity). `desc=true` sorts descending; omitted or `false` sorts ascending.
 
 ```
-GET /api/v1/products?orderBy=Price&desc=true
+GET /v1/products?orderBy=Price&desc=true
 ```
 
 - The unique `Id` is appended as a **descending tie-breaker** so paging is deterministic — unless you
@@ -129,7 +129,7 @@ GET /api/v1/products?orderBy=Price&desc=true
 DTO**, OR'd together, then ANDed with any `filter`/default predicate:
 
 ```
-GET /api/v1/products?search=widget
+GET /v1/products?search=widget
 ```
 
 - **Which fields:** all `string` properties of `TModel`, walked up to **2 levels deep**
@@ -140,8 +140,9 @@ GET /api/v1/products?search=widget
 - **Case sensitivity** follows the database collation — no lowercasing is applied in code.
 - If the DTO has no string field, `search` matches nothing (an empty page, not an error).
 
-For `ProductDto` the string fields are `Name` plus the audit columns `CreatedBy` / `UpdatedBy`, so a
-search hits any of those.
+For `ProductDto` the string fields are `Name` plus the mapped audit columns `CreatedBy` / `UpdatedBy`,
+so a search hits any of those. (Every searched field must map to a real column — see
+[the trap below](#trap-a-dto-field-must-map-to-a-real-column).)
 
 ## Response envelope
 
@@ -188,17 +189,32 @@ surface by changing what the DTO exposes (`[GenerateDto(... Exclude/Include ...)
 The `Product` sample DTO is generated as:
 
 ```csharp
-[GenerateDto(typeof(Product), Exclude = [nameof(Product.OwnedBy)])]
+[GenerateDto(typeof(Product),
+    Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
 public sealed partial record ProductDto;
 ```
 
 `OwnedBy` is excluded, so it is unqueryable through this route by construction — you cannot filter or
 sort products by their ownership key over HTTP, even though the column exists on the entity.
 
+### Trap: a DTO field must map to a real column
+
+Because filter/search/order build EF predicates against the entity **by property name**, every
+queryable DTO field has to resolve to a *mapped* entity column. A DTO property whose entity counterpart
+is computed or `[NotMapped]` makes the whole query fail to translate — a **500**, not a `400`, and it
+fires the moment such a field is touched (search touches *every* string field, so it breaks on the
+first search).
+
+This is exactly why `LastModifiedBy` / `LastModifiedOn` are excluded above. On `AuditedEntity<TKey>`
+they are computed conveniences ("the updated value, or the created one if never modified"), not columns
+— `[GenerateDto]` would otherwise surface them and every `?search=` would `500`. The mapped
+`UpdatedBy` / `UpdatedOn` stay and cover the same intent. **When you point `[GenerateDto]` at an entity
+with computed or unmapped members, `Exclude` them** or the free list route inherits a latent 500.
+
 ## Worked example
 
 ```
-GET /api/v1/products
+GET /v1/products
   ?search=widget
   &filter=Price:GreaterThanOrEqual:100
   &filter=IsDiscontinued:Equal:false
