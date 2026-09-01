@@ -25,7 +25,7 @@ internal static class ServiceConfigs
             .AddInfraServices()
 
             //Service Bus
-            .AddServiceBus(configuration, typeof(AppSetup).Assembly);
+            .AddServiceBus(configuration, typeof(AppSetup).Assembly, features);
 
         return services;
     }
