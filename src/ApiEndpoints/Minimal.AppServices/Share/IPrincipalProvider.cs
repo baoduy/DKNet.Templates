@@ -9,6 +9,11 @@ public interface IPrincipalProvider : IDataOwnerProvider
     /// <summary>
     ///     The User Id from Bearer Token
     /// </summary>
+    /// <remarks>
+    ///     Is <see cref="Guid.Empty" /> when the caller's subject claim is not a GUID (e.g. an Entra v2.0
+    ///     pairwise <c>sub</c>). <see cref="IDataOwnerProvider.GetOwnershipKey" /> — not this property — is the
+    ///     authorization boundary.
+    /// </remarks>
     Guid ProfileId { get; }
 
     /// <summary>

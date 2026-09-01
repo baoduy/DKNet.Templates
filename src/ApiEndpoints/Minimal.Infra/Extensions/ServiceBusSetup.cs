@@ -3,6 +3,7 @@ using Azure.Messaging.ServiceBus;
 using Minimal.Domains.Features.AutomatedSample.Entities;
 using Minimal.Infra.Contexts;
 using Minimal.Infra.Features.AutomatedSample.ExternalEvents;
+using Minimal.Share.Options;
 
 namespace Minimal.Infra.Extensions;
 
@@ -79,7 +80,8 @@ public static class ServiceBusSetup
     public static IServiceCollection AddServiceBus(
         this IServiceCollection service,
         IConfiguration configuration,
-        Assembly serviceAssembly)
+        Assembly serviceAssembly,
+        FeatureOptions features)
     {
         var busConnectionString = configuration.GetConnectionString(SharedConsts.AzureBusConnectionString)!;
 
@@ -91,7 +93,7 @@ public static class ServiceBusSetup
 
             mbb.AddMemoryBus(serviceAssembly);
 
-            if (!string.IsNullOrWhiteSpace(busConnectionString))
+            if (features.EnableServiceBus && !string.IsNullOrWhiteSpace(busConnectionString))
             {
                 mbb.AddAzureBus(busConnectionString);
             }

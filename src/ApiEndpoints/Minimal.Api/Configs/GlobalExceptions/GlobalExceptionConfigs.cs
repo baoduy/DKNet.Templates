@@ -22,6 +22,22 @@ internal static class GlobalExceptionConfigs
 
                 // Add the trace identifier to the problem details extensions
                 ctx.ProblemDetails.Extensions.Add("trace-id", ctx.HttpContext.TraceIdentifier);
+
+                // For exception-originated responses (ctx.Exception is set only by an IExceptionHandler),
+                // ASP.NET Core's ProblemDetailsDefaults fills a null Type with a generic RFC status-code URI
+                // before this callback runs. GlobalExceptionHandler deliberately leaves Type null outside
+                // Development (SEC-005) — undo that default here so the response has no type member at all.
+                // Scoped to exception responses only so unrelated problem+json responses (e.g. validation
+                // failures) keep their usual Type.
+                // This guard applies to any exception-originated problem+json response outside Development,
+                // not only this template's own handler — that is exact today because the template registers
+                // exactly one IExceptionHandler (GlobalExceptionHandler). Whoever adds a second IExceptionHandler
+                // that sets a meaningful Type must revisit this guard, or that Type is silently dropped in Production.
+                if (ctx.Exception is not null &&
+                    !ctx.HttpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
+                {
+                    ctx.ProblemDetails.Type = null;
+                }
             };
         });
 

@@ -45,7 +45,7 @@ Contains extension methods for configuring Azure App Configuration:
     "AzureAppConfiguration": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
   },
   "FeatureManagement": {
-    "EnableAzureAppConfiguration": false
+    "EnableAzureAppConfig": false
   },
   "AzureAppConfiguration": {
     "KeyPrefix": "",
@@ -64,7 +64,7 @@ Contains extension methods for configuring Azure App Configuration:
 ConnectionStrings__AzureAppConfiguration="Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
 
 # Enable the feature
-FeatureManagement__EnableAzureAppConfiguration=true
+FeatureManagement__EnableAzureAppConfig=true
 
 # Environment-specific label
 AzureAppConfiguration__Label="Production"
@@ -98,7 +98,7 @@ export ConnectionStrings__AzureAppConfiguration="Endpoint=https://your-app-confi
 
 ### 3. Enable the Feature
 
-Set `FeatureManagement:EnableAzureAppConfiguration` to `true` in your configuration.
+Set `FeatureManagement:EnableAzureAppConfig` to `true` in your configuration.
 
 ### 4. Add Configuration Values to Azure App Configuration
 
@@ -285,7 +285,7 @@ The Azure App Configuration integration works seamlessly with existing Minimal.A
 1. **Backup your current appsettings.json**
 2. **Create Azure App Configuration resource**
 3. **Copy key configuration values** to Azure App Configuration
-4. **Enable the feature** with `EnableAzureAppConfiguration: true`
+4. **Enable the feature** with `EnableAzureAppConfig: true`
 5. **Test thoroughly** in a development environment
 6. **Gradually migrate** more configuration values
 

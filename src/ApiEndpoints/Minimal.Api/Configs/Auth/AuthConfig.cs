@@ -18,22 +18,15 @@ internal static class AuthConfig
     /// <returns>The updated <see cref="IServiceCollection" /> instance.</returns>
     /// <remarks>
     ///     This method configures the application to use JWT (JSON Web Token) Bearer authentication.
-    ///     If the <see cref="ValidateMsGraphJwtToken" /> flag is set to true, it replaces the default token handler with a
-    ///     custom <see cref="MsGraphJwtTokenHandler" />.
+    ///     The token signature is validated against the issuer metadata from the
+    ///     <c>Authentication:Schemes:Bearer:MetadataAddress</c> configuration.
     /// </remarks>
     public static IServiceCollection AddAuthConfig(this IServiceCollection services)
     {
         services.MarkConfigAdded(nameof(AuthConfig));
 
         services.AddAuthentication()
-            .AddJwtBearer(c =>
-            {
-                if (ValidateMsGraphJwtToken)
-                {
-                    c.TokenHandlers.Clear();
-                    c.TokenHandlers.Add(new MsGraphJwtTokenHandler());
-                }
-            });
+            .AddJwtBearer();
 
         services.AddAuthorization(options =>
         {
@@ -77,7 +70,4 @@ internal static class AuthConfig
     }
 
     #endregion
-
-    // NOTE: Switch this one off if we are not using MS Graph token
-    private const bool ValidateMsGraphJwtToken = true;
 }

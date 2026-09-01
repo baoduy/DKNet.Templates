@@ -143,6 +143,8 @@ MyCompany.MyService/
 | `--AuthorName`  | `Steven Hoang`                | Embedded in project metadata         |
 | `--CompanyUrl`  | `https://drunkcoding.net`     | `<Company>` in project metadata      |
 | `--RepositoryUrl` | `https://github.com/baoduy/DKNet` | `<RepositoryUrl>` in metadata  |
+| `--TenantId`    | `00000000-0000-0000-0000-000000000000` | Identity-provider tenant id used in the bearer scheme's `MetadataAddress` and `ValidIssuer` |
+| `--ApiAudience` | `api://your-api`              | The API's own audience, the single entry in `ValidAudiences` |
 
 Example with all parameters:
 
@@ -150,8 +152,18 @@ Example with all parameters:
 dotnet new dknet-minimal -n Acme.OrderService \
   --AuthorName "Jane Smith" \
   --CompanyUrl "https://acme.com" \
-  --RepositoryUrl "https://github.com/acme/order-service"
+  --RepositoryUrl "https://github.com/acme/order-service" \
+  --TenantId "11111111-2222-3333-4444-555555555555" \
+  --ApiAudience "api://order-service"
 ```
+
+> **`--TenantId` and `--ApiAudience` ship as placeholders, not working values.** Replace them —
+> at scaffold time with the parameters above, or afterwards in
+> `<Name>.Api/appsettings.json` under `Authentication:Schemes:Bearer` — before you turn on
+> `FeatureManagement:RequireAuthorization`. Left as shipped, the OIDC metadata fetch runs against a
+> tenant that does not exist, so the bearer scheme never obtains its signing keys, and any token
+> presented is rejected on audience mismatch because `ValidAudiences` still contains only
+> `api://your-api`.
 
 ---
 

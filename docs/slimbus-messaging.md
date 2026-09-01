@@ -176,13 +176,25 @@ The same event type is both queued internally by `EventPublisher` and produced a
 3. No DI registration needed — `azb.AddServicesFromAssembly(typeof(InfraSetup).Assembly)` picks up the
    new handler by assembly scan.
 
-## Config trap: `EnableServiceBus` vs `EnableServiceBusProcess`
+## What `FeatureManagement:EnableServiceBus` switches off
 
-As already flagged in `docs/template-features.md`, the generated `appsettings.json` sets
-`FeatureManagement:EnableServiceBusProcess`, but `Minimal.Share/Options/FeatureOptions.cs` defines the
-flag as `EnableServiceBus`. The drifted key silently no-ops.
+`EnableServiceBus` gates the **Azure Service Bus child bus only**. The in-memory child bus — the
+MediatR-like dispatcher every command, query, and domain event in the solution runs through — is
+always registered by `ServiceBusSetup.AddServiceBus`, regardless of the flag. Turning
+`EnableServiceBus` off does not stop internal dispatch; a service with the flag off still handles
+requests and still raises domain events in-process.
 
-In practice this rarely matters for the Azure child bus specifically, because `AddServiceBus` gates
-it on `ConnectionStrings:AzureBus` being non-empty rather than on this flag at all. Still, don't rely
-on flipping `EnableServiceBusProcess` in `appsettings.json` to mean anything — verify any
-service-bus-related flag against `FeatureOptions.cs`.
+The Azure child bus is added only when both conditions hold:
+
+| Condition | Where |
+|---|---|
+| `FeatureManagement:EnableServiceBus` is `true` | `Minimal.Share/Options/FeatureOptions.cs` |
+| `ConnectionStrings:AzureBus` is non-empty | `Minimal.Infra/Extensions/ServiceBusSetup.cs` |
+
+Either one missing and no `AzureBus` child bus is registered: `ProductCreatedEvent` is still
+published on the in-memory bus and handled by `ProductCreatedEventHandler`, but it is never produced
+to the `product-tp` topic and `ProductCreatedNotificationHandler` never fires.
+
+So the flag is a real kill switch for external messaging — flip it to `false` to stop a service
+producing to and consuming from Azure Service Bus while leaving the rest of the application working.
+It is not a switch for internal message handling.

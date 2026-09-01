@@ -19,6 +19,8 @@ production-ready .NET 10 microservices using vertical-slice DDD/CQRS.
   (generator-driven).
 - [Querying and Specifications](querying-and-specifications.md) — the read side, from HTTP request
   to paged projection.
+- [Generic List Endpoint](generic-list-endpoint.md) — the filter/search/order/page contract every
+  generated CRUD list route exposes for free.
 
 ## How the plumbing works
 
