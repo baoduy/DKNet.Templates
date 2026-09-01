@@ -4,10 +4,17 @@ Everything `dotnet new dknet-minimal` wires up before you write a line of featur
 full list of DKNet NuGet packages behind these features, see
 [`docs/dknet-packages.md`](dknet-packages.md).
 
-Toggles live in `Minimal.Share/Options/FeatureOptions.cs`, bound once at startup from the
-`FeatureManagement` config section (`Program.cs`). Every JSON key under that section matches a
-`FeatureOptions` property name one-for-one — the [table at the end of this page](#featuremanagement-flags-minimalshareoptionsfeatureoptionscs)
-lists the flags and the value each shipped `appsettings*.json` sets.
+Toggles live in `Minimal.Share/Options/FeatureOptions.cs`, bound from the `FeatureManagement`
+config section. A class default only applies when no config file sets the key — the shipped
+`appsettings*.json` files win wherever they name a flag, so read
+[the flag table below](#featuremanagement-flags) for both values side by side rather than assuming
+the class default is what you get. A couple of the checked-in JSON keys have drifted from the
+property names, noted at the end of this page.
+
+**Security flags are secure-by-default.** The base `appsettings.json` is what an unmodified service
+runs with in Production (the template ships no `appsettings.Production.json`), so it carries the
+safe value; the relaxation lives in the `Development` and `Testing` overlays. Keep it that way when
+you change a flag — never turn a security switch off in the base file.
 
 ## What gets wired
 
@@ -23,7 +30,7 @@ lists the flags and the value each shipped `appsettings*.json` sets.
 | **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **Health checks** | EF Core connectivity check mapped at `/healthz` and `/`. | `FeatureManagement:EnableHealthCheck`; `Minimal.Api/Configs/Healthz/HealthzConfig.cs` |
 | **Hybrid caching** | `AddHybridCache()` registered (Redis-backed when `ConnectionStrings:Redis` is set, otherwise in-memory). Not yet consumed by any shipped feature — wire it up where you need query caching. | `Minimal.Api/Configs/CacheConfig.cs` |
-| **SlimMessageBus** | In-memory bus always wired for internal command/event dispatch; Azure Service Bus child bus added only when the flag is on *and* a connection string is set. | `FeatureManagement:EnableServiceBus`, `ConnectionStrings:AzureBus`; `Minimal.Infra/Extensions/ServiceBusSetup.cs`. Deep dive: [`docs/slimbus-messaging.md`](slimbus-messaging.md) |
+| **SlimMessageBus** | In-memory bus always wired for internal command/event dispatch; Azure Service Bus child bus added only when configured. | `ConnectionStrings:AzureBus`; `Minimal.Infra/Extensions/ServiceBusSetup.cs`. Deep dive: [`docs/slimbus-messaging.md`](slimbus-messaging.md) |
 | **Mapster** | Entity↔request/DTO mapping registered automatically from `[MapsFrom]`/`[GenerateDto]` attributes — no per-feature mapping config. | `Minimal.AppServices/AppSetup.cs`. Attribute mechanics: [`docs/crud-attributes.md`](crud-attributes.md) |
 | **Scalar / OpenAPI** | OpenAPI 3.0 document + Scalar UI at `/docs` with a Bearer-auth preset. | `FeatureManagement:EnableSwagger`; `Minimal.Api/Configs/Swagger/SwaggerConfig.cs` |
 | **Reqnroll + NUnit BDD** | Gherkin feature files exercised against a real `WebApplicationFactory<Program>` host, in-memory DB. | `Minimal.App.BDDTests/` |
@@ -45,35 +52,47 @@ lists the flags and the value each shipped `appsettings*.json` sets.
 - **Specifications** — filtered/paged/projected queries via `DKNet.EfCore.Specifications` instead of
   a raw `IQueryable`. See [`docs/querying-and-specifications.md`](querying-and-specifications.md).
 
-## FeatureManagement flags (`Minimal.Share/Options/FeatureOptions.cs`)
+## FeatureManagement flags
 
-| Flag | Property default | `appsettings.json` | `appsettings.Development.json` | Gates |
+Class defaults come from `Minimal.Share/Options/FeatureOptions.cs`. The remaining columns are what
+the shipped config files actually set. `—` means the file does not name the key, so the value falls
+through to the column on its left.
+
+| Flag | Class default | base `appsettings.json` (Production) | `appsettings.Development.json` | `appsettings.Testing.json` |
 |---|---|---|---|---|
-| `EnableAntiforgery` | `false` | `false` | `false` | Antiforgery token validation (`Configs/AppConfig.cs`) |
-| `EnableAzureAppConfig` | `false` | `false` | `false` | Loading config + feature flags from Azure App Configuration (`Configs/AzureAppConfig/AzureAppConfigSetup.cs`) |
-| `EnableHealthCheck` | `true` | *(not set)* | *(not set)* | `/healthz` and `/` health endpoints (`Configs/Healthz/HealthzConfig.cs`) |
-| `EnableHttps` | `false` | `false` | `false` | HTTPS redirection (`Configs/AppConfig.cs`) |
-| `EnableOpenTelemetry` | `false` | `false` | *(not set)* | OpenTelemetry logging/tracing/metrics and the OTLP + Azure Monitor exporters (`Configs/LogConfigs.cs`) |
-| `EnableRateLimit` | `true` | `false` | `false` | Rate-limiting middleware (`Configs/AppConfig.cs`) |
-| `EnableServiceBus` | `false` | `true` | `false` | The **Azure** Service Bus child bus only — the in-memory bus is always registered (`Minimal.Infra/Extensions/ServiceBusSetup.cs`) |
-| `EnableSwagger` | `false` | `false` | `true` | OpenAPI document + Scalar UI at `/docs` (`Configs/AppConfig.cs`) |
-| `EnableVersioning` | `true` | `true` | *(not set)* | URL-segment API versioning (`Program.cs`, `Configs/AppConfig.cs`) |
-| `RequireAuthorization` | `false` | `false` | `false` | Authorization requirement on every mapped endpoint (`Program.cs`, `Configs/AppConfig.cs`) |
-| `RunDbMigrationWhenAppStart` | `false` | `false` | `true` | Running EF Core migrations at startup, then exiting (`Configs/DbMigration.cs`) |
+| `EnableAntiforgery` | `false` | `false` | `false` | — |
+| `EnableAzureAppConfig` | `false` | — (drifted key, see below) | `false` | — |
+| `EnableHealthCheck` | `true` | — | — | — |
+| `EnableHttps` | `false` | **`true`** | `false` | `false` |
+| `EnableMsGraphJwtTokenValidation` | `false` | — | — | — |
+| `EnableOpenTelemetry` | `false` | — | — | — |
+| `EnableRateLimit` | `true` | `true` | `false` | `false` |
+| `EnableServiceBus` | `false` | — (drifted key, see below) | — (drifted key) | — |
+| `EnableSwagger` | `false` | `false` | `true` | — |
+| `EnableVersioning` | `true` | `true` | — | — |
+| `RequireAuthorization` | `false` | **`true`** | `false` | `false` |
+| `RunDbMigrationWhenAppStart` | `false` | `false` | `true` | — |
 
-*(not set)* means the file omits the key, so the property default applies. `EnableHealthCheck`
-appears in no shipped file — health checks are on unless you add the key and set it `false`.
+`RequireAuthorization`, `EnableHttps` and `EnableRateLimit` are the secure-by-default set: a
+scaffolded service deployed without a config change authenticates every request, redirects to HTTPS
+and rate-limits. `dotnet run` locally picks up `appsettings.Development.json`, and both test suites
+boot under the `Testing` environment
+(`Minimal.App.TestSupport/TestApiFactoryBase.cs` calls `UseEnvironment("Testing")`), so neither is
+affected. To relax a flag for an environment, add it to that environment's overlay — or set the
+`FeatureManagement__<Flag>` environment variable, which outranks every JSON file.
 
-Two notes worth knowing before you flip anything:
+Because `EnableRateLimit` is on in the base file, the base file also carries an explicit `RateLimit`
+section so the limiter never falls back to `RateLimitOptions`'s 2-requests-per-second class defaults:
 
-- **A key that does not match a property is ignored, not rejected.** `Get<FeatureOptions>()` drops
-  unknown keys, so a typo leaves the flag at its property default with no error at startup. Copy the
-  spelling from `FeatureOptions.cs`.
-- **`EnableOpenTelemetry` ships `false` on purpose**, even though `appsettings.json` also ships
-  `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_SERVICE_NAME`. A freshly scaffolded service must not try to
-  export to `http://localhost:4317` where nothing is listening. Set it `true` once you have a
-  collector, or an `AzureMonitor:ConnectionString`.
+| `RateLimit` key | base (Production) | `appsettings.Development.json` |
+|---|---|---|
+| `DefaultRequestLimit` | `100` | `1` |
+| `DefaultConcurrentLimit` | `20` | `1` |
+| `TimeWindowInSeconds` | `1` | `10` |
 
-Every flag can also be set as an environment variable using the double-underscore form —
-`FeatureManagement__EnableSwagger=true` — which is how the integration test fixtures flip them
-per host.
+Those production numbers are a placeholder ceiling to tune, not a researched limit for your service.
+
+> The generated `Minimal.Api/appsettings.json` currently sets a couple of these under drifted key
+> names: `EnableServiceBusProcess` and `EnableAzureAppConfiguration`, instead of `EnableServiceBus`
+> and `EnableAzureAppConfig`. Those two JSON entries silently no-op against the class defaults
+> above. When changing a flag, verify the key against `FeatureOptions.cs`, not the checked-in JSON.
