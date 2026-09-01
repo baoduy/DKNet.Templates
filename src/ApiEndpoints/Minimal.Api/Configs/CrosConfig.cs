@@ -5,9 +5,18 @@ internal static class CrosConfig
 {
     #region Methods
 
-    public static IServiceCollection AddCrosConfig(this IServiceCollection services)
+    public static IServiceCollection AddCrosConfig(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddCors(c => c.AddDefaultPolicy(o => o.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+        var origins = (configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+            .Where(o => !string.IsNullOrWhiteSpace(o))
+            .ToArray();
+
+        if (origins.Length == 0)
+        {
+            return services;
+        }
+
+        services.AddCors(c => c.AddDefaultPolicy(o => o.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod()));
         services.MarkConfigAdded(nameof(CrosConfig));
         return services;
     }

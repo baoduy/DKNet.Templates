@@ -67,7 +67,7 @@ internal static class AppConfig
         }
 
         return services
-            .AddCrosConfig()
+            .AddCrosConfig(configuration)
             .AddGlobalException()
             .AddAllAppServices(configuration, features)
             .AddHealthzConfig(features);

@@ -27,6 +27,7 @@ you change a flag — never turn a security switch off in the base file.
 | **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, `ConnectionStrings:AzureAppConfiguration`; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` |
 | **JWT bearer auth** | Standard bearer-token auth, plus a sample scope policy and an `IClaimsTransformation` to replace with your own. The shipped `Authentication:Schemes:Bearer` values are placeholders wired to the `--TenantId` and `--ApiAudience` template parameters — replace them before enabling authorization. `ValidAudiences` deliberately lists only the API's own audience, so tokens issued for any other resource are rejected. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
+| **CORS allow-list** | Browser front-ends can call the API only from origins you list; with the shipped empty list CORS is not wired at all and no `Access-Control-Allow-*` header is emitted. Origins are absolute — scheme included, no trailing slash. Never allows credentials. | `Cors:AllowedOrigins` — a plain configuration array in `appsettings*.json`, **not** a `FeatureManagement` flag; `Minimal.Api/Configs/CrosConfig.cs`. Details: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **Health checks** | EF Core connectivity check mapped at `/healthz` and `/`. | `FeatureManagement:EnableHealthCheck`; `Minimal.Api/Configs/Healthz/HealthzConfig.cs` |
 | **Hybrid caching** | `AddHybridCache()` registered (Redis-backed when `ConnectionStrings:Redis` is set, otherwise in-memory). Not yet consumed by any shipped feature — wire it up where you need query caching. | `Minimal.Api/Configs/CacheConfig.cs` |
 | **SlimMessageBus** | In-memory child bus always wired for internal command/event dispatch — no flag gates it. The Azure Service Bus child bus is added only when `EnableServiceBus` is on **and** `ConnectionStrings:AzureBus` is non-empty. | `FeatureManagement:EnableServiceBus`, `ConnectionStrings:AzureBus`; `Minimal.Infra/Extensions/ServiceBusSetup.cs`. Deep dive: [`docs/slimbus-messaging.md`](slimbus-messaging.md) |
@@ -109,3 +110,7 @@ gates the **Azure** Service Bus child bus, which `Minimal.Infra/Extensions/Servi
 only when the flag is on **and** `ConnectionStrings:AzureBus` is non-empty. The in-memory child bus
 that carries internal command/event dispatch is registered unconditionally, so turning the flag off
 never disables in-process messaging.
+
+> CORS is deliberately absent from this table. It is configured by the `Cors:AllowedOrigins`
+> array, not by a flag — an empty array is its off switch. See
+> [`docs/api-pipeline.md`](api-pipeline.md).
