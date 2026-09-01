@@ -28,11 +28,6 @@ public class FeatureOptions
     public bool EnableHttps { get; set; }
 
     /// <summary>
-    ///     Enable Graph token validation
-    /// </summary>
-    public bool EnableMsGraphJwtTokenValidation { get; set; }
-
-    /// <summary>
     ///     Gets or sets a value indicating whether OpenTelemetry instrumentation is enabled.
     /// </summary>
     public bool EnableOpenTelemetry { get; set; }
