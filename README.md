@@ -33,29 +33,8 @@ copilot plugin marketplace add baoduy/DKNet.Templates
 
 A generated solution is layered onion-style — each layer knows only about the layers inside it, never the layers outside it:
 
-```
-                 ┌───────────────────────────┐
-                 │   Minimal.Api             │  Minimal API endpoints, auth, OpenAPI
-                 │   Minimal.AppHost         │  Aspire orchestration (Redis + PostgreSQL)
-                 └─────────────┬─────────────┘
-                               │ depends on
-                 ┌─────────────▼─────────────┐
-                 │   Minimal.Infra           │  CoreDbContext, mappers, seeding,
-                 │                           │  bus wiring, event publisher
-                 └─────────────┬─────────────┘
-                               │ depends on
-                 ┌─────────────▼─────────────┐
-                 │   Minimal.AppServices     │  CQRS actions, queries, specs,
-                 │                           │  DTOs, domain event handlers
-                 └─────────────┬─────────────┘
-                               │ depends on
-                 ┌─────────────▼─────────────┐
-                 │   Minimal.Domains         │  entities, aggregate roots,
-                 │                           │  domain events, repo interfaces
-                 └───────────────────────────┘
+![Architecture diagram of a scaffolded solution: Minimal.AppHost orchestrates Redis and PostgreSQL and starts Minimal.Api, which dispatches through IMessageBus into Minimal.AppServices; AppServices calls Minimal.Domains aggregates, Minimal.Infra supplies the repository and event publisher to AppServices and the EF Core mapping and seeding to Domains, Minimal.Share is read by every layer, and the Minimal.App.Tests/Architecture project holds NetArchTest shape rules over the Api, AppServices, Infra and Domains projects.](docs/diagrams/templates-solution-layers.svg)
 
-   Minimal.Share — constants/options/base types, referenced by every layer above
-```
 
 `Minimal.Domains` knows nothing above it — no reference to `AppServices`, `Infra`, or `Api`. `Minimal.AppServices`
 depends only on `Domains` (plus `Share`); `Minimal.Infra` and `Minimal.Api` depend on `AppServices` and `Domains`,
@@ -64,6 +43,8 @@ every layer. `Minimal.AppHost` sits alongside `Minimal.Api` as the Aspire orches
 of its own.
 
 ### Request flow
+
+![Workflow diagram of the request pipeline: a request passes CORS and HSTS, then routing and the rate limiter, then authentication, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 429, 401 or 403, 400, and the 500 problem+json the global exception handler writes.](docs/diagrams/templates-request-pipeline.svg)
 
 1. An HTTP request hits a `Minimal.Api` Minimal API endpoint (`IEndpointConfig`).
 2. The request is validated (FluentValidation) and any `[FromClaim]` property is populated from the caller's claims — see [`docs/api-pipeline.md`](docs/api-pipeline.md).
@@ -77,7 +58,14 @@ See [`docs/api-pipeline.md`](docs/api-pipeline.md), [`docs/auditing-and-data-own
 
 ### Enforced, not just documented
 
-`Minimal.App.Tests/Architecture/` uses NetArchTest to assert these layer boundaries in code — a reference from `Minimal.Domains` into `Minimal.AppServices` (or any other outer-to-inner violation) fails the build, not just review.
+The layer boundary is held by the project-reference graph itself: every reference points inward, so
+an outward one — `Minimal.Domains` to `Minimal.AppServices`, say — is a circular project reference
+MSBuild refuses. On top of that, `Minimal.App.Tests/Architecture/` uses NetArchTest to assert the
+shape rules that a compiler cannot: `internal sealed` on every endpoint, handler, validator, EF
+config and seeder; an explicit max length on every mapped string; `HasConversion<string>()` on
+every mapped enum; Npgsql-only package references; and secure defaults in the base
+`appsettings.json`. Those fail the test run, not just review. Full list:
+[`docs/extension-points.md`](docs/extension-points.md#boundaries-your-code-must-respect).
 
 ---
 
@@ -137,14 +125,21 @@ MyCompany.MyService/
 
 ### Available parameters
 
-| Parameter       | Default                        | Description                          |
-|-----------------|-------------------------------|--------------------------------------|
-| `-n`, `--name`  | `MyApp`                | Root namespace and folder name       |
-| `--AuthorName`  | `Steven Hoang`                | Embedded in project metadata         |
-| `--CompanyUrl`  | `https://drunkcoding.net`     | `<Company>` in project metadata      |
-| `--RepositoryUrl` | `https://github.com/baoduy/DKNet` | `<RepositoryUrl>` in metadata  |
-| `--TenantId`    | `00000000-0000-0000-0000-000000000000` | Identity-provider tenant id used in the bearer scheme's `MetadataAddress` and `ValidIssuer` |
-| `--ApiAudience` | `api://your-api`              | The API's own audience, the single entry in `ValidAudiences` |
+Every parameter is a literal text substitution: `dotnet new` finds the `replaces` token and
+rewrites it throughout the generated tree.
+
+| Parameter | Default | `replaces` token | What it rewrites |
+|---|---|---|---|
+| `-n`, `--name` | `MyMinimalApp` | `Minimal` (as `sourceName`) | Every file name, folder name, namespace and project reference; renames the `.sln` |
+| `--Framework` | `net10.0` | `net10.0` | `<TargetFramework>` in `Directory.Packages.props`, and the `Aspire.Hosting` `HintPath` in the AppHost project. `net10.0` is the only choice offered |
+| `--AuthorName` | `Steven Hoang` | `Steven Hoang` | `<Authors>` in `Directory.Packages.props` |
+| `--CompanyUrl` | `https://drunkcoding.net` | `https://drunkcoding.net` | `<Company>` in `Directory.Packages.props` |
+| `--RepositoryUrl` | `https://github.com/baoduy/DKNet` | `https://github.com/baoduy/DKNet` | `<PackageProjectUrl>` and `<RepositoryUrl>` in `Directory.Packages.props` |
+| `--TenantId` | `00000000-0000-0000-0000-000000000000` | the same GUID | The bearer scheme's `MetadataAddress` and `ValidIssuer` in `appsettings.json` |
+| `--ApiAudience` | `api://your-api` | `api://your-api` | The single entry in the bearer scheme's `ValidAudiences` |
+
+Full reference, including what each one means for a deployed service:
+[`docs/template-usage.md`](docs/template-usage.md#scaffold-time-parameters).
 
 Example with all parameters:
 
@@ -211,6 +206,9 @@ See [AGENTS.md](AGENTS.md) for the condensed architecture reference used by AI c
 | [`docs/crud-attributes.md`](docs/crud-attributes.md) | How `[CrudCreate]`/`[CrudUpdate]`/`[GenerateDto]` build a full CRUD slice for the generator-driven sample |
 | [`docs/slimbus-messaging.md`](docs/slimbus-messaging.md) | How SlimMessageBus is wired, and how to forward a domain event to an external broker |
 | [`docs/querying-and-specifications.md`](docs/querying-and-specifications.md) | The read side — filtering, paging, and projection via `DKNet.EfCore.Specifications` |
+| [`docs/generic-list-endpoint.md`](docs/generic-list-endpoint.md) | The filter/search/order/page contract every generated CRUD list route exposes for free |
+| [`docs/configuration-reference.md`](docs/configuration-reference.md) | Every `appsettings` key a generated solution reads — meaning, default, effect, and the code path that reads it |
+| [`docs/extension-points.md`](docs/extension-points.md) | Where your own code attaches — endpoints, validators, claims, rate limiting, persistence, domain services, test hosts |
 
 > These guides are visible on GitHub but are **not** packaged into scaffolded solutions — the
 > nuspec's file list doesn't ship `docs/`. If you need this content inside a generated solution,
@@ -243,7 +241,7 @@ Once installed, the following slash commands are available:
 | `/dknet-bdd-test <Feature> <Entity>` | Reqnroll + NUnit BDD scenarios |
 | `/dknet-docs <Feature>` | Feature documentation under `docs/features/<feature>/` |
 
-Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and nine domain skills back the commands — including `dknet-project-structure` (layer/folder orientation) and `dknet-ddd-principles` (aggregate boundaries, entity vs. value object, invariants, domain events); see `.claude/agents/` and `.claude/skills/`.
+Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and ten domain skills back the commands — including `dknet-project-structure` (layer/folder orientation) and `dknet-ddd-principles` (aggregate boundaries, entity vs. value object, invariants, domain events); see `.claude/agents/` and `.claude/skills/`.
 
 ### GitHub Copilot
 
@@ -290,7 +288,7 @@ dotnet nuget push ./nupkgs/DKNet.Minimal.Template.1.0.0.nupkg \
 
 ### Breaking change — status-counts default window (DRK-521)
 
-Status-counts endpoints (`GET .../status-counts`) no longer default to the last 30 days when no `from`/`to` bounds are supplied. An unbounded call now reports counts over the **entire history**. Explicit `from`/`to` bounds behave as before and are unaffected. Callers relying on the old 30-day default will see larger counts after upgrading — pass explicit `from`/`to` to preserve a bounded window.
+Status-counts endpoints (the `GET` route `MapGetStatusCounts<TEntity>` maps, at the `status` segment by default) no longer default to the last 30 days when no `from`/`to` bounds are supplied. An unbounded call now reports counts over the **entire history**. Explicit `from`/`to` bounds behave as before and are unaffected. Callers relying on the old 30-day default will see larger counts after upgrading — pass explicit `from`/`to` to preserve a bounded window.
 
 ## License
 

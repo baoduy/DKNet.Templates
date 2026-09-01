@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Project layers of a solution scaffolded by dotnet new dknet-minimal",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1360,
+      800
+    ],
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Presentation project"
+        },
+        "backend": {
+          "label": "Application logic and its architecture tests"
+        },
+        "database": {
+          "label": "Infrastructure and persistence"
+        },
+        "cloud": {
+          "label": "Aspire orchestration host"
+        },
+        "security": {
+          "label": "Domain core"
+        },
+        "external": {
+          "label": "Shared contracts"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 3,
+    "origin": [
+      80,
+      150
+    ],
+    "gapX": 200,
+    "gapY": 130,
+    "cellW": 260,
+    "cellH": 84
+  },
+  "components": [
+    {
+      "id": "apphost",
+      "type": "cloud",
+      "label": "Minimal.AppHost",
+      "sublabel": "Aspire: Redis + PostgreSQL",
+      "tag": "Orchestration",
+      "row": 0,
+      "col": 0,
+      "size": [
+        260,
+        84
+      ]
+    },
+    {
+      "id": "api",
+      "type": "frontend",
+      "label": "Minimal.Api",
+      "sublabel": "endpoints, auth, OpenAPI",
+      "tag": "Presentation",
+      "row": 0,
+      "col": 1,
+      "size": [
+        260,
+        84
+      ]
+    },
+    {
+      "id": "share",
+      "type": "external",
+      "label": "Minimal.Share",
+      "sublabel": "SharedConsts, FeatureOptions",
+      "tag": "Cross-cutting",
+      "row": 0,
+      "col": 2,
+      "size": [
+        260,
+        84
+      ]
+    },
+    {
+      "id": "appservices",
+      "type": "backend",
+      "label": "Minimal.AppServices",
+      "sublabel": "actions, queries, specs, DTOs",
+      "tag": "Application",
+      "row": 1,
+      "col": 1,
+      "size": [
+        260,
+        84
+      ]
+    },
+    {
+      "id": "infra",
+      "type": "database",
+      "label": "Minimal.Infra",
+      "sublabel": "CoreDbContext, mappers, bus",
+      "tag": "Infrastructure",
+      "row": 1,
+      "col": 2,
+      "size": [
+        260,
+        84
+      ]
+    },
+    {
+      "id": "domains",
+      "type": "security",
+      "label": "Minimal.Domains",
+      "sublabel": "aggregates, domain events",
+      "tag": "Domain core",
+      "row": 2,
+      "col": 1,
+      "size": [
+        260,
+        84
+      ]
+    },
+    {
+      "id": "archtests",
+      "type": "backend",
+      "label": "Minimal.App.Tests/Architecture",
+      "sublabel": "shape rules: Api, AppServices, Infra, Domains",
+      "tag": "NetArchTest",
+      "row": 2,
+      "col": 0,
+      "size": [
+        300,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "apphost-api",
+      "from": "apphost",
+      "to": "api",
+      "label": "AddProject + WithReference",
+      "variant": "dashed"
+    },
+    {
+      "id": "api-appservices",
+      "from": "api",
+      "to": "appservices",
+      "label": "IMessageBus.Send",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "appservices-domains",
+      "from": "appservices",
+      "to": "domains",
+      "label": "constructs / calls aggregates",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "infra-appservices",
+      "from": "infra",
+      "to": "appservices",
+      "label": "IRepositorySpec, EventPublisher"
+    },
+    {
+      "id": "infra-domains",
+      "from": "infra",
+      "to": "domains",
+      "label": "EF Core mapping + seeding"
+    },
+    {
+      "id": "share-api",
+      "from": "share",
+      "to": "api",
+      "label": "read by every layer"
+    }
+  ]
+}

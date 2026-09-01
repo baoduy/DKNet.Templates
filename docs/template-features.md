@@ -4,6 +4,11 @@ Everything `dotnet new dknet-minimal` wires up before you write a line of featur
 full list of DKNet NuGet packages behind these features, see
 [`docs/dknet-packages.md`](dknet-packages.md).
 
+This page is the flag reference. Every **other** configuration key a generated solution reads —
+connection strings, the bearer scheme, CORS, rate limits, Azure App Configuration, telemetry — is
+documented key by key in [`configuration-reference.md`](configuration-reference.md), which also
+lists the keys that ship in `appsettings*.json` but bind to nothing.
+
 Toggles live in `Minimal.Share/Options/FeatureOptions.cs`, bound from the `FeatureManagement`
 config section. A class default only applies when no config file sets the key — the shipped
 `appsettings*.json` files win wherever they name a flag, so read
@@ -19,12 +24,12 @@ you change a flag — never turn a security switch off in the base file.
 
 | Feature | What it gives you | Configure it in |
 |---|---|---|
-| **.NET Aspire orchestration** | `dotnet run --project Minimal.AppHost` provisions Redis + PostgreSQL containers and starts the API wired to both, no manual `docker run`. | `Minimal.AppHost/AppHost.cs` |
+| **.NET Aspire orchestration** | `dotnet run --project Minimal.AppHost` provisions Redis + PostgreSQL containers and starts the API wired to both, no manual `docker run`. [Topology below](#aspire-topology). | `Minimal.AppHost/AppHost.cs` |
 | **Redis** | Distributed cache backing store and (when configured) the idempotency-key store. | `ConnectionStrings:Redis`; wiring in `Minimal.Api/Configs/CacheConfig.cs` and `AppConfig.cs` |
 | **PostgreSQL (Npgsql)** | The only supported EF Core provider — connection, migrations table, retry-on-failure, split queries. | `ConnectionStrings:AppDb`; `Minimal.Infra/Extensions/InfraSetup.cs` |
 | **FluentValidation** | Automatic `400` responses for invalid requests — handlers never call `Validate()` themselves. | Add an `AbstractValidator<TRequest>` next to the action; wiring in `Minimal.Api/Configs/FluentValidationConfig.cs` |
 | **OpenTelemetry** | ASP.NET Core + HttpClient tracing/metrics; console exporter in DEBUG, OTLP or Azure Monitor otherwise. | `FeatureManagement:EnableOpenTelemetry`, `OTEL_EXPORTER_OTLP_ENDPOINT` / `AzureMonitor:ConnectionString`; `Minimal.Api/Configs/LogConfigs.cs` |
-| **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, `ConnectionStrings:AzureAppConfiguration`; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` |
+| **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, plus a `ConnectionStrings:AzureAppConfig` entry — **not** the `AzureAppConfiguration` name the base file ships, which nothing reads; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs`. Every key: [`configuration-reference.md`](configuration-reference.md#azureappconfig) |
 | **JWT bearer auth** | Standard bearer-token auth, plus a sample scope policy and an `IClaimsTransformation` to replace with your own. The shipped `Authentication:Schemes:Bearer` values are placeholders wired to the `--TenantId` and `--ApiAudience` template parameters — replace them before enabling authorization. `ValidAudiences` deliberately lists only the API's own audience, so tokens issued for any other resource are rejected. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **CORS allow-list** | Browser front-ends can call the API only from origins you list; with the shipped empty list CORS is not wired at all and no `Access-Control-Allow-*` header is emitted. Origins are absolute — scheme included, no trailing slash. Never allows credentials. | `Cors:AllowedOrigins` — a plain configuration array in `appsettings*.json`, **not** a `FeatureManagement` flag; `Minimal.Api/Configs/CrosConfig.cs`. Details: [`docs/api-pipeline.md`](api-pipeline.md) |
@@ -51,6 +56,17 @@ you change a flag — never turn a security switch off in the base file.
   after `SaveChanges` succeeds. See [`docs/efcore-events.md`](efcore-events.md).
 - **Specifications** — filtered/paged/projected queries via `DKNet.EfCore.Specifications` instead of
   a raw `IQueryable`. See [`docs/querying-and-specifications.md`](querying-and-specifications.md).
+
+## Aspire topology
+
+![Architecture diagram: Minimal.AppHost provisions a Redis container and a PostgreSQL container, adds the AppDb database to the PostgreSQL resource, and starts Minimal.Api with WithReference injecting both connection strings and WaitFor delaying start until the containers are ready; Azure Service Bus sits outside the host as a namespace you bring and configure yourself.](diagrams/templates-aspire-topology.svg)
+
+`Minimal.AppHost/AppHost.cs` is thirteen lines and carries no business logic. It provisions the two
+containers, adds the `AppDb` database to the PostgreSQL resource, and starts the API with both
+connection strings injected. Azure Service Bus is deliberately **not** orchestrated here — the
+commented-out `.WaitFor(bus)` marks where it would go if you added a resource for it. Running
+`dotnet run --project Minimal.Api` on its own skips all of it, so `ConnectionStrings:AppDb` and
+`ConnectionStrings:Redis` become yours to supply.
 
 ## FeatureManagement flags
 

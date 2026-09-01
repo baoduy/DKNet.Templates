@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "How a domain event travels from an aggregate to its handlers",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      660
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "Write path"
+        },
+        "dashed": {
+          "label": "Raised or drained"
+        },
+        "return": {
+          "label": "Result back to caller"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "endpoint",
+      "type": "frontend",
+      "label": "API endpoint",
+      "sublabel": "Minimal.Api"
+    },
+    {
+      "id": "bus",
+      "type": "messagebus",
+      "label": "IMessageBus",
+      "sublabel": "in-memory bus"
+    },
+    {
+      "id": "handler",
+      "type": "backend",
+      "label": "Action handler",
+      "sublabel": "AppServices"
+    },
+    {
+      "id": "aggregate",
+      "type": "external",
+      "label": "Aggregate",
+      "sublabel": "PurchaseOrder"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "CoreDbContext",
+      "sublabel": "hooks + tracker"
+    },
+    {
+      "id": "consumer",
+      "type": "backend",
+      "label": "Event handler",
+      "sublabel": "IHandler<TEvent>"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 298,
+      "label": "Handle the request"
+    },
+    {
+      "from": 308,
+      "to": 418,
+      "label": "SlimBus interceptor saves"
+    },
+    {
+      "from": 428,
+      "to": 585,
+      "label": "Only after the save succeeds"
+    }
+  ],
+  "messages": [
+    {
+      "id": "send",
+      "from": "endpoint",
+      "to": "bus",
+      "y": 170,
+      "label": "Send(request)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "dispatch",
+      "from": "bus",
+      "to": "handler",
+      "y": 203,
+      "label": "OnHandle(request, ct)"
+    },
+    {
+      "id": "mutate",
+      "from": "handler",
+      "to": "aggregate",
+      "y": 236,
+      "label": "construct or call a domain method",
+      "note": "The handler never sets a property directly and never calls SaveChanges itself."
+    },
+    {
+      "id": "queue",
+      "from": "aggregate",
+      "to": "db",
+      "y": 286,
+      "label": "AddEvent(...) queued, or [RaisesEvent] declared",
+      "variant": "dashed"
+    },
+    {
+      "id": "save",
+      "from": "bus",
+      "to": "db",
+      "y": 322,
+      "label": "SaveChangesAsync after the handler returns",
+      "variant": "emphasis",
+      "note": "AddSlimBusEfCoreInterceptor<CoreDbContext> owns the save; EnsureOwnershipResolvable runs first and refuses an unattributable insert."
+    },
+    {
+      "id": "stamp",
+      "from": "db",
+      "to": "aggregate",
+      "y": 375,
+      "label": "DataOwnerHook stamps CreatedBy / UpdatedBy",
+      "variant": "dashed"
+    },
+    {
+      "id": "written",
+      "from": "db",
+      "to": "bus",
+      "y": 406,
+      "label": "rows written",
+      "variant": "return"
+    },
+    {
+      "id": "drain",
+      "from": "db",
+      "to": "consumer",
+      "y": 438,
+      "label": "EventPublisher drains the queue",
+      "variant": "dashed"
+    },
+    {
+      "id": "publish",
+      "from": "db",
+      "to": "consumer",
+      "y": 470,
+      "label": "IMessageBus.Publish(event)",
+      "variant": "emphasis",
+      "note": "Dispatch is non-blocking: EnableBlockingPublish is false on the memory bus, so a test asserts with Eventually.IsTrueAsync."
+    },
+    {
+      "id": "external",
+      "from": "db",
+      "to": "consumer",
+      "y": 524,
+      "label": "also produced to product-tp when the Azure bus is wired",
+      "variant": "dashed"
+    },
+    {
+      "id": "response",
+      "from": "bus",
+      "to": "endpoint",
+      "y": 570,
+      "label": "Result mapped to the DTO",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "bus",
+      "from": 165,
+      "to": 574,
+      "type": "messagebus"
+    },
+    {
+      "participant": "handler",
+      "from": 198,
+      "to": 294,
+      "type": "backend"
+    },
+    {
+      "participant": "aggregate",
+      "from": 231,
+      "to": 382,
+      "type": "external"
+    },
+    {
+      "participant": "db",
+      "from": 281,
+      "to": 530,
+      "type": "database"
+    },
+    {
+      "participant": "consumer",
+      "from": 434,
+      "to": 530,
+      "type": "backend"
+    }
+  ]
+}

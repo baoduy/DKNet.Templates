@@ -1,0 +1,256 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "What a request passes through before a handler runs",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Always-on stage"
+        },
+        "cloud": {
+          "label": "Flag-gated or opt-in stage"
+        },
+        "security": {
+          "label": "Short-circuit response"
+        },
+        "external": {
+          "label": "Caller"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "caller",
+      "label": "Caller"
+    },
+    {
+      "id": "middleware",
+      "label": "Middleware (UseAppConfig)"
+    },
+    {
+      "id": "endpoint",
+      "label": "Endpoint pipeline"
+    },
+    {
+      "id": "optin",
+      "label": "Opt-in per route"
+    },
+    {
+      "id": "rejected",
+      "label": "Short-circuited",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "edge",
+      "label": "Edge middleware",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "identity",
+      "label": "Identity",
+      "fromCol": 3,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "request",
+      "label": "Per-request",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "request",
+    "cors",
+    "limiter",
+    "auth",
+    "filters",
+    "handler"
+  ],
+  "nodes": [
+    {
+      "id": "request",
+      "lane": "caller",
+      "col": 0,
+      "type": "external",
+      "label": "HTTP request",
+      "sublabel": "POST a purchase order",
+      "width": 170
+    },
+    {
+      "id": "cors",
+      "lane": "middleware",
+      "col": 1,
+      "type": "cloud",
+      "label": "CORS + HSTS",
+      "sublabel": "Cors:AllowedOrigins",
+      "tag": "CORS unwired when the list is empty",
+      "width": 170
+    },
+    {
+      "id": "limiter",
+      "lane": "middleware",
+      "col": 2,
+      "type": "cloud",
+      "label": "Routing + rate limiter",
+      "sublabel": "EnableRateLimit, per key",
+      "width": 170
+    },
+    {
+      "id": "auth",
+      "lane": "middleware",
+      "col": 3,
+      "type": "cloud",
+      "label": "Authentication",
+      "sublabel": "RequireAuthorization",
+      "width": 170
+    },
+    {
+      "id": "filters",
+      "lane": "endpoint",
+      "col": 4,
+      "type": "backend",
+      "label": "[FromClaim], validation",
+      "sublabel": "claims win over the body",
+      "tag": "validation reaches literal Map* routes only",
+      "width": 170
+    },
+    {
+      "id": "idem",
+      "lane": "optin",
+      "col": 4,
+      "type": "cloud",
+      "label": "Idempotency filter",
+      "sublabel": ".RequiredIdempotentKey()",
+      "width": 170
+    },
+    {
+      "id": "handler",
+      "lane": "endpoint",
+      "col": 5,
+      "type": "backend",
+      "label": "Handler via IMessageBus",
+      "sublabel": "OnHandle, then SaveChanges",
+      "width": 170
+    },
+    {
+      "id": "throttled",
+      "lane": "rejected",
+      "col": 2,
+      "type": "security",
+      "label": "429 Too Many Requests",
+      "sublabel": "before auth and validation",
+      "width": 170
+    },
+    {
+      "id": "unauthorized",
+      "lane": "rejected",
+      "col": 3,
+      "type": "security",
+      "label": "401 or 403",
+      "sublabel": "no token, or policy unmet",
+      "width": 170
+    },
+    {
+      "id": "invalid",
+      "lane": "rejected",
+      "col": 4,
+      "type": "security",
+      "label": "400 problem+json",
+      "sublabel": "a validation rule failed",
+      "width": 170
+    },
+    {
+      "id": "problem",
+      "lane": "rejected",
+      "col": 5,
+      "type": "security",
+      "label": "500 problem+json",
+      "sublabel": "GlobalExceptionHandler",
+      "width": 170
+    }
+  ],
+  "edges": [
+    {
+      "id": "request-cors",
+      "from": "request",
+      "to": "cors",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cors-limiter",
+      "from": "cors",
+      "to": "limiter",
+      "variant": "emphasis"
+    },
+    {
+      "id": "limiter-auth",
+      "from": "limiter",
+      "to": "auth",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth-filters",
+      "from": "auth",
+      "to": "filters",
+      "label": "principal resolved",
+      "variant": "emphasis"
+    },
+    {
+      "id": "filters-handler",
+      "from": "filters",
+      "to": "handler",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth-idem",
+      "from": "auth",
+      "to": "idem",
+      "label": "routes that opt in"
+    },
+    {
+      "id": "idem-handler",
+      "from": "idem",
+      "to": "handler",
+      "label": "unseen key only"
+    },
+    {
+      "id": "limiter-throttled",
+      "from": "limiter",
+      "to": "throttled",
+      "label": "over the window or concurrency limit",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "auth-unauthorized",
+      "from": "auth",
+      "to": "unauthorized",
+      "label": "rejected",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "filters-invalid",
+      "from": "filters",
+      "to": "invalid",
+      "label": "rule failed",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "handler-problem",
+      "from": "handler",
+      "to": "problem",
+      "label": "unhandled exception",
+      "variant": "security",
+      "role": "error"
+    }
+  ]
+}

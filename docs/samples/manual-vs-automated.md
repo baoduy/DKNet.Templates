@@ -6,7 +6,7 @@ feature — entity, event, event handler, CRUD, queries, endpoint — but by dif
 | Sample | Location | Approach |
 |--------|----------|----------|
 | **PurchaseOrder** | `ManualSample/` | Every layer is hand-written. No declarative event/CRUD/DTO-generation attribute is used anywhere. |
-| **Product** | `AutomatedSample/` | Every layer the DKNet 10.1.13 generators can produce is declared, not written: `[RaisesEvent]` for events, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` + `[GenerateDto]` for the request/handler/route/DTO shapes. |
+| **Product** | `AutomatedSample/` | Every layer the DKNet 10.1.14 generators can produce is declared, not written: `[RaisesEvent]` for events, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` + `[GenerateDto]` for the request/handler/route/DTO shapes. |
 
 This document walks through that difference layer by layer and, wherever the automated sample
 *produces* a layer instead of writing it, explains what control or visibility you give up in
@@ -128,7 +128,7 @@ like the manual one, so they carry no trade-off:
 
 ## Layers the automated sample generates
 
-Each of these is a layer `Product` *declares* (via an attribute) and the DKNet 10.1.13 generators
+Each of these is a layer `Product` *declares* (via an attribute) and the DKNet 10.1.14 generators
 emit at compile time — the amber and purple nodes in the diagram:
 
 - **Event definitions.** `[RaisesEvent(EventOperations.Created, Include = [...])]` and
@@ -154,9 +154,10 @@ emit at compile time — the amber and purple nodes in the diagram:
 - **Get-by-id / list / delete routes.** No per-entity code at all. `MapProductCrud()` wires the
   *generic* `MapGetById`/`MapGetList`/`MapDeleteById<Product, Guid, ...>` extensions from
   `DKNet.AspCore.Extensions`.
-- **DTO.** `[GenerateDto(typeof(Product))] public sealed partial record ProductDto;` — one line —
-  generates every audited property: `Name`, `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`,
-  `LastModifiedBy`, `LastModifiedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
+- **DTO.** `[GenerateDto(typeof(Product), Exclude = [...])] public sealed partial record ProductDto;`
+  — one declaration. The generator's default is every audited property; the sample excludes
+  `OwnedBy`, `LastModifiedBy` and `LastModifiedOn`, leaving `Name`, `Price`, `IsDiscontinued`,
+  `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
 - **Endpoint registration.** `ProductV1Endpoint.cs` is 9 lines (one `MapProductCrud()` plus
   `.WithDescription`) versus ~90 lines of literal `Map*` calls in `PurchaseOrderV1Endpoint.cs`.
 
@@ -201,18 +202,29 @@ The generated `MapPost<CreateProductRequest, ProductDto>` adds no such filter, a
 
 ### 3. The DTO exposes every audited field by default
 
-`ProductDto` ships `CreatedOn`, `LastModifiedOn`, `UpdatedOn`, and `UpdatedBy` to every caller,
-because the generator's default is "everything audited", not "only what I chose". Narrowing the
-shape requires an explicit `Exclude`/`Include` on `[GenerateDto]`. By contrast, the manual
-`PurchaseOrderDto` exposes exactly 5 fields — because nobody wrote the others into it.
+The generator's default is "everything audited", not "only what I chose", so narrowing the shape
+takes an explicit `Exclude`/`Include` on `[GenerateDto]`. The sample does narrow — it excludes
+`OwnedBy`, `LastModifiedBy` and `LastModifiedOn` — but still ships `CreatedBy`, `CreatedOn`,
+`UpdatedBy` and `UpdatedOn` to every caller, because those are what "audited" means here. By
+contrast, the manual `PurchaseOrderDto` exposes exactly 5 fields — because nobody wrote the others
+into it.
+
+On a generated slice the exclusion list is doing double duty: the DTO is also the filter, search
+and order surface of the free list route, so a field you exclude becomes unqueryable over HTTP, and
+a field whose entity counterpart is computed rather than mapped turns every `?search=` into a 500.
+That second reason, not tidiness, is why `LastModifiedBy`/`LastModifiedOn` are excluded — see
+[Generic List Endpoint](../generic-list-endpoint.md#trap-a-dto-field-must-map-to-a-real-column).
 
 ### 4. No filtered list, no custom get-by-id, no pre-delete business rule
 
 The generic routes are all-or-nothing:
 
-- **List** pages over every row with no filter, sort, or page-size ceiling. Adding a `?name=`
-  filter means abandoning the generated list route for a hand-written query (the manual
-  `ListPurchaseOrdersQuery` has a `CustomerName` filter).
+- **List** is *not* the gap it once was: the generic route ships a uniform
+  `filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` contract resolved against the DTO, with
+  a page-size ceiling of 100 — see [Generic List Endpoint](../generic-list-endpoint.md). What it
+  cannot express is a *bespoke* predicate: anything beyond the built-in operations, or a filter over
+  a field the DTO deliberately hides, still means a hand-written query (the manual
+  `ListPurchaseOrdersQuery` and its `CustomerName` filter).
 - **Get-by-id** has no query object to extend. A future "also check tenant ownership" or "expand a
   related entity" forces that one route back to hand-written.
 - **Delete** either deletes or returns 404; there is nowhere to hang a "can this row be deleted?"
@@ -252,7 +264,7 @@ wired once at the composition root (`ServiceConfigs.cs`). A payload claiming
 to the manual sample's `[FromClaim]` population.
 
 What you actually lose is the ability to see *where* attribution happens by reading
-`AutomatedSample/` — it lives in a shared save hook. (As of DKNet `10.1.13`, `DataOwnerHook`
+`AutomatedSample/` — it lives in a shared save hook. (As of DKNet `10.1.14`, `DataOwnerHook`
 stamps on modify as well as insert — verified live over `Product`'s `PUT` route.)
 
 ### 7. The external-broker path is real but untested here
@@ -263,7 +275,8 @@ hand-written external subscriber. This proves a *declaratively raised* event sti
 external topic exactly like a hand-raised one.
 
 However, that handler registers only on the `AzureBus` child bus, which is wired only when
-`ConnectionStrings:AzureBus` is non-empty — and neither the xUnit nor the BDD host ever sets it.
+`FeatureManagement:EnableServiceBus` is `true` **and** `ConnectionStrings:AzureBus` is non-empty —
+and neither the xUnit nor the BDD host ever sets the connection string.
 The in-memory bus the tests run against is a separate bus. `ProductCreatedNotificationHandlerTests`
 covers the handler's own behaviour directly, but the full Produce → topic → Consume path against a
 real or emulated broker remains untested.
