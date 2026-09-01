@@ -29,6 +29,10 @@ internal static class GlobalExceptionConfigs
                 // Development (SEC-005) — undo that default here so the response has no type member at all.
                 // Scoped to exception responses only so unrelated problem+json responses (e.g. validation
                 // failures) keep their usual Type.
+                // This guard applies to any exception-originated problem+json response outside Development,
+                // not only this template's own handler — that is exact today because the template registers
+                // exactly one IExceptionHandler (GlobalExceptionHandler). Whoever adds a second IExceptionHandler
+                // that sets a meaningful Type must revisit this guard, or that Type is silently dropped in Production.
                 if (ctx.Exception is not null &&
                     !ctx.HttpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
                 {

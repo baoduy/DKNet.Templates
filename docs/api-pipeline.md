@@ -137,14 +137,19 @@ which is an outage rather than a rate limit. Treat the shipped numbers as a plac
 
 - `Status` = `500`
 - `Title` = `"Something went wrong!."`
-- `Detail` = the exception's message (or its `InnerException`'s, if present)
-- `Type` = the exception's type name
+- `Detail` and `Type` depend on the hosting environment:
+  - in `Development` — `Detail` is the exception's message and `Type` is the exception's type name;
+  - outside `Development` (Staging, Production) — `Detail` is the fixed generic string
+    `"An unexpected error occurred. Quote the trace-id when reporting this."` and the response
+    carries no `type` member at all.
 - a `trace-id` extension (the request's `TraceIdentifier`)
 - `Instance` = `"{Method} {Path}"`
 
 The `trace-id` and `Instance` values are added by
-`Minimal.Api/Configs/GlobalExceptions/GlobalExceptionConfigs.cs`'s `CustomizeProblemDetails`. A
-client never sees a raw stack trace.
+`Minimal.Api/Configs/GlobalExceptions/GlobalExceptionConfigs.cs`'s `CustomizeProblemDetails`. Once
+the detail is generic, that `trace-id` is the correlation handle a caller quotes when reporting the
+error — it is the only way to tie the response back to the logged exception. A client never sees a
+raw stack trace.
 
 ## 9. Health checks and OpenAPI/Scalar
 
