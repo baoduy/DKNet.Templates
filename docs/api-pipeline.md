@@ -6,16 +6,21 @@ stages upstream of it, which aren't visible from reading a single handler.
 
 ## At a glance
 
+Every `Default` below is the value the shipped base `appsettings.json` produces — that is what an
+unmodified deployed service runs with, since the template ships no `appsettings.Production.json`.
+Where an environment overlay relaxes it, the row says so. Full flag matrix:
+[`docs/template-features.md`](template-features.md#featuremanagement-flags).
+
 | # | Stage | Default |
 |---|---|---|
 | 1 | CORS | `Cors:AllowedOrigins` empty — CORS not wired |
 | 2 | Routing and endpoint registration | — |
 | 3 | API versioning | `FeatureManagement:EnableVersioning` = `true` |
-| 4 | Authentication / authorization | `FeatureManagement:RequireAuthorization` = `false` |
+| 4 | Authentication / authorization | `FeatureManagement:RequireAuthorization` = `true` (`false` in Development/Testing) |
 | 5 | `[FromClaim]` population | — |
 | 6 | FluentValidation auto-validation | — |
 | 7 | Idempotency on POST | opt-in per route |
-| 8 | Rate limiting | `FeatureManagement:EnableRateLimit` = `true` |
+| 8 | Rate limiting | `FeatureManagement:EnableRateLimit` = `true` (`false` in Development/Testing) |
 | 9 | Global exception handling | — |
 | 10 | Health checks and OpenAPI/Scalar | `EnableHealthCheck` = `true`, `EnableSwagger` = `false` |
 
@@ -69,15 +74,26 @@ throws at startup, before any endpoint is even discovered.
 
 ## 4. Authentication / authorization
 
-`FeatureManagement:RequireAuthorization` (default `false`) drives two things at once:
+`FeatureManagement:RequireAuthorization` — `true` in the base `appsettings.json`, so a deployed
+service authenticates by default; `appsettings.Development.json` and `appsettings.Testing.json` both
+set it to `false`, so `dotnet run` locally and both test suites stay anonymous. It drives two things
+at once:
 
 - `Minimal.Api/Configs/AppConfig.cs` only calls `AddAuthConfig()` (JWT bearer auth,
   `Minimal.Api/Configs/Auth/AuthConfig.cs`) when it's `true`.
 - The same flag is passed to `UseEndpointConfigs` as `o.RequireAuthorization`, which is applied to
   every route group after mapping and before `IEndpointConfig.Map` runs.
 
+When it is `false` no authentication middleware is added at all — this is not a permissive policy
+but the absence of any identity, which is why the base file must never ship it off.
 `Minimal.App.Tests/Integration/EndpointConfig/PurchaseOrderStampingAndVersioningTests.cs` pins the
 authorization-off behavior explicitly (see below).
+
+`Program.cs` binds `FeatureOptions` from `builder.Configuration` in its first lines, before a
+`WebApplicationFactory`'s `ConfigureAppConfiguration` overrides are merged in. A test fixture
+therefore cannot flip this flag with an in-memory config entry — only an `appsettings.{Environment}.json`
+file or a `FeatureManagement__RequireAuthorization` environment variable lands early enough. See the
+remarks on `Minimal.App.Tests/Integration/Support/AuthOnApiFixture.cs`.
 
 ## 5. `[FromClaim]` population
 
@@ -91,8 +107,9 @@ convenience: whatever the caller put in the body or query string for that member
 discarded.
 
 `SystemAccountFallback` only substitutes a value when `RequireAuthorization` is `false` *and* the
-claim resolver couldn't resolve a value. An authenticated caller with a genuinely missing claim
-never gets the fallback — the member holds its type's default instead, and the handler must reject
+claim resolver couldn't resolve a value — with the shipped defaults that means local Development and
+the test suites, never a deployed service running the base file. An authenticated caller with a
+genuinely missing claim never gets the fallback — the member holds its type's default instead, and the handler must reject
 it explicitly (see `CreatePurchaseOrderCommandHandler.OnHandle`'s `IsNullOrEmpty(request.ByUser)`
 check). Pinned by `AuthorizationOff_CreateIsAttributedToSystemAccount` and
 `AuthenticatedCallerWithNoNameClaim_CreateIsRefused_NeverAttributedToSystemAccount` in
@@ -133,11 +150,17 @@ conflict error.
 
 ## 8. Rate limiting
 
-`FeatureManagement:EnableRateLimit` (default `true`) wires
+`FeatureManagement:EnableRateLimit` — `true` in the base `appsettings.json`, `false` in the
+`Development` and `Testing` overlays — wires
 `Minimal.Api/Configs/RateLimits/RateLimitConfig.cs`: a chained `PartitionedRateLimiter` combining a
 fixed-window limiter and a concurrency limiter, both keyed per-request by `IRateLimitKeyProvider`
 and configured per-request by `IRateLimitOptionsProvider`. A request over either limit is rejected
 with `429 Too Many Requests` before reaching routing's endpoint handler.
+
+Limits come from the `RateLimit` section. The base `appsettings.json` sets it explicitly
+(`DefaultRequestLimit: 100`, `DefaultConcurrentLimit: 20`, `TimeWindowInSeconds: 1`) — without that
+section the limiter would fall back to `RateLimitOptions`'s class defaults of 2 requests per second,
+which is an outage rather than a rate limit. Treat the shipped numbers as a placeholder to tune.
 
 ## 9. Global exception handling
 

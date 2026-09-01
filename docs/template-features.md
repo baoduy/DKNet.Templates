@@ -5,8 +5,16 @@ full list of DKNet NuGet packages behind these features, see
 [`docs/dknet-packages.md`](dknet-packages.md).
 
 Toggles live in `Minimal.Share/Options/FeatureOptions.cs`, bound from the `FeatureManagement`
-config section. Treat that class as the source of truth over any given `appsettings.json`: its
-checked-in keys have drifted for a couple of flags, noted at the end of this page.
+config section. A class default only applies when no config file sets the key — the shipped
+`appsettings*.json` files win wherever they name a flag, so read
+[the flag table below](#featuremanagement-flags) for both values side by side rather than assuming
+the class default is what you get. A couple of the checked-in JSON keys have drifted from the
+property names, noted at the end of this page.
+
+**Security flags are secure-by-default.** The base `appsettings.json` is what an unmodified service
+runs with in Production (the template ships no `appsettings.Production.json`), so it carries the
+safe value; the relaxation lives in the `Development` and `Testing` overlays. Keep it that way when
+you change a flag — never turn a security switch off in the base file.
 
 ## What gets wired
 
@@ -18,7 +26,7 @@ checked-in keys have drifted for a couple of flags, noted at the end of this pag
 | **FluentValidation** | Automatic `400` responses for invalid requests — handlers never call `Validate()` themselves. | Add an `AbstractValidator<TRequest>` next to the action; wiring in `Minimal.Api/Configs/FluentValidationConfig.cs` |
 | **OpenTelemetry** | ASP.NET Core + HttpClient tracing/metrics; console exporter in DEBUG, OTLP or Azure Monitor otherwise. | `FeatureManagement:EnableOpenTelemetry`, `OTEL_EXPORTER_OTLP_ENDPOINT` / `AzureMonitor:ConnectionString`; `Minimal.Api/Configs/LogConfigs.cs` |
 | **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, `ConnectionStrings:AzureAppConfiguration`; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` |
-| **JWT bearer auth** | Standard bearer-token auth, optional MS Graph token handler swap-in. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
+| **JWT bearer auth** | Standard bearer-token auth, optional MS Graph token handler swap-in. The shipped `Authentication:Schemes:Bearer` values are placeholders wired to the `--TenantId` and `--ApiAudience` template parameters — replace them before enabling authorization. `ValidAudiences` deliberately lists only the API's own audience, so tokens issued for any other resource are rejected. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **CORS allow-list** | Browser front-ends can call the API only from origins you list; with the shipped empty list CORS is not wired at all and no `Access-Control-Allow-*` header is emitted. Origins are absolute — scheme included, no trailing slash. Never allows credentials. | `Cors:AllowedOrigins` — a plain configuration array in `appsettings*.json`, **not** a `FeatureManagement` flag; `Minimal.Api/Configs/CrosConfig.cs`. Details: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **Health checks** | EF Core connectivity check mapped at `/healthz` and `/`. | `FeatureManagement:EnableHealthCheck`; `Minimal.Api/Configs/Healthz/HealthzConfig.cs` |
@@ -45,22 +53,45 @@ checked-in keys have drifted for a couple of flags, noted at the end of this pag
 - **Specifications** — filtered/paged/projected queries via `DKNet.EfCore.Specifications` instead of
   a raw `IQueryable`. See [`docs/querying-and-specifications.md`](querying-and-specifications.md).
 
-## FeatureManagement flags (`Minimal.Share/Options/FeatureOptions.cs`)
+## FeatureManagement flags
 
-| Flag | Default |
-|---|---|
-| `EnableAntiforgery` | `false` |
-| `EnableAzureAppConfig` | `false` |
-| `EnableHealthCheck` | `true` |
-| `EnableHttps` | `false` |
-| `EnableMsGraphJwtTokenValidation` | `false` |
-| `EnableOpenTelemetry` | `false` |
-| `EnableRateLimit` | `true` |
-| `EnableServiceBus` | `false` |
-| `EnableSwagger` | `false` |
-| `EnableVersioning` | `true` |
-| `RequireAuthorization` | `false` |
-| `RunDbMigrationWhenAppStart` | `false` |
+Class defaults come from `Minimal.Share/Options/FeatureOptions.cs`. The remaining columns are what
+the shipped config files actually set. `—` means the file does not name the key, so the value falls
+through to the column on its left.
+
+| Flag | Class default | base `appsettings.json` (Production) | `appsettings.Development.json` | `appsettings.Testing.json` |
+|---|---|---|---|---|
+| `EnableAntiforgery` | `false` | `false` | `false` | — |
+| `EnableAzureAppConfig` | `false` | — (drifted key, see below) | `false` | — |
+| `EnableHealthCheck` | `true` | — | — | — |
+| `EnableHttps` | `false` | **`true`** | `false` | `false` |
+| `EnableMsGraphJwtTokenValidation` | `false` | — | — | — |
+| `EnableOpenTelemetry` | `false` | — | — | — |
+| `EnableRateLimit` | `true` | `true` | `false` | `false` |
+| `EnableServiceBus` | `false` | — (drifted key, see below) | — (drifted key) | — |
+| `EnableSwagger` | `false` | `false` | `true` | — |
+| `EnableVersioning` | `true` | `true` | — | — |
+| `RequireAuthorization` | `false` | **`true`** | `false` | `false` |
+| `RunDbMigrationWhenAppStart` | `false` | `false` | `true` | — |
+
+`RequireAuthorization`, `EnableHttps` and `EnableRateLimit` are the secure-by-default set: a
+scaffolded service deployed without a config change authenticates every request, redirects to HTTPS
+and rate-limits. `dotnet run` locally picks up `appsettings.Development.json`, and both test suites
+boot under the `Testing` environment
+(`Minimal.App.TestSupport/TestApiFactoryBase.cs` calls `UseEnvironment("Testing")`), so neither is
+affected. To relax a flag for an environment, add it to that environment's overlay — or set the
+`FeatureManagement__<Flag>` environment variable, which outranks every JSON file.
+
+Because `EnableRateLimit` is on in the base file, the base file also carries an explicit `RateLimit`
+section so the limiter never falls back to `RateLimitOptions`'s 2-requests-per-second class defaults:
+
+| `RateLimit` key | base (Production) | `appsettings.Development.json` |
+|---|---|---|
+| `DefaultRequestLimit` | `100` | `1` |
+| `DefaultConcurrentLimit` | `20` | `1` |
+| `TimeWindowInSeconds` | `1` | `10` |
+
+Those production numbers are a placeholder ceiling to tune, not a researched limit for your service.
 
 > The generated `Minimal.Api/appsettings.json` currently sets a couple of these under drifted key
 > names: `EnableServiceBusProcess` and `EnableAzureAppConfiguration`, instead of `EnableServiceBus`
