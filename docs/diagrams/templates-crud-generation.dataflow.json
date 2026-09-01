@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "From four attributes on Product to a mapped CRUD slice",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "stages": [
+    {
+      "label": "What you declare"
+    },
+    {
+      "label": "Compile time"
+    },
+    {
+      "label": "Registration"
+    },
+    {
+      "label": "Published routes"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "entity",
+      "type": "external",
+      "label": "Product entity",
+      "sublabel": "three Crud attributes",
+      "stage": 0,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "dto",
+      "type": "external",
+      "label": "ProductDto",
+      "sublabel": "GenerateDto with Exclude",
+      "stage": 0,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "crudgen",
+      "type": "backend",
+      "label": "SlimBus.Generators",
+      "sublabel": "requests + handlers",
+      "stage": 1,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "dtogen",
+      "type": "backend",
+      "label": "EfCore.DtoGenerator",
+      "sublabel": "DTO members",
+      "stage": 1,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "mapcrud",
+      "type": "backend",
+      "label": "MapProductCrud()",
+      "sublabel": "one call in the endpoint",
+      "stage": 2,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "routes",
+      "type": "cloud",
+      "label": "/v1/products routes",
+      "sublabel": "CRUD plus two actions",
+      "stage": 3,
+      "row": 0,
+      "width": 150
+    }
+  ],
+  "flows": [
+    {
+      "from": "entity",
+      "to": "crudgen",
+      "label": "parameter lists",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelDy": -38
+    },
+    {
+      "from": "dto",
+      "to": "dtogen",
+      "label": "entity type",
+      "route": "straight",
+      "labelDy": -38
+    },
+    {
+      "from": "crudgen",
+      "to": "mapcrud",
+      "label": "route table",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelDy": -38
+    },
+    {
+      "from": "dtogen",
+      "to": "mapcrud",
+      "label": "response shape"
+    },
+    {
+      "from": "mapcrud",
+      "to": "routes",
+      "label": "mapped by UseEndpointConfigs",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelDy": -38
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "What the generators emit",
+      "items": [
+        "CreateProductRequest, ChangePriceProductRequest, ApproveProductRequest, DiscontinueProductRequest",
+        "A handler per request, in the Minimal.AppServices.Crud namespace",
+        "MapGetById, MapGetList, MapDeleteById, MapPost, MapPutById and one MapActionById per action",
+        "Output lands under obj/Generated/, never in source control"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "What stays hand-written",
+      "items": [
+        "The IEntityTypeConfiguration mapping and any seed data",
+        "Every event consumer \u2014 RaisesEvent only declares and raises",
+        "Idempotency: no generated route calls RequiredIdempotentKey()",
+        "Enforced validation: forwarded DataAnnotations are never evaluated on a generated route"
+      ]
+    }
+  ]
+}

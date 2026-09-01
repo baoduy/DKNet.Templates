@@ -6,6 +6,8 @@ hand-written files `ManualSample`/`PurchaseOrder` uses. Read
 layer-by-layer comparison of what each shape costs; this page only walks the mechanics of the
 generated shape.
 
+![Data-flow diagram: the Product entity's three Crud attributes feed DKNet.SlimBus.Generators, which emits the request records and handlers, while the GenerateDto attribute on ProductDto feeds DKNet.EfCore.DtoGenerator, which emits the DTO members; both converge on the single generated MapProductCrud() call that UseEndpointConfigs turns into the /v1/products routes. Two cards list what the generators emit and what stays hand-written.](diagrams/templates-crud-generation.svg)
+
 ## The four attributes
 
 `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`:
@@ -14,7 +16,7 @@ generated shape.
 [RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]
 [RaisesEvent(EventOperations.Updated, nameof(Price))]
 [RaisesEvent(EventOperations.Updated, nameof(IsDiscontinued))]
-public class Product : AggregateRoot
+public class Product : AggregateRoot, IOwnedBy
 {
     [CrudCreate]
     public Product([Required, StringLength(150)] string name, [Range(0.01, double.MaxValue)] decimal price)
@@ -26,6 +28,10 @@ public class Product : AggregateRoot
     public string Name { get; private set; } = null!;
     public decimal Price { get; private set; }
     public bool IsDiscontinued { get; private set; }
+
+    // Stamped by DataOwnerHook from the same ownership key as CreatedBy; makes the row subject to
+    // DataOwnerAuthQuery's global read filter.
+    public string OwnedBy { get; private set; } = string.Empty;
 
     [CrudUpdate]
     public void ChangePrice([Range(0.01, double.MaxValue)] decimal price) => Price = price;
@@ -55,14 +61,18 @@ public class Product : AggregateRoot
 - **`[GenerateDto(typeof(Product))]`** — `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`:
 
   ```csharp
-  [GenerateDto(typeof(Product))]
+  [GenerateDto(typeof(Product),
+      Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
   public sealed partial record ProductDto;
   ```
 
-  One line, and it generates every audited property (`Id`, `Name`, `Price`, `IsDiscontinued`,
-  `CreatedBy`/`CreatedOn`/`LastModifiedBy`/`LastModifiedOn`/`UpdatedBy`/`UpdatedOn`). There's no
-  "only expose what I chose" default — narrow with `Exclude`/`Include` on the attribute if a field
-  shouldn't ship.
+  The default is "every audited property", not "only what I chose" — narrow with
+  `Exclude`/`Include` when a field shouldn't ship. The sample narrows for two different reasons:
+  `OwnedBy` duplicates `CreatedBy` on the wire, while `LastModifiedBy`/`LastModifiedOn` are computed
+  conveniences with no mapped column, and leaving them on the DTO breaks the generated list route
+  (see [`generic-list-endpoint.md`](generic-list-endpoint.md#trap-a-dto-field-must-map-to-a-real-column)).
+  What is left after the exclusions, verified against `obj/Generated/.../ProductDto.g.cs`: `Name`,
+  `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
 
 Generated DTOs and `[MapsFrom]`-tagged hand-written DTOs both register with Mapster the same way.
 `Minimal.AppServices/Extensions/MapsToExtensions.cs`'s `ScanMaps` reflects over the assembly for
@@ -82,6 +92,17 @@ build):
 
 It never generates the `IEntityTypeConfiguration<T>` mapping, or any event *consumer* (see
 [`docs/efcore-events.md`](efcore-events.md)). Those stay hand-written for both samples.
+
+`Map<Entity>Crud()` takes one optional argument — an `Action<CrudMapOptions>` whose only capability
+is dropping operations, so you can hand-write the one route the generator cannot express:
+
+```csharp
+group.MapProductCrud(o => o.Exclude(CrudOp.Delete));
+```
+
+`CrudOp` has six members: `GetById`, `GetList`, `Create`, `Update`, `Delete`, `Action`. `Update` and
+`Action` are all-or-nothing — there is no per-method exclusion. Nothing is excluded by default, and
+the shipped `ProductV1Endpoint` passes no options.
 
 ## Domain actions with `[CrudAction]`
 
@@ -332,5 +353,3 @@ Neither `PurchaseOrder` nor `Product` uses a sequence today. This capability exi
 generated entity that needs a human-readable, sequential identifier instead of a `Guid`. Declare a
 new `Sequences` member and a `SequenceService` subclass the same way `IMembershipService`/
 `MembershipService` do for `Sequences.Membership`.
-</content>
-</invoke>

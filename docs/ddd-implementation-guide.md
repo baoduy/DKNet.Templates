@@ -42,6 +42,8 @@ does instead of that stage, and what it gives up by skipping it.
 
 ## 1. Layer map
 
+![Architecture diagram of a scaffolded solution: Minimal.AppHost orchestrates and Minimal.Api dispatches through IMessageBus into Minimal.AppServices, which calls Minimal.Domains aggregates; Minimal.Infra supplies IRepositorySpec and the event publisher to AppServices and the EF Core mapping and seeding to Domains; Minimal.Share is read by every layer, and the NetArchTest suite fails the build on a shape violation in the domain core.](diagrams/templates-solution-layers.svg)
+
 ```
 Minimal.Api          entry point, endpoints, auth, OpenAPI
   ↓
@@ -96,11 +98,13 @@ Rules that matter:
   whichever reads better for your feature.
 
 **Automated alternative** (`Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`): the
-entity carries class-level `[RaisesEvent(EventOperations.Created, Include = [...])]` /
-`[RaisesEvent(EventOperations.Updated, nameof(Price))]` instead of an `AddEvent` call, a
-`[CrudCreate]` constructor instead of a plain one, and `[CrudUpdate]` methods instead of a
-loose `ChangeAmount`-style method. No hand-written event record, no `AddEvent` call anywhere in
-that sample — see `docs/samples/manual-vs-automated.md` for exactly what those attributes generate
+entity carries three class-level `[RaisesEvent]` declarations — `Created` with an `Include` list,
+and `Updated` narrowed to `Price` and to `IsDiscontinued` — instead of an `AddEvent` call, a
+`[CrudCreate]` constructor instead of a plain one, a `[CrudUpdate]` method instead of a loose
+`ChangeAmount`-style method, and `[CrudAction]` methods for its two named domain operations. It
+also implements `IOwnedBy`, so `DataOwnerHook` stamps `OwnedBy` on insert and DKNet's global read
+filter isolates rows per owner. No hand-written event record, no `AddEvent` call anywhere in that
+sample — see `docs/samples/manual-vs-automated.md` for exactly what those attributes generate
 and what they cost.
 
 ## 3. EF Core mapping — `Minimal.Infra/Features/<Feature>/Mappers/`
@@ -213,8 +217,11 @@ supports "no filter at all" as a valid call shape.
 
 **Automated alternative**: no hand-written spec exists for `Product`. `GetById`/`GetList`/`Delete`
 map to `DKNet.AspCore.Extensions`'s generic `MapGetById<TEntity,TKey,TDto>`/`MapGetList`/
-`MapDeleteById`, which query directly against `IEntity<TKey>` with no per-entity spec at all — no
-filter parameter is available on the generated list route either.
+`MapDeleteById`, which query directly against `IEntity<TKey>` with no per-entity spec at all. The
+generated list route is not unfiltered, though: it exposes a uniform
+`filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` query surface resolved against the DTO —
+the full contract is [`generic-list-endpoint.md`](generic-list-endpoint.md). What it cannot do is
+express a *bespoke* predicate the way a hand-written spec can.
 
 ## 6. DTO and Mapster wiring — `Minimal.AppServices/<Feature>/V1/<Feature>Dto.cs`
 
@@ -238,16 +245,18 @@ to/from the entity by convention (matching property names); no per-feature mappi
 **Automated alternative** (`Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`):
 
 ```csharp
-[GenerateDto(typeof(Product))]
+[GenerateDto(typeof(Product),
+    Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
 public sealed partial record ProductDto;
 ```
 
-One line. `[GenerateDto]` (source generator, `DKNet.EfCore.DtoGenerator`) emits every audited
-property from the entity at compile time — `Name`, `Price`, `IsDiscontinued`, `CreatedBy`,
-`CreatedOn`, `LastModifiedBy`, `LastModifiedOn`, `UpdatedBy`, `UpdatedOn`, `Id` for `Product`. Use
-`Exclude`/`Include` on the attribute to narrow the shape. The default is "everything audited", not
-"only what I chose to expose" — decide explicitly whether that's acceptable for your entity before
-reaching for this shape.
+One declaration. `[GenerateDto]` (source generator, `DKNet.EfCore.DtoGenerator`) emits every
+audited property from the entity at compile time, so the default is "everything audited", not "only
+what I chose to expose". The sample narrows it with `Exclude`, leaving `Name`, `Price`,
+`IsDiscontinued`, `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn` and `Id` — verified against
+`obj/Generated/.../ProductDto.g.cs`. Decide explicitly what your entity should expose before
+reaching for this shape; on a generated CRUD slice the DTO is also the filter/search/order surface,
+so it is a query boundary as well as a response shape.
 
 ## 7. Lazy mapping — `DKNet.SlimBus.Extensions.LazyMapper`
 
@@ -284,14 +293,15 @@ internal sealed class PurchaseOrderCreatedEventHandler(ILogger<PurchaseOrderCrea
   for anything backed by an external system. No manual DI registration is needed — both projects'
   assemblies are scanned by `AddServiceBus` in `Minimal.Infra/Extensions/ServiceBusSetup.cs`.
 - Two buses exist: an in-memory child bus that is **always** wired, and an Azure Service Bus child
-  bus that is only added when `ConnectionStrings:AzureBus` is non-empty. Wire a subscriber's
+  bus that is only added when `FeatureManagement:EnableServiceBus` is `true` **and**
+  `ConnectionStrings:AzureBus` is non-empty. Wire a subscriber's
   `Produce<TEvent>`/`Consume<TEvent>` topic/subscription in `ServiceBusSetup.cs` the same way
   `ProductCreatedEvent` → `product-tp`/`product-sub` is wired for `ProductCreatedNotificationHandler`.
 
-**Automated alternative**: no hand-written event record exists for `Product`. Class-level
-`[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]` /
-`[RaisesEvent(EventOperations.Updated, nameof(Price))]` on the entity compose
-`ProductCreatedEvent`/`ProductPriceUpdatedEvent` at compile time. Note that the second name folds
+**Automated alternative**: no hand-written event record exists for `Product`. Its three
+class-level `[RaisesEvent]` declarations — `Created` with an `Include` list, `Updated` narrowed to
+`Price`, and `Updated` narrowed to `IsDiscontinued` — compose `ProductCreatedEvent`,
+`ProductPriceUpdatedEvent` and `ProductIsDiscontinuedUpdatedEvent` at compile time. Note that the second name folds
 the narrowing property in (`Product`+`Price`+`Updated`+`Event`) — it is **not**
 `ProductUpdatedEvent`. Neither type has source you can read; confirm a composed name against the
 compiled assembly (`strings bin/**/Minimal.Domains.dll | grep <Entity>`) before wiring a consumer.

@@ -97,10 +97,14 @@ GET /v1/products?filter=Price:GreaterThan:100&filter=IsDiscontinued:Equal:false
 
 ### Field naming
 
-`Field` is normalised with `ToPascalCase()`, so `unit_price`, `unit-price`, and `UnitPrice` all
-resolve to the same DTO property, matched case-insensitively. The resolved name **must** be a public
-property on `TModel`. If it is not, the request fails with `400 Bad Request` and a message such as
-`Cannot filter by 'x': no such field on ProductDto.` — unknown fields are never silently dropped.
+`Field` is normalised to PascalCase, so `unit_price`, `unit-price`, and `UnitPrice` all resolve to
+the same DTO property, matched case-insensitively. The resolved name **must** be a public property
+on `TModel`. If it is not, the request fails with `400 Bad Request` — unknown fields are never
+silently dropped, because dropping a condition would answer a filtered query with unfiltered data.
+
+Only the **first two** colons split the triple, so a value may contain colons of its own — an
+ISO-8601 timestamp being the case that matters:
+`filter=CreatedOn:GreaterThan:2026-01-31T00:00:00Z`.
 
 ### Limits
 
@@ -132,13 +136,13 @@ DTO**, OR'd together, then ANDed with any `filter`/default predicate:
 GET /v1/products?search=widget
 ```
 
-- **Which fields:** all `string` properties of `TModel`, walked up to **2 levels deep**
-  (e.g. `Name` and `Merchant.Name`, but not `Merchant.Address.City`). Collection members are wrapped
-  in `Any(...)`. Dictionaries and `byte[]` are excluded.
-- **Operator:** `Contains` (substring), not `StartsWith`. Each clause is `Field != null && Field.Contains(term)`.
-- **Minimum length:** 2 characters. A 1-character `search` is a `400`. Blank or omitted = no-op.
-- **Case sensitivity** follows the database collation — no lowercasing is applied in code.
-- If the DTO has no string field, `search` matches nothing (an empty page, not an error).
+- **Which fields:** the text properties of `TModel`. As with `filter` and `orderBy`, the DTO is the
+  boundary — a column it does not expose is never searched.
+- **Operator:** substring (`LIKE '%…%'`), not prefix match.
+- **Minimum length:** 2 characters after trimming. A 1-character `search` is a `400`. Blank or
+  omitted is treated as absent.
+- **Case sensitivity** follows the database collation — no lowercasing is applied in the predicate.
+- If the DTO has no text field, `search` matches nothing (an empty page, not an error).
 
 For `ProductDto` the string fields are `Name` plus the mapped audit columns `CreatedBy` / `UpdatedBy`,
 so a search hits any of those. (Every searched field must map to a real column — see

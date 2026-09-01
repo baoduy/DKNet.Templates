@@ -46,8 +46,12 @@ wired via:
 - `Minimal.AppServices/Share/IPrincipalProvider.cs` — extends `IDataOwnerProvider`, adding
   `ProfileId`/`Email`/`UserName` read from the bearer token's claims.
 - `Minimal.Api/Configs/Handlers/PrincipalProvider.cs` — the implementation. `GetOwnershipKey()`
-  returns `ProfileId.ToString()`, read from the `ClaimTypes.NameIdentifier` claim, not the caller's
-  name.
+  returns the caller's subject claim, never their name: the first non-empty of
+  `http://schemas.microsoft.com/identity/claims/objectidentifier`, `oid`,
+  `ClaimTypes.NameIdentifier`, `sub`. When the caller is not authenticated it returns
+  `SharedConsts.SystemAccount` instead. (`ProfileId` on the same class exposes that key parsed as a
+  `Guid`, or `Guid.Empty` when it does not parse — it is a convenience for domain code, not what
+  the hook stamps.)
 - `Minimal.Api/Configs/ServiceConfigs.cs`: `.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`
   registers the provider and wires `DataOwnerHook` onto `CoreDbContext`.
 
@@ -97,7 +101,7 @@ name, never the spoofed one.
 
 ## Row-level ownership filtering
 
-`Minimal.Infra/Contexts/OwnedDataContext.cs` implements `IDataOwnerDbContext`, exposing
+`Minimal.Infra/Contexts/CoreDbContext.cs` implements `IDataOwnerDbContext` directly, exposing
 `AccessibleKeys` from the same `IDataOwnerProvider` used for stamping. `DKNet.EfCore.DataAuthorization`
 uses this to apply a global query filter on any entity implementing `IOwnedBy`, so a caller only
 ever sees rows whose ownership key matches their own. Filtering happens at the query level, not in
@@ -110,5 +114,15 @@ application code.
 It runs after change tracking has determined which entities are added or modified, and before the
 `UPDATE`/`INSERT` statements are sent — so the stamped values are always part of the same
 transaction as the data change itself.
-</content>
-</invoke>
+
+## When the caller cannot be attributed
+
+`CoreDbContext` overrides every `SaveChanges`/`SaveChangesAsync` entry point with
+`EnsureOwnershipResolvable`. Before EF Core writes anything, it checks whether the ownership key is
+empty while the change set contains a newly-added `IAuditedProperties` entity whose `CreatedBy`
+column is non-nullable and still unset. If so it throws `OwnershipRequiredException` — a fail-closed
+refusal rather than a row attributed to nobody.
+
+`Minimal.Api/Configs/GlobalExceptions/GlobalExceptionHandler.cs` maps that exception to
+`403 Forbidden` with `Title` `"Request refused."`, deliberately separate from the generic `500` path
+so no EF Core column or entity name leaks into the response.
