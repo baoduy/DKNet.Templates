@@ -105,7 +105,7 @@ public class PackageArchitectureTests
     [Fact]
     public void AllDKNetPackageReferences_ShouldResolveToOneRelease()
     {
-        const string expectedVersion = "10.1.13";
+        const string expectedVersion = "10.1.14";
 
         var srcDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../.."));

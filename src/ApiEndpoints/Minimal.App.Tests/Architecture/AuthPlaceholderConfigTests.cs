@@ -19,7 +19,13 @@ public class AuthPlaceholderConfigTests
 
     private static IEnumerable<(string Path, JsonElement Bearer)> BearerSectionsInAppSettings()
     {
-        var files = Directory.GetFiles(SrcDir, "appsettings*.json", SearchOption.AllDirectories);
+        // Guard shipped source config only — skip bin/obj so stale build-output copies
+        // (e.g. orphaned net9.0 artifacts) don't produce false failures.
+        var files = Directory.GetFiles(SrcDir, "appsettings*.json", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(seg =>
+                seg.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
+                seg.Equals("obj", StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
         files.ShouldNotBeEmpty();
 
         foreach (var file in files)
