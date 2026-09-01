@@ -112,7 +112,6 @@ public class FeatureFlagContractTests
     /// </summary>
     private static readonly HashSet<string> KnownUnreadProperties = new(StringComparer.Ordinal)
     {
-        nameof(FeatureOptions.EnableMsGraphJwtTokenValidation),
         nameof(FeatureOptions.EnableServiceBus)
     };
 
