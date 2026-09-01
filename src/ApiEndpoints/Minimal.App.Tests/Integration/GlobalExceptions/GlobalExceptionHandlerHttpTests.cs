@@ -90,19 +90,25 @@ public sealed class GlobalExceptionHandlerHttpTests
         result.Logs.ShouldHaveSingleItem().Exception.ShouldBeSameAs(exception);
     }
 
+    // Guard regression: the Type-nulling in GlobalExceptionConfigs is scoped to ctx.Exception != null (i.e.
+    // exception-originated responses only). A non-exception problem+json response (validation failure, 404,
+    // any Results.Problem(...) call) must keep the framework's normal Type in every environment.
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Development")]
+    public async Task NonExceptionProblemResponse_KeepsFrameworkDefaultType(string environmentName)
+    {
+        var result = await ProblemInHostAsync(environmentName);
+
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        result.Body.TryGetProperty("type", out var type).ShouldBeTrue();
+        type.GetString().ShouldNotBeNullOrEmpty();
+    }
+
     private static async Task<ThrowResult> ThrowInHostAsync(string environmentName, Exception exceptionToThrow)
     {
         var logs = new List<(LogLevel Level, Exception? Exception)>();
-
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environmentName });
-        builder.WebHost.UseTestServer();
-        builder.Logging.ClearProviders();
-        builder.Logging.AddProvider(new CapturingLoggerProvider(logs));
-        builder.Services.AddRouting();
-        builder.Services.AddGlobalException();
-
-        await using var app = builder.Build();
-        app.UseGlobalException();
+        await using var app = BuildHost(environmentName, logs);
         app.MapGet("/throw", (Func<IResult>)(() => throw exceptionToThrow));
         await app.StartAsync();
 
@@ -111,6 +117,34 @@ public sealed class GlobalExceptionHandlerHttpTests
         var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
 
         return new ThrowResult(response.StatusCode, body, logs);
+    }
+
+    private static async Task<ThrowResult> ProblemInHostAsync(string environmentName)
+    {
+        var logs = new List<(LogLevel Level, Exception? Exception)>();
+        await using var app = BuildHost(environmentName, logs);
+        app.MapGet("/problem", () => Results.Problem(title: "Bad request", statusCode: StatusCodes.Status400BadRequest));
+        await app.StartAsync();
+
+        using var client = app.GetTestClient();
+        var response = await client.GetAsync("/problem");
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
+
+        return new ThrowResult(response.StatusCode, body, logs);
+    }
+
+    private static WebApplication BuildHost(string environmentName, List<(LogLevel Level, Exception? Exception)> logs)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environmentName });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(new CapturingLoggerProvider(logs));
+        builder.Services.AddRouting();
+        builder.Services.AddGlobalException();
+
+        var app = builder.Build();
+        app.UseGlobalException();
+        return app;
     }
 
     private sealed record ThrowResult(HttpStatusCode StatusCode, JsonElement Body, IReadOnlyList<(LogLevel Level, Exception? Exception)> Logs);
