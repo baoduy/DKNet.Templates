@@ -4,8 +4,11 @@ namespace Minimal.Api.Configs.GlobalExceptions;
 
 internal sealed class GlobalExceptionHandler(
     IProblemDetailsService problemDetailsService,
+    IHostEnvironment environment,
     ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
+    private const string GenericDetail = "An unexpected error occurred. Quote the trace-id when reporting this.";
+
     #region Methods
 
     public ValueTask<bool> TryHandleAsync(
@@ -13,19 +16,17 @@ internal sealed class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
-        logger.LogError(exception, exception.Message);
+        logger.LogError(exception, "Unhandled exception on {Method} {Path}", httpContext.Request.Method,
+            httpContext.Request.Path);
 
-        if (exception.InnerException is not null)
-        {
-            exception = exception.InnerException;
-        }
+        var isDevelopment = environment.IsDevelopment();
 
         var problem = new ProblemDetails
         {
             Status = (int)HttpStatusCode.InternalServerError,
             Title = "Something went wrong!.",
-            Detail = exception.Message,
-            Type = exception.GetType().Name
+            Detail = isDevelopment ? exception.Message : GenericDetail,
+            Type = isDevelopment ? exception.GetType().Name : null
         };
 
         return problemDetailsService.TryWriteAsync(
