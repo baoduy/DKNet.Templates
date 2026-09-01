@@ -31,13 +31,25 @@ Parameters, straight from `src/.template.config/template.json`:
 | `--AuthorName` | `Steven Hoang` | Embedded in project metadata. |
 | `--CompanyUrl` | `https://drunkcoding.net` | `<Company>` in project metadata. |
 | `--RepositoryUrl` | `https://github.com/baoduy/DKNet` | `<RepositoryUrl>` in project metadata. |
+| `--TenantId` | `00000000-0000-0000-0000-000000000000` | Identity-provider tenant id substituted into the bearer scheme's `MetadataAddress` and `ValidIssuer` in `appsettings.json`. A placeholder, not a usable tenant. |
+| `--ApiAudience` | `api://your-api` | The API's own audience, the single entry written to `Authentication:Schemes:Bearer:ValidAudiences`. Also a placeholder. |
 
 ```bash
 dotnet new dknet-minimal -n Acme.OrderService \
   --AuthorName "Jane Smith" \
   --CompanyUrl "https://acme.com" \
-  --RepositoryUrl "https://github.com/acme/order-service"
+  --RepositoryUrl "https://github.com/acme/order-service" \
+  --TenantId "11111111-2222-3333-4444-555555555555" \
+  --ApiAudience "api://order-service"
 ```
+
+The last two default to placeholders on purpose — the template ships no real identity provider.
+Point them at your own tenant and audience before enabling `FeatureManagement:RequireAuthorization`,
+either through the parameters above or by editing `Authentication:Schemes:Bearer` in
+`<Name>.Api/appsettings.json`. Enabling authorization while the placeholders are still in place
+fails twice over: the OIDC metadata document is fetched from a tenant that does not exist, so the
+scheme never gets its signing keys, and every incoming token is rejected on audience mismatch
+against `api://your-api`.
 
 Generated layout:
 

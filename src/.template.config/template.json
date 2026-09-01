@@ -58,6 +58,20 @@
       "description": "GitHub/Git repository URL used in project metadata.",
       "defaultValue": "https://github.com/baoduy/DKNet",
       "replaces": "https://github.com/baoduy/DKNet"
+    },
+    "TenantId": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Entra/OIDC tenant id used in Authentication:Schemes:Bearer:MetadataAddress and ValidIssuer.",
+      "defaultValue": "00000000-0000-0000-0000-000000000000",
+      "replaces": "00000000-0000-0000-0000-000000000000"
+    },
+    "ApiAudience": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "The API's own bearer audience, used in Authentication:Schemes:Bearer:ValidAudiences.",
+      "defaultValue": "api://your-api",
+      "replaces": "api://your-api"
     }
   },
   "sources": [

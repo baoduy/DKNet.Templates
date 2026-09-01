@@ -123,7 +123,7 @@ Keep the two suites at different levels; do not duplicate the same behavior in b
 ## Gotchas
 
 - Path of truth is `src/ApiEndpoints/` (not `src/Minimal.ApiEndpoints/` — the inner project folders are prefixed `Minimal.*`).
-- `FeatureOptions` config section is named `FeatureManagement` (not `Features`). `appsettings*.json` historically contains mixed key names (`EnableServiceBusProcess`, `EnableAzureAppConfiguration`, `EnableAzureAppConfig`); treat `Minimal.Share/Options/FeatureOptions.cs` as the source of truth.
+- `FeatureOptions` config section is named `FeatureManagement` (not `Features`). Every JSON key under it matches a `FeatureOptions` property name one-for-one — add a property, add the key with the same spelling. `Get<FeatureOptions>()` ignores unknown keys, so a misspelled key no-ops silently instead of failing; keep `Minimal.Share/Options/FeatureOptions.cs` and `appsettings*.json` in step. Flag table with shipped values: `docs/template-features.md`.
 - Production projects enforce **warnings-as-errors** via `Directory.Packages.props` (`EnforceCodeStyleInBuild=true`, `AnalysisMode=All`, plus an explicit `WarningsAsErrors` list including CA/CS/IDE/MA/S rules). Test projects opt out.
 - All NuGet versions are centrally managed in `src/Directory.Packages.props` — do not add `Version=` attributes to individual `.csproj` files.
 - SDK and target framework are pinned to `net10.0` in `src/global.json` (`rollForward: latestMajor`, `allowPrerelease: false`).

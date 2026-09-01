@@ -69,7 +69,7 @@ versioning, documentation, error handling, and more. This modularity enables eas
 - **Environment-Specific Configuration**: Supports labels for different environments (dev, staging, prod).
 - **Secure Connection Handling**: Uses connection strings stored in local configuration for secure access.
 - **Graceful Fallback**: Falls back to local configuration if Azure App Configuration is unavailable.
-- **Feature Toggle Control**: Can be enabled/disabled via `FeatureOptions.EnableAzureAppConfiguration`.
+- **Feature Toggle Control**: Can be enabled/disabled via `FeatureOptions.EnableAzureAppConfig`.
 
 **Configuration Options:**
 
@@ -88,7 +88,7 @@ versioning, documentation, error handling, and more. This modularity enables eas
     "AzureAppConfiguration": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
   },
   "FeatureManagement": {
-    "EnableAzureAppConfiguration": true
+    "EnableAzureAppConfig": true
   },
   "AzureAppConfiguration": {
     "KeyPrefix": "Minimal:",
