@@ -20,6 +20,7 @@ checked-in keys have drifted for a couple of flags, noted at the end of this pag
 | **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, `ConnectionStrings:AzureAppConfiguration`; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` |
 | **JWT bearer auth** | Standard bearer-token auth, optional MS Graph token handler swap-in. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
+| **CORS allow-list** | Browser front-ends can call the API only from origins you list; with the shipped empty list CORS is not wired at all and no `Access-Control-Allow-*` header is emitted. Origins are absolute — scheme included, no trailing slash. Never allows credentials. | `Cors:AllowedOrigins` — a plain configuration array in `appsettings*.json`, **not** a `FeatureManagement` flag; `Minimal.Api/Configs/CrosConfig.cs`. Details: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **Health checks** | EF Core connectivity check mapped at `/healthz` and `/`. | `FeatureManagement:EnableHealthCheck`; `Minimal.Api/Configs/Healthz/HealthzConfig.cs` |
 | **Hybrid caching** | `AddHybridCache()` registered (Redis-backed when `ConnectionStrings:Redis` is set, otherwise in-memory). Not yet consumed by any shipped feature — wire it up where you need query caching. | `Minimal.Api/Configs/CacheConfig.cs` |
 | **SlimMessageBus** | In-memory bus always wired for internal command/event dispatch; Azure Service Bus child bus added only when configured. | `ConnectionStrings:AzureBus`; `Minimal.Infra/Extensions/ServiceBusSetup.cs`. Deep dive: [`docs/slimbus-messaging.md`](slimbus-messaging.md) |
@@ -65,3 +66,7 @@ checked-in keys have drifted for a couple of flags, noted at the end of this pag
 > names: `EnableServiceBusProcess` and `EnableAzureAppConfiguration`, instead of `EnableServiceBus`
 > and `EnableAzureAppConfig`. Those two JSON entries silently no-op against the class defaults
 > above. When changing a flag, verify the key against `FeatureOptions.cs`, not the checked-in JSON.
+
+> CORS is deliberately absent from this table. It is configured by the `Cors:AllowedOrigins`
+> array, not by a flag — an empty array is its off switch. See
+> [`docs/api-pipeline.md`](api-pipeline.md).

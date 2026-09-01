@@ -8,17 +8,50 @@ stages upstream of it, which aren't visible from reading a single handler.
 
 | # | Stage | Default |
 |---|---|---|
-| 1 | Routing and endpoint registration | — |
-| 2 | API versioning | `FeatureManagement:EnableVersioning` = `true` |
-| 3 | Authentication / authorization | `FeatureManagement:RequireAuthorization` = `false` |
-| 4 | `[FromClaim]` population | — |
-| 5 | FluentValidation auto-validation | — |
-| 6 | Idempotency on POST | opt-in per route |
-| 7 | Rate limiting | `FeatureManagement:EnableRateLimit` = `true` |
-| 8 | Global exception handling | — |
-| 9 | Health checks and OpenAPI/Scalar | `EnableHealthCheck` = `true`, `EnableSwagger` = `false` |
+| 1 | CORS | `Cors:AllowedOrigins` empty — CORS not wired |
+| 2 | Routing and endpoint registration | — |
+| 3 | API versioning | `FeatureManagement:EnableVersioning` = `true` |
+| 4 | Authentication / authorization | `FeatureManagement:RequireAuthorization` = `false` |
+| 5 | `[FromClaim]` population | — |
+| 6 | FluentValidation auto-validation | — |
+| 7 | Idempotency on POST | opt-in per route |
+| 8 | Rate limiting | `FeatureManagement:EnableRateLimit` = `true` |
+| 9 | Global exception handling | — |
+| 10 | Health checks and OpenAPI/Scalar | `EnableHealthCheck` = `true`, `EnableSwagger` = `false` |
 
-## 1. Routing and endpoint registration
+## 1. CORS
+
+`Minimal.Api/Configs/CrosConfig.cs` reads the `Cors:AllowedOrigins` string array and is
+**deny-by-default**. When the key is absent, the array is empty, or every entry is blank, neither
+`AddCors(...)` nor the `UseCors()` middleware is registered at all — a cross-origin request is still
+served, but the response carries no `Access-Control-Allow-*` header, so the browser refuses to hand
+it to the calling page. This is "not wired", not "wired but permissive". When the array is
+non-empty, the default policy allows exactly those origins, any header and any method; an origin
+that isn't listed is never reflected back. Credentials are never allowed — `AllowCredentials()` is
+not called on any path.
+
+Entries are absolute origins: scheme included, no trailing slash and no path —
+`https://app.example.com`, not `app.example.com` or `https://app.example.com/`.
+
+The checked-in `Minimal.Api/appsettings.json` ships an empty list, so a service deployed with the
+template defaults is closed to browsers. `Minimal.Api/appsettings.Development.json` lists the local
+SPA dev-server origins `http://localhost:3000` and `http://localhost:5173`:
+
+```json
+"Cors": {
+  "AllowedOrigins": [ "http://localhost:3000", "http://localhost:5173" ]
+}
+```
+
+`UseCrosConfig()` runs from `Minimal.Api/Configs/AppConfig.cs` before `UseRouting()`, so the policy
+covers every endpoint including the CORS preflight `OPTIONS` request.
+
+> **Breaking behavioural change when you regenerate from the template.** The previous revision
+> registered `AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()` unconditionally, so any web page
+> could call a scaffolded service. A browser front-end that used to work must now have its origin
+> listed in `Cors:AllowedOrigins` for the environment it talks to.
+
+## 2. Routing and endpoint registration
 
 Every route group is an `IEndpointConfig` (`DKNet.AspCore.Extensions`) — for example
 `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs` and
@@ -26,7 +59,7 @@ Every route group is an `IEndpointConfig` (`DKNet.AspCore.Extensions`) — for e
 `UseEndpointConfigs(...)`, which discovers every non-abstract `IEndpointConfig` in the app assembly.
 For each one it builds a versioned route group and calls its `Map(RouteGroupBuilder)`.
 
-## 2. API versioning
+## 3. API versioning
 
 `FeatureManagement:EnableVersioning` (default `true`) is read in `Minimal.Api/Program.cs` and
 passed as `o.EnableVersioning` to `UseEndpointConfigs`. When enabled, each group's route becomes
@@ -34,7 +67,7 @@ passed as `o.EnableVersioning` to `UseEndpointConfigs`. When enabled, each group
 have called `AddAppVersioning()` (`Minimal.Api/Configs/VersioningConfig.cs`); otherwise registration
 throws at startup, before any endpoint is even discovered.
 
-## 3. Authentication / authorization
+## 4. Authentication / authorization
 
 `FeatureManagement:RequireAuthorization` (default `false`) drives two things at once:
 
@@ -46,7 +79,7 @@ throws at startup, before any endpoint is even discovered.
 `Minimal.App.Tests/Integration/EndpointConfig/PurchaseOrderStampingAndVersioningTests.cs` pins the
 authorization-off behavior explicitly (see below).
 
-## 4. `[FromClaim]` population
+## 5. `[FromClaim]` population
 
 Registered once via
 `.AddContextualRequestPopulation(o => o.SystemAccountFallback = SharedConsts.SystemAccount)` in
@@ -65,7 +98,7 @@ check). Pinned by `AuthorizationOff_CreateIsAttributedToSystemAccount` and
 `AuthenticatedCallerWithNoNameClaim_CreateIsRefused_NeverAttributedToSystemAccount` in
 `Minimal.App.Tests/Integration/EndpointConfig/PurchaseOrderStampingAndVersioningTests.cs`.
 
-## 5. FluentValidation auto-validation
+## 6. FluentValidation auto-validation
 
 `Minimal.Api/Configs/FluentValidationConfig.cs` registers `AddFluentValidationAutoValidation()` and
 scans the `AppServices` assembly for `AbstractValidator<T>` implementations — for example
@@ -73,7 +106,7 @@ scans the `AppServices` assembly for `AbstractValidator<T>` implementations — 
 validation never reaches a handler. It short-circuits to a `400` with FluentValidation's
 problem-details shape, with no handler code involved.
 
-## 6. Idempotency on POST
+## 7. Idempotency on POST
 
 Idempotency is opt-in per route, not automatic for every POST.
 `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`'s create route chains
@@ -98,7 +131,7 @@ With `IdempotentConflictHandling.CachedResult` (this template's setting), a repl
 the same key returns the original cached response rather than re-running the handler or returning a
 conflict error.
 
-## 7. Rate limiting
+## 8. Rate limiting
 
 `FeatureManagement:EnableRateLimit` (default `true`) wires
 `Minimal.Api/Configs/RateLimits/RateLimitConfig.cs`: a chained `PartitionedRateLimiter` combining a
@@ -106,7 +139,7 @@ fixed-window limiter and a concurrency limiter, both keyed per-request by `IRate
 and configured per-request by `IRateLimitOptionsProvider`. A request over either limit is rejected
 with `429 Too Many Requests` before reaching routing's endpoint handler.
 
-## 8. Global exception handling
+## 9. Global exception handling
 
 `Minimal.Api/Configs/GlobalExceptions/GlobalExceptionHandler.cs` is registered as the app's
 `IExceptionHandler`. Any unhandled exception from a handler becomes a `ProblemDetails` response:
@@ -122,7 +155,7 @@ The `trace-id` and `Instance` values are added by
 `Minimal.Api/Configs/GlobalExceptions/GlobalExceptionConfigs.cs`'s `CustomizeProblemDetails`. A
 client never sees a raw stack trace.
 
-## 9. Health checks and OpenAPI/Scalar
+## 10. Health checks and OpenAPI/Scalar
 
 - **Health checks** (`FeatureManagement:EnableHealthCheck`, default `true`) — an EF Core
   connectivity check plus a custom `HealthCheckHandler`, mapped at both `/healthz` and `/` by
@@ -130,5 +163,3 @@ client never sees a raw stack trace.
 - **OpenAPI/Scalar** (`FeatureManagement:EnableSwagger`, default `false`) —
   `Minimal.Api/Configs/Swagger/SwaggerConfig.cs` maps the OpenAPI 3.0 document and a Scalar UI at
   `/docs`, pre-configured with a Bearer-auth scheme.
-</content>
-</invoke>
