@@ -45,7 +45,17 @@ The rest of the DKNet family a developer may want to add later. None of these ar
 | DKNet.RandomCreator | Deterministic/seedable random value generation for tests and seeding | [docs/Core/DKNet.RandomCreator.md](https://github.com/baoduy/DKNet/blob/dev/docs/Core/DKNet.RandomCreator.md) |
 | DKNet.AspCore.Tasks | Background task scheduling | [docs/AspNetCore/DKNet.AspCore.Tasks.md](https://github.com/baoduy/DKNet/blob/dev/docs/AspNetCore/DKNet.AspCore.Tasks.md) |
 | DKNet.AspCore.Idempotency.MsSqlStore / .NpgsqlStore / .Relational | Idempotency key stores on a SQL database instead of Redis — an alternative to the Redis store this template wires by default. `.NpgsqlStore` is the one that matches this template's provider | [docs/AspNetCore/DKNet.AspCore.Idempotency.Relational.md](https://github.com/baoduy/DKNet/blob/dev/docs/AspNetCore/DKNet.AspCore.Idempotency.Relational.md) |
-| Aspire.Hosting.ServiceBus | An Aspire resource that runs the Azure Service Bus emulator locally, so the `AzureBus` child bus can be exercised without a real namespace | [docs/Aspire/Aspire.Hosting.ServiceBus.md](https://github.com/baoduy/DKNet/blob/dev/docs/Aspire/Aspire.Hosting.ServiceBus.md) |
+
+### `Aspire.Hosting.ServiceBus` — in DKNet, but not on NuGet
+
+DKNet also carries an `Aspire.Hosting.ServiceBus` project: an Aspire resource that runs the Azure
+Service Bus emulator locally, so the `AzureBus` child bus can be exercised without a real namespace.
+It is **not published** — `src/Aspire/Aspire.Hosting.ServiceBus/Aspire.Hosting.ServiceBus.csproj`
+sets `<IsPackable>false</IsPackable>`, so `dotnet add package Aspire.Hosting.ServiceBus` cannot
+resolve. The only way to use it is a `ProjectReference` from `Minimal.AppHost` to that project in a
+local DKNet clone. DKNet's
+[docs/Aspire/Aspire.Hosting.ServiceBus.md](https://github.com/baoduy/DKNet/blob/dev/docs/Aspire/Aspire.Hosting.ServiceBus.md)
+describes the resource itself.
 
 ## Retired packages — never recommended
 

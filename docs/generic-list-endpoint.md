@@ -138,7 +138,12 @@ GET /v1/products?search=widget
 
 - **Which fields:** the text properties of `TModel`. As with `filter` and `orderBy`, the DTO is the
   boundary — a column it does not expose is never searched.
-- **Operator:** substring (`LIKE '%…%'`), not prefix match.
+- **How deep:** up to 2 levels of properties (`MaxDepth = 2` in `ModelSearch`), so `Name` and
+  `Merchant.Name` are searched but `Merchant.Address.City` is not. A collection member is wrapped in
+  `Any(...)`; dictionaries and `byte[]` are never descended into or searched.
+- **Operator:** substring (`LIKE '%…%'`), not prefix match. Each clause is emitted as
+  `Field != null && Field.Contains(term)` — the null guard matters for a provider that evaluates in
+  memory.
 - **Minimum length:** 2 characters after trimming. A 1-character `search` is a `400`. Blank or
   omitted is treated as absent.
 - **Case sensitivity** follows the database collation — no lowercasing is applied in the predicate.

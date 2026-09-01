@@ -42,7 +42,7 @@ does instead of that stage, and what it gives up by skipping it.
 
 ## 1. Layer map
 
-![Architecture diagram of a scaffolded solution: Minimal.AppHost orchestrates and Minimal.Api dispatches through IMessageBus into Minimal.AppServices, which calls Minimal.Domains aggregates; Minimal.Infra supplies IRepositorySpec and the event publisher to AppServices and the EF Core mapping and seeding to Domains; Minimal.Share is read by every layer, and the NetArchTest suite fails the build on a shape violation in the domain core.](diagrams/templates-solution-layers.svg)
+![Architecture diagram of a scaffolded solution: Minimal.AppHost orchestrates and Minimal.Api dispatches through IMessageBus into Minimal.AppServices, which calls Minimal.Domains aggregates; Minimal.Infra supplies IRepositorySpec and the event publisher to AppServices and the EF Core mapping and seeding to Domains; Minimal.Share is read by every layer, and the Minimal.App.Tests/Architecture project holds NetArchTest shape rules over the Api, AppServices, Infra and Domains projects.](diagrams/templates-solution-layers.svg)
 
 ```
 Minimal.Api          entry point, endpoints, auth, OpenAPI

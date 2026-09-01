@@ -23,8 +23,10 @@ applies — later sources win:
    `FeatureManagement__RequireAuthorization=false`. These outrank every JSON file.
 5. Command-line arguments.
 6. Azure App Configuration, when `FeatureManagement:EnableAzureAppConfig` is on and its connection
-   string resolves — added last by `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs`, so
-   it overrides the JSON files.
+   string resolves. `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` appends it to
+   `builder.Configuration` after `WebApplication.CreateBuilder(args)` has already added every source
+   above, so it wins over the JSON files **and** over environment variables and command-line
+   arguments.
 
 One exception matters for tests. `Minimal.Api/Program.cs` binds `FeatureOptions` on its first
 lines, before a `WebApplicationFactory`'s `ConfigureAppConfiguration` overrides are merged. A test
@@ -179,4 +181,5 @@ export Cors__AllowedOrigins__0="https://app.example.com"
 ```
 
 Environment variables outrank every JSON file, and — unlike an in-memory test override — they are
-in place before `Program.cs` binds `FeatureOptions`.
+in place before `Program.cs` binds `FeatureOptions`. The one source that outranks them is Azure App
+Configuration, which is appended after the host builder has already read the environment.

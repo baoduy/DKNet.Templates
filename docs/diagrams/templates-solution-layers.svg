@@ -319,7 +319,6 @@ rect.c-bg-rect { fill: var(--bg); }
         <path data-edge-from="infra" data-edge-to="appservices" data-edge-label="IRepositorySpec, EventPublisher" data-edge-key="3" data-edge-id="infra-appservices" data-composition-points="1000,399;800,399" d="M 1000 399 L 800 399" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="infra" data-edge-to="domains" data-edge-label="EF Core mapping + seeding" data-edge-key="4" data-edge-id="infra-domains" data-composition-points="1000,413;900,413;900,620;800,620" d="M 1000 413 L 908 413 Q 900 413 900 421 L 900 612 Q 900 620 892 620 L 800 620" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="share" data-edge-to="api" data-edge-label="read by every layer" data-edge-key="5" data-edge-id="share-api" data-composition-points="1000,192;800,192" d="M 1000 192 L 800 192" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="archtests" data-edge-to="domains" data-edge-label="fails the build on a violation" data-edge-key="6" data-edge-id="archtests-domains" data-composition-points="340,620;540,620" d="M 340 620 L 540 620" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
 
         <!-- Components -->
         <g id="node-apphost" data-node-id="apphost" data-node-label="Minimal.AppHost" tabindex="0" role="button" aria-label="Focus Minimal.AppHost, Aspire: Redis + PostgreSQL, Architecture component" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="Aspire: Redis + PostgreSQL" data-node-tag="Orchestration" data-node-context="Architecture component">
@@ -400,16 +399,16 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="670" y="654" class="t-security" font-size="7" text-anchor="middle">Domain core</text>
         </g>
 
-        <g id="node-archtests" data-node-id="archtests" data-node-label="Minimal.App.Tests/Architecture" tabindex="0" role="button" aria-label="Focus Minimal.App.Tests/Architecture, NetArchTest boundary rules, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="NetArchTest boundary rules" data-node-tag="Enforcement" data-node-context="Architecture component">
-          <title>Minimal.App.Tests/Architecture · NetArchTest boundary rules · Architecture component · Enforcement</title>
-          <rect x="80" y="578" width="260" height="84" rx="6" class="c-mask"/>
-          <rect x="80" y="578" width="260" height="84" rx="6" class="c-backend" stroke-width="1.5"/>
+        <g id="node-archtests" data-node-id="archtests" data-node-label="Minimal.App.Tests/Architecture" tabindex="0" role="button" aria-label="Focus Minimal.App.Tests/Architecture, shape rules: Api, AppServices, Infra, Domains, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="shape rules: Api, AppServices, Infra, Domains" data-node-tag="NetArchTest" data-node-context="Architecture component">
+          <title>Minimal.App.Tests/Architecture · shape rules: Api, AppServices, Infra, Domains · Architecture component · NetArchTest</title>
+          <rect x="80" y="578" width="300" height="84" rx="6" class="c-mask"/>
+          <rect x="80" y="578" width="300" height="84" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(86 584) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="210" y="618" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Minimal.App.Tests/Architecture</text>
-        <text x="210" y="634" class="t-muted" font-size="9" text-anchor="middle">NetArchTest boundary rules</text>
-        <text x="210" y="654" class="t-backend" font-size="7" text-anchor="middle">Enforcement</text>
+          <text data-node-label="" x="230" y="618" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Minimal.App.Tests/Architecture</text>
+        <text x="230" y="634" class="t-muted" font-size="9" text-anchor="middle">shape rules: Api, AppServices, Infra, Domains</text>
+        <text x="230" y="654" class="t-backend" font-size="7" text-anchor="middle">NetArchTest</text>
         </g>
 
         <!-- Connection labels -->
@@ -437,10 +436,6 @@ rect.c-bg-rect { fill: var(--bg); }
           <rect x="849.4" y="172" width="101.2" height="14" rx="3" class="c-mask"/>
           <text x="900" y="182" class="t-muted" font-size="8" text-anchor="middle">read by every layer</text>
         </g>
-        <g data-edge-from="archtests" data-edge-to="domains" data-edge-label="fails the build on a violation" data-edge-key="6" data-edge-id="archtests-domains">
-          <rect x="363" y="600" width="154" height="14" rx="3" class="c-mask"/>
-          <text x="440" y="610" class="t-security" font-size="8" text-anchor="middle">fails the build on a violation</text>
-        </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
 
@@ -448,29 +443,29 @@ rect.c-bg-rect { fill: var(--bg); }
         <!-- Legend -->
         <g data-legend="">
           <text x="40" y="764" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-x="40" data-legend-baseline="784" data-legend-width="83">
+          <g data-legend-semantic-kind="frontend" data-legend-x="40" data-legend-baseline="784" data-legend-width="143">
             <rect x="40" y="775" width="16" height="10" rx="2.5" class="c-frontend" stroke-width="1"/>
-            <text x="62" y="784" class="t-muted" font-size="10" font-weight="500">Frontend</text>
+            <text x="62" y="784" class="t-muted" font-size="10" font-weight="500">Presentation project</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-x="145" data-legend-baseline="784" data-legend-width="78">
-            <rect x="145" y="775" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
-            <text x="167" y="784" class="t-muted" font-size="10" font-weight="500">Backend</text>
+          <g data-legend-semantic-kind="backend" data-legend-x="205" data-legend-baseline="784" data-legend-width="262">
+            <rect x="205" y="775" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="227" y="784" class="t-muted" font-size="10" font-weight="500">Application logic and its architecture tests</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-x="245" data-legend-baseline="784" data-legend-width="83">
-            <rect x="245" y="775" width="16" height="10" rx="2.5" class="c-database" stroke-width="1"/>
-            <text x="267" y="784" class="t-muted" font-size="10" font-weight="500">Database</text>
+          <g data-legend-semantic-kind="database" data-legend-x="489" data-legend-baseline="784" data-legend-width="192">
+            <rect x="489" y="775" width="16" height="10" rx="2.5" class="c-database" stroke-width="1"/>
+            <text x="511" y="784" class="t-muted" font-size="10" font-weight="500">Infrastructure and persistence</text>
           </g>
-          <g data-legend-semantic-kind="cloud" data-legend-x="350" data-legend-baseline="784" data-legend-width="68">
-            <rect x="350" y="775" width="16" height="10" rx="2.5" class="c-cloud" stroke-width="1"/>
-            <text x="372" y="784" class="t-muted" font-size="10" font-weight="500">Cloud</text>
+          <g data-legend-semantic-kind="cloud" data-legend-x="703" data-legend-baseline="784" data-legend-width="167">
+            <rect x="703" y="775" width="16" height="10" rx="2.5" class="c-cloud" stroke-width="1"/>
+            <text x="725" y="784" class="t-muted" font-size="10" font-weight="500">Aspire orchestration host</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-x="440" data-legend-baseline="784" data-legend-width="83">
-            <rect x="440" y="775" width="16" height="10" rx="2.5" class="c-security" stroke-width="1"/>
-            <text x="462" y="784" class="t-muted" font-size="10" font-weight="500">Security</text>
+          <g data-legend-semantic-kind="security" data-legend-x="892" data-legend-baseline="784" data-legend-width="98">
+            <rect x="892" y="775" width="16" height="10" rx="2.5" class="c-security" stroke-width="1"/>
+            <text x="914" y="784" class="t-muted" font-size="10" font-weight="500">Domain core</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-x="545" data-legend-baseline="784" data-legend-width="83">
-            <rect x="545" y="775" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
-            <text x="567" y="784" class="t-muted" font-size="10" font-weight="500">External</text>
+          <g data-legend-semantic-kind="external" data-legend-x="1012" data-legend-baseline="784" data-legend-width="123">
+            <rect x="1012" y="775" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
+            <text x="1034" y="784" class="t-muted" font-size="10" font-weight="500">Shared contracts</text>
           </g>
         </g>
       </svg>

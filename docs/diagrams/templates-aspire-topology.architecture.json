@@ -6,8 +6,24 @@
     "quality_profile": "showcase",
     "viewBox": [
       1240,
-      720
-    ]
+      760
+    ],
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Project the host starts"
+        },
+        "database": {
+          "label": "Container or database the host provisions"
+        },
+        "cloud": {
+          "label": "Aspire AppHost"
+        },
+        "external": {
+          "label": "Dependency you bring yourself"
+        }
+      }
+    }
   },
   "layout": {
     "mode": "grid",

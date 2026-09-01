@@ -33,7 +33,7 @@ copilot plugin marketplace add baoduy/DKNet.Templates
 
 A generated solution is layered onion-style — each layer knows only about the layers inside it, never the layers outside it:
 
-![Architecture diagram of a scaffolded solution: Minimal.AppHost orchestrates Redis and PostgreSQL and starts Minimal.Api, which dispatches through IMessageBus into Minimal.AppServices; AppServices calls Minimal.Domains aggregates, Minimal.Infra supplies the repository and event publisher to AppServices and the EF Core mapping and seeding to Domains, Minimal.Share is read by every layer, and the NetArchTest suite fails the build on a shape violation.](docs/diagrams/templates-solution-layers.svg)
+![Architecture diagram of a scaffolded solution: Minimal.AppHost orchestrates Redis and PostgreSQL and starts Minimal.Api, which dispatches through IMessageBus into Minimal.AppServices; AppServices calls Minimal.Domains aggregates, Minimal.Infra supplies the repository and event publisher to AppServices and the EF Core mapping and seeding to Domains, Minimal.Share is read by every layer, and the Minimal.App.Tests/Architecture project holds NetArchTest shape rules over the Api, AppServices, Infra and Domains projects.](docs/diagrams/templates-solution-layers.svg)
 
 
 `Minimal.Domains` knows nothing above it — no reference to `AppServices`, `Infra`, or `Api`. `Minimal.AppServices`

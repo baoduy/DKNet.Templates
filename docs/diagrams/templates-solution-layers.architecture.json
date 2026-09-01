@@ -7,7 +7,29 @@
     "viewBox": [
       1360,
       800
-    ]
+    ],
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Presentation project"
+        },
+        "backend": {
+          "label": "Application logic and its architecture tests"
+        },
+        "database": {
+          "label": "Infrastructure and persistence"
+        },
+        "cloud": {
+          "label": "Aspire orchestration host"
+        },
+        "security": {
+          "label": "Domain core"
+        },
+        "external": {
+          "label": "Shared contracts"
+        }
+      }
+    }
   },
   "layout": {
     "mode": "grid",
@@ -104,12 +126,12 @@
       "id": "archtests",
       "type": "backend",
       "label": "Minimal.App.Tests/Architecture",
-      "sublabel": "NetArchTest boundary rules",
-      "tag": "Enforcement",
+      "sublabel": "shape rules: Api, AppServices, Infra, Domains",
+      "tag": "NetArchTest",
       "row": 2,
       "col": 0,
       "size": [
-        260,
+        300,
         84
       ]
     }
@@ -155,13 +177,6 @@
       "from": "share",
       "to": "api",
       "label": "read by every layer"
-    },
-    {
-      "id": "archtests-domains",
-      "from": "archtests",
-      "to": "domains",
-      "label": "fails the build on a violation",
-      "variant": "security"
     }
   ]
 }

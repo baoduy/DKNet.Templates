@@ -7,7 +7,17 @@
     "viewBox": [
       1080,
       560
-    ]
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "Generated request and route path"
+        },
+        "default": {
+          "label": "Generated DTO shape path"
+        }
+      }
+    }
   },
   "stages": [
     {
