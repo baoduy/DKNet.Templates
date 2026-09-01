@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DKNet.EfCore.Abstractions.Attributes;
 using DKNet.EfCore.Abstractions.Events;
+using DKNet.EfCore.DataAuthorization;
 using Minimal.Domains.Share;
 
 namespace Minimal.Domains.Features.AutomatedSample.Entities;
@@ -16,11 +17,14 @@ namespace Minimal.Domains.Features.AutomatedSample.Entities;
 /// A <c>[CrudAction]</c> method publishes a POST at the by-id route plus a segment, returning 200 with the
 /// entity DTO. <see cref="Approve"/> overrides the segment (<c>approval</c>) while keeping the default POST
 /// verb; <see cref="Discontinue"/> keeps the default method-derived segment but overrides the verb to PUT.
+/// Implements <see cref="IOwnedBy"/> so <c>DataOwnerAuthQuery</c>'s global read filter (row-level isolation)
+/// applies to it; <c>DataOwnerHook</c> stamps <see cref="OwnedBy"/> from the same ownership key as
+/// <c>CreatedBy</c> on insert.
 /// </remarks>
 [RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]
 [RaisesEvent(EventOperations.Updated, nameof(Price))]
 [RaisesEvent(EventOperations.Updated, nameof(IsDiscontinued))]
-public class Product : AggregateRoot
+public class Product : AggregateRoot, IOwnedBy
 {
     #region Constructors
 
@@ -53,6 +57,9 @@ public class Product : AggregateRoot
 
     /// <summary>Gets whether the product has been discontinued.</summary>
     public bool IsDiscontinued { get; private set; }
+
+    /// <summary>Gets the ownership key of the caller who created this product — stamped by <c>DataOwnerHook</c>.</summary>
+    public string OwnedBy { get; private set; } = string.Empty;
 
     #endregion
 

@@ -1,11 +1,12 @@
-﻿namespace Minimal.Api.Configs.Handlers;
+namespace Minimal.Api.Configs.Handlers;
 
 internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrincipalProvider
 {
     #region Fields
 
     private string _email = null!;
-    private Guid _profileId;
+    private bool _initialized;
+    private string? _ownershipKey;
     private string _userName = null!;
 
     #endregion
@@ -17,7 +18,7 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
         get
         {
             Initialize();
-            return _profileId;
+            return Guid.TryParse(_ownershipKey, out var id) ? id : Guid.Empty;
         }
     }
 
@@ -43,9 +44,11 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
 
     #region Methods
 
-    public ICollection<string> GetAccessibleKeys() => [GetOwnershipKey()];
-
-    public string GetOwnershipKey() => ProfileId.ToString();
+    public string? GetOwnershipKey()
+    {
+        Initialize();
+        return _ownershipKey;
+    }
 
     private void Initialize()
     {
@@ -55,19 +58,33 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
             return;
         }
 
-        if (!context.User.Identity?.IsAuthenticated == true || _profileId != Guid.Empty)
+        if (_initialized)
         {
             return;
         }
 
-        _userName = context.User.Identity?.Name!;
-
-        //Get from ProfileId Claims
-        var id = context.User.FindFirst(c =>
-            string.Equals(c.Type, ClaimTypes.NameIdentifier, StringComparison.OrdinalIgnoreCase));
-        if (id != null && Guid.TryParse(id.Value, out var p))
+        if (context.User.Identity?.IsAuthenticated != true)
         {
-            _profileId = p;
+            _ownershipKey = SharedConsts.SystemAccount;
+            _initialized = true;
+            return;
+        }
+
+        _userName = context.User.Identity.Name!;
+
+        //Get ownership key from subject claims, first non-empty wins
+        string[] subjectClaimTypes =
+        [
+            "http://schemas.microsoft.com/identity/claims/objectidentifier", "oid", ClaimTypes.NameIdentifier, "sub"
+        ];
+        foreach (var claimType in subjectClaimTypes)
+        {
+            var claim = context.User.FindFirst(c => string.Equals(c.Type, claimType, StringComparison.OrdinalIgnoreCase));
+            if (claim != null && !string.IsNullOrWhiteSpace(claim.Value))
+            {
+                _ownershipKey = claim.Value;
+                break;
+            }
         }
 
         //Get email
@@ -82,6 +99,8 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
                 _userName = _email;
             }
         }
+
+        _initialized = true;
     }
 
     #endregion
