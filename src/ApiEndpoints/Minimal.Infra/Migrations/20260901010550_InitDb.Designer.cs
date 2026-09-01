@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Minimal.Infra.Migrations
 {
     [DbContext(typeof(CoreDbContext))]
-    [Migration("20260825015154_InitDb")]
+    [Migration("20260901010550_InitDb")]
     partial class InitDb
     {
         /// <inheritdoc />
@@ -50,6 +50,11 @@ namespace Minimal.Infra.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<string>("OwnedBy")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
