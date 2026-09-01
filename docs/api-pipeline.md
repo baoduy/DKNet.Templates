@@ -53,6 +53,7 @@ at once:
 
 When it is `false` no authentication middleware is added at all — this is not a permissive policy
 but the absence of any identity, which is why the base file must never ship it off.
+
 `Minimal.App.Tests/Integration/EndpointConfig/PurchaseOrderStampingAndVersioningTests.cs` pins the
 authorization-off behavior explicitly (see below).
 

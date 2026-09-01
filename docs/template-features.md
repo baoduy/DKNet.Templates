@@ -72,12 +72,26 @@ through to the column on its left.
 | `RunDbMigrationWhenAppStart` | `false` | `false` | `true` | — |
 
 `RequireAuthorization`, `EnableHttps` and `EnableRateLimit` are the secure-by-default set: a
-scaffolded service deployed without a config change authenticates every request, redirects to HTTPS
-and rate-limits. `dotnet run` locally picks up `appsettings.Development.json`, and both test suites
+scaffolded service deployed without a config change authenticates every request, applies HSTS,
+rate-limits, and redirects to HTTPS when an HTTPS port is configured.
+
+The redirect is the one conditional part. `EnableHttps` always adds both `UseHsts()` and
+`UseHttpsRedirection()` (`Minimal.Api/Configs/HttpsConfig.cs`), but `UseHttpsRedirection` only
+redirects when ASP.NET Core can determine an HTTPS port — from `ASPNETCORE_HTTPS_PORT`, from
+`HttpsRedirectionOptions`, or from the server's own listening addresses. The container this template
+publishes to (`mcr.microsoft.com/dotnet/aspnet:10.0-alpine`, set as `ContainerBaseImage` in
+`Minimal.Api.csproj`) carries none of them, so a service running HTTP-only behind a TLS-terminating
+ingress logs `Failed to determine the https port for redirect` and passes the request through
+unredirected. Set `ASPNETCORE_HTTPS_PORT` if you need the redirect itself; HSTS is unaffected.
+
+`dotnet run` locally picks up `appsettings.Development.json`, and both test suites
 boot under the `Testing` environment
 (`Minimal.App.TestSupport/TestApiFactoryBase.cs` calls `UseEnvironment("Testing")`), so neither is
-affected. To relax a flag for an environment, add it to that environment's overlay — or set the
-`FeatureManagement__<Flag>` environment variable, which outranks every JSON file.
+affected. That `appsettings.Testing.json` overlay ships inside the scaffolded solution — it is not
+template-only — and it sets `RequireAuthorization`, `EnableHttps` and `EnableRateLimit` all to
+`false`. Never run a deployed instance with `ASPNETCORE_ENVIRONMENT=Testing`: it drops all three
+protections at once. To relax a flag for an environment, add it to that environment's overlay — or
+set the `FeatureManagement__<Flag>` environment variable, which outranks every JSON file.
 
 Because `EnableRateLimit` is on in the base file, the base file also carries an explicit `RateLimit`
 section so the limiter never falls back to `RateLimitOptions`'s 2-requests-per-second class defaults:
