@@ -1,0 +1,212 @@
+# Generic List Endpoint (filter · search · order · page)
+
+Every generator-driven CRUD slice gets a `GET /` list route for free. It is a single, uniform query
+surface — pagination, multi-field filtering, free-text search, and ordering — driven entirely by the
+query string, with **no per-feature code to write**. This page is the full contract for that route.
+
+> This is the *automated* path. Hand-written slices (`ManualSample/PurchaseOrder`) instead expose a
+> bespoke `ListPurchaseOrdersQuery` with its own hand-picked parameters — see
+> [Querying and Specifications](querying-and-specifications.md). The two do not share a contract;
+> everything below applies only to routes mapped through the generator.
+
+## Where it comes from
+
+The route is `MapGetList<TEntity, TKey, TModel>()`, part of the **`DKNet.AspCore.Extensions`** NuGet
+package (version pinned in `src/Directory.Packages.props`). You never call it directly in this
+template. The `DKNet.SlimBus.Generators` source generator emits the call for you inside the generated
+`Map<Entity>Crud()` extension whenever an entity carries `[CrudCreate]`/`[CrudUpdate]`.
+
+Worked instance — the automated `Product` sample:
+
+```csharp
+// src/ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs
+public void Map(RouteGroupBuilder group)
+{
+    group.MapProductCrud();   // generated → group.MapGetList<Product, Guid, ProductDto>()
+}
+```
+
+So `GET /api/v1/products` is a fully capable list endpoint even though no list handler, validator, or
+query object was hand-written anywhere in the slice.
+
+Signature (from the package):
+
+```csharp
+public RouteHandlerBuilder MapGetList<TEntity, TKey, TModel>(string endpoint = "/")
+    where TEntity : class, IEntity<TKey>
+    where TKey    : IEquatable<TKey>
+    where TModel  : class;
+
+// Guid-key shorthand
+public RouteHandlerBuilder MapGetList<TEntity, TModel>(string endpoint = "/")
+    where TEntity : class, IEntity<Guid>
+    where TModel  : class;
+```
+
+`TModel` is the projected DTO (`ProductDto` for the sample). It is central to the whole contract:
+**you can only filter, search, and order by fields that exist on the DTO**, never on the raw entity.
+See [The DTO is the boundary](#the-dto-is-the-boundary) below.
+
+## Query parameters
+
+| Parameter    | Type          | Default | Notes                                                              |
+|--------------|---------------|---------|--------------------------------------------------------------------|
+| `pageNumber` | `int`         | `1`     | 1-based. A value `< 1` is silently clamped to `1`.                 |
+| `pageSize`   | `int`         | `20`    | A value `< 1` falls back to `20`. Max **100** — larger is clamped down, not rejected. |
+| `filter`     | repeatable    | none    | `field:operation:value`. Repeat the param to AND multiple conditions. Max **20**. |
+| `search`     | `string`      | none    | Free-text OR across all string DTO fields. Min **2** characters.   |
+| `orderBy`    | `string`      | none    | A single DTO field name to sort by.                                |
+| `desc`       | `bool`        | `false` | Reverses the `orderBy` direction.                                  |
+
+Paging is always applied. Filter, search, and order are each optional and independent; when present
+they are ANDed together (search is one OR-group, then ANDed with the filter predicate).
+
+## Filtering
+
+Each `filter` value is a colon-delimited triple parsed into a `ListFilter(Field, Operation, Value)`.
+Repeat the parameter to combine conditions with **AND**:
+
+```
+GET /api/v1/products?filter=Price:GreaterThan:100&filter=IsDiscontinued:Equal:false
+```
+
+### Operations
+
+| Operation            | Value form          | Meaning                                          |
+|----------------------|---------------------|--------------------------------------------------|
+| `Equal`              | scalar              | `field == value`                                 |
+| `NotEqual`           | scalar              | `field != value`                                 |
+| `GreaterThan`        | scalar              | `field > value`                                  |
+| `GreaterThanOrEqual` | scalar              | `field >= value`                                 |
+| `LessThan`           | scalar              | `field < value`                                  |
+| `LessThanOrEqual`    | scalar              | `field <= value`                                 |
+| `Contains`           | string              | `field.Contains(value)`                          |
+| `NotContains`        | string              | `!field.Contains(value)`                         |
+| `StartsWith`         | string              | `field.StartsWith(value)`                        |
+| `EndsWith`           | string              | `field.EndsWith(value)`                          |
+| `In`                 | comma-separated     | `value.Contains(field)` — any of the listed values |
+| `NotIn`              | comma-separated     | none of the listed values                        |
+| `IsNull`             | *(omit value)*      | `field == null` — two-part form `field:IsNull`   |
+| `IsNotNull`          | *(omit value)*      | `field != null` — two-part form `field:IsNotNull`|
+
+- **`In` / `NotIn`** take a comma-separated list; each element is coerced to the property's CLR type.
+  Example: `filter=Status:In:Active,Pending`.
+- **`IsNull` / `IsNotNull`** use the two-segment form with no value: `filter=UpdatedOn:IsNull`.
+- The scalar `Value` is coerced to the DTO property's CLR type (int, decimal, bool, Guid, DateTime, …).
+  A value that cannot be coerced is a `400`, not a silent no-op.
+
+### Field naming
+
+`Field` is normalised with `ToPascalCase()`, so `unit_price`, `unit-price`, and `UnitPrice` all
+resolve to the same DTO property, matched case-insensitively. The resolved name **must** be a public
+property on `TModel`. If it is not, the request fails with `400 Bad Request` and a message such as
+`Cannot filter by 'x': no such field on ProductDto.` — unknown fields are never silently dropped.
+
+### Limits
+
+- At most **20** filter conditions per request. A 21st is a `400`.
+
+## Ordering
+
+`orderBy` names one DTO field (PascalCased, same rules as filter fields; it must exist on both the DTO
+and the entity). `desc=true` sorts descending; omitted or `false` sorts ascending.
+
+```
+GET /api/v1/products?orderBy=Price&desc=true
+```
+
+- The unique `Id` is appended as a **descending tie-breaker** so paging is deterministic — unless you
+  already ordered by `Id`.
+- **Default order (no `orderBy` given):**
+  - Audited entities (`IAuditedEntity<TKey>`, which every `AggregateRoot` here is) → `CreatedOn`
+    descending, then `Id` descending. Newest first.
+  - Non-audited entities → `Id` descending only.
+- An unknown `orderBy` field is a `400`, not a silent fallback to the default.
+
+## Search
+
+`search` is a single free-text term matched with `Contains` across **every string property of the
+DTO**, OR'd together, then ANDed with any `filter`/default predicate:
+
+```
+GET /api/v1/products?search=widget
+```
+
+- **Which fields:** all `string` properties of `TModel`, walked up to **2 levels deep**
+  (e.g. `Name` and `Merchant.Name`, but not `Merchant.Address.City`). Collection members are wrapped
+  in `Any(...)`. Dictionaries and `byte[]` are excluded.
+- **Operator:** `Contains` (substring), not `StartsWith`. Each clause is `Field != null && Field.Contains(term)`.
+- **Minimum length:** 2 characters. A 1-character `search` is a `400`. Blank or omitted = no-op.
+- **Case sensitivity** follows the database collation — no lowercasing is applied in code.
+- If the DTO has no string field, `search` matches nothing (an empty page, not an error).
+
+For `ProductDto` the string fields are `Name` plus the audit columns `CreatedBy` / `UpdatedBy`, so a
+search hits any of those.
+
+## Response envelope
+
+The route returns `200 OK` with a `PagedResponse<TModel>`:
+
+```csharp
+public sealed record PagedResponse<TResult>
+{
+    public IList<TResult> Items { get; init; } = [];
+    public int  PageCount       { get; init; }
+    public int  PageNumber      { get; init; }
+    public int  PageSize        { get; init; }
+    public int  TotalItemCount  { get; init; }
+    public bool HasNextPage     { get; init; }
+    public bool HasPreviousPage { get; init; }
+}
+```
+
+`Items` holds the projected DTOs for the current page; the rest is paging metadata. It is built from
+`X.PagedList` via the repository's `ToPagedListAsync(...)`, so `TotalItemCount` is the full unpaged
+count.
+
+## Error behavior
+
+Every malformed input is a **`400 Bad Request`** with a reason (via `Results.Problem`), never a
+silently-ignored parameter:
+
+- filter/order field not on the DTO,
+- unparseable filter triple or unknown operation,
+- a value that cannot be coerced to the property type,
+- more than 20 filter conditions,
+- a `search` shorter than 2 characters.
+
+Out-of-range **paging** is the one exception: `pageNumber < 1` and `pageSize` outside `1..100` are
+clamped, not rejected.
+
+## The DTO is the boundary
+
+Filter, search, and order fields are resolved against `TModel` (the returned DTO), **never the raw
+entity**. This is a deliberate security boundary: a column the DTO doesn't expose cannot be sorted on,
+filtered on, or searched — no hidden column leaks through the query surface. Widen or narrow the query
+surface by changing what the DTO exposes (`[GenerateDto(... Exclude/Include ...)]`), not the endpoint.
+
+The `Product` sample DTO is generated as:
+
+```csharp
+[GenerateDto(typeof(Product), Exclude = [nameof(Product.OwnedBy)])]
+public sealed partial record ProductDto;
+```
+
+`OwnedBy` is excluded, so it is unqueryable through this route by construction — you cannot filter or
+sort products by their ownership key over HTTP, even though the column exists on the entity.
+
+## Worked example
+
+```
+GET /api/v1/products
+  ?search=widget
+  &filter=Price:GreaterThanOrEqual:100
+  &filter=IsDiscontinued:Equal:false
+  &orderBy=Price
+  &desc=true
+  &pageNumber=2
+  &pageSize=50
+```
+
+Reads as: products whose `Name`/`CreatedBy`/`UpdatedBy` contains "widget", priced at 100 or more, not
+discontinued, sorted by price descending (with `Id` as tie-break), returning the second page of 50.

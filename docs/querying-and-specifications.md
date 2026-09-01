@@ -17,6 +17,11 @@ unit-tested without spinning up EF Core or a database; see `Unit/*` and the test
 
 For the package's full API, see DKNet's own `docs/EfCore/DKNet.EfCore.Specifications.md`.
 
+> **Note.** This page covers the *hand-written* read path, where each list query declares its own
+> parameters (see `ListPurchaseOrdersQuery` below). Generator-driven CRUD slices instead get a
+> uniform filter/search/order/page list route for free — that separate contract is documented in
+> [Generic List Endpoint](generic-list-endpoint.md).
+
 ### Worked spec: `SpecGetPurchaseOrder`
 
 `Minimal.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs` builds one predicate that serves
