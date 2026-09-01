@@ -1,7 +1,10 @@
 using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
 using Minimal.App.TestSupport;
 using Minimal.App.Tests.Integration.Support;
 using Minimal.AppServices.AutomatedSample.V1;
+using Minimal.Domains.Features.AutomatedSample.Entities;
+using Minimal.Infra.Contexts;
 
 namespace Minimal.App.Tests.Integration.AutomatedSample.V1;
 
@@ -36,6 +39,13 @@ public sealed class ProductOwnershipIsolationTests(AuthOnMultiSubjectApiFixture 
         using var crossReadResponse = await client.SendAsync(crossReadRequest);
         crossReadResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
 
+        // The flip side of the same assertion: this must be a real per-caller filter, not "everyone denied" —
+        // caller A must still be able to read their own row back.
+        using var ownReadRequest = new HttpRequestMessage(HttpMethod.Get, $"/v1/products/{productA.Id}");
+        ownReadRequest.Headers.Add(MultiSubjectAuthHandler.SubjectHeaderName, "opaque-subject-a");
+        using var ownReadResponse = await client.SendAsync(ownReadRequest);
+        ownReadResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
         // And caller B's own list must never surface caller A's row.
         using var listRequest = new HttpRequestMessage(HttpMethod.Get, "/v1/products?pageSize=100");
         listRequest.Headers.Add(MultiSubjectAuthHandler.SubjectHeaderName, "opaque-subject-b");
@@ -43,6 +53,19 @@ public sealed class ProductOwnershipIsolationTests(AuthOnMultiSubjectApiFixture 
         var envelope = await listResponse.Content.ReadFromJsonAsync<ProductListEnvelope>();
         envelope!.Items.ShouldContain(p => p.Id == productB.Id);
         envelope.Items.ShouldNotContain(p => p.Id == productA.Id);
+
+        // The read filter keys off OwnedBy, not CreatedBy — the two must never disagree. Bypass the filter
+        // with IgnoreQueryFilters() (a raw EF Core query flag, unaffected by DataOwnerAuthQuery.IsIgnorable)
+        // to inspect both columns directly; a row stamped with one and not the other is a silent hole the
+        // HTTP-level assertions above cannot see (both would just look "denied to everyone").
+        using var scope = fixture.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+        var storedA = await dbContext.Set<Product>().IgnoreQueryFilters()
+            .SingleAsync(p => p.Id == productA.Id);
+        var storedB = await dbContext.Set<Product>().IgnoreQueryFilters()
+            .SingleAsync(p => p.Id == productB.Id);
+        storedA.OwnedBy.ShouldBe(productA.CreatedBy);
+        storedB.OwnedBy.ShouldBe(productB.CreatedBy);
     }
 
     [Fact]
@@ -59,12 +82,11 @@ public sealed class ProductOwnershipIsolationTests(AuthOnMultiSubjectApiFixture 
     }
 
     [Fact]
-    public async Task AuthenticatedCallerWithNoSubjectClaim_MustFailClosed_NotCrashOrLeaveAReadableRow()
+    public async Task AuthenticatedCallerWithNoSubjectClaim_IsRefusedWithForbidden_NoRowPersistedOrReadable()
     {
-        // R3 — deny-closed, never a crash. A null ownership key must never surface as an unhandled 500: that
-        // both leaks internal EF Core detail (column/entity names) in the response body and means the deny
-        // path was never actually exercised end to end. Whatever the create's outcome, the caller must never
-        // be able to read a row back afterwards, since GetAccessibleKeys() is empty for this caller.
+        // R3 — deny-closed, never a crash. A null ownership key must be a clean, controlled refusal — never
+        // the raw 500/leaked-EF-detail this exact scenario produced before this round's fix — and the refusal
+        // must mean the row was never persisted at all, not merely unreadable afterwards.
         await fixture.ResetDatabaseAsync();
         var client = fixture.CreateClient();
 
@@ -75,14 +97,18 @@ public sealed class ProductOwnershipIsolationTests(AuthOnMultiSubjectApiFixture 
         // Deliberately no X-Test-Subject / X-Test-Oid header — authenticated, but no resolvable subject claim.
         using var createResponse = await client.SendAsync(createRequest);
 
-        createResponse.StatusCode.ShouldNotBe(
-            HttpStatusCode.InternalServerError,
-            "an authenticated caller with no resolvable subject claim must fail closed, not crash the request pipeline");
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         using var listRequest = new HttpRequestMessage(HttpMethod.Get, "/v1/products?pageSize=100");
         using var listResponse = await client.SendAsync(listRequest);
         var envelope = await listResponse.Content.ReadFromJsonAsync<ProductListEnvelope>();
         envelope!.Items.ShouldNotContain(p => p.Name == "Orphan Widget");
+
+        using var scope = fixture.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+        var persisted = await dbContext.Set<Product>().IgnoreQueryFilters()
+            .AnyAsync(p => p.Name == "Orphan Widget");
+        persisted.ShouldBeFalse("a refused write must not leave a row behind, System-owned or otherwise");
     }
 
     private static async Task<ProductDto> CreateProductAsync(HttpClient client, string subject, string? oid, string name)
