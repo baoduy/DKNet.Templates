@@ -46,6 +46,8 @@
     <file src="..\.claude\commands\**\*" target="content\.claude\commands\" />
     <file src="..\.claude\skills\**\*" target="content\.claude\skills\" />
     <file src="..\.claude-plugin\**\*" target="content\.claude-plugin\" />
+    <!-- Guidance docs the shipped skills link to (manual-vs-automated, crud-attributes, ...) -->
+    <file src="..\docs\**\*" target="content\docs\" exclude="..\docs\superpowers\**" />
     <file src="..\.specify\**\*" target="content\.specify\" />
     <file src="..\.vscode\**\*" target="content\.vscode\" />
 

@@ -92,7 +92,7 @@ samples (`ManualSample`, `AutomatedSample`) — the two namespaces don't have to
 
 ### Key wiring points
 
-- **EF Core auto-discovery**: `UseAutoConfigModel` + `UseAutoDataSeeding` in **both** `InfraSetup.AddInfraServices` (DI host path) and `InfraMigration.MigrateDb` (startup-migration path) — no manual `DbSet` declarations needed. Mappers (`IEntityTypeConfiguration<T>`) and `IDataSeedingConfiguration<T>` classes are picked up by assembly scan. Wiring seeding into only one of the two paths is a real bug this template hit once already (`PurchaseOrderStaticData` didn't appear over HTTP until `MigrateDb` got the same `.UseAutoDataSeeding(...)` call).
+- **EF Core auto-discovery**: `UseAutoConfigModel` + `UseAutoDataSeeding` in **both** `InfraSetup.AddInfraServices` (DI host path) and `InfraMigration.MigrateDb` (startup-migration path) — no manual `DbSet` declarations needed. Mappers (`IEntityTypeConfiguration<T>`) and seeders are picked up by assembly scan — a seeder inherits the **base class** `DataSeedingConfiguration<T>` (see `PurchaseOrderStaticData`), not an `IDataSeedingConfiguration<T>` interface. Wiring seeding into only one of the two paths is a real bug this template hit once already (`PurchaseOrderStaticData` didn't appear over HTTP until `MigrateDb` got the same `.UseAutoDataSeeding(...)` call).
 - **Service registration**: Scrutor scans Infra; keep concrete repos/services `sealed` and place them under `.Repos` or `.Services` namespaces so the convention scan picks them up.
 - **Endpoint mapping helpers** (`DKNet.AspCore.Extensions`, not local to this template): hand-mapped routes use the raw minimal-API surface directly (see `PurchaseOrderV1Endpoint`); generator-driven routes call the package's generic `MapGetList<TEntity,TKey,TDto>`/`MapGetById`/`MapPost<TRequest,TDto>`/`MapPutById`/`MapDeleteById` (see the generated `ProductCrudEndpointExtensions.MapProductCrud()`). POST does NOT auto-add idempotency either way — call `.RequiredIdempotentKey()` explicitly (see `PurchaseOrderV1Endpoint`'s create route); clients then send `X-Idempotency-Key: {Guid}`. The automated sample's generated create route has no such call — it accepts a replayed request as a fresh create.
 - **`ByUser` / acting-user auto-fill**: `AddContextualRequestPopulation` (wired in `Program.cs`) populates any `[FromClaim(...)]`-decorated request property before validation and before the handler runs; it only falls back to `SharedConsts.SystemAccount` when `RequireAuthorization` is off. A **generated** CRUD request can never carry a `[FromClaim]` property — the generator forwards only `System.ComponentModel.DataAnnotations` attributes onto generated properties — so the automated sample's acting-user stamping goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `ServiceConfigs.AddAllAppServices` (`.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`) and applying to every entity on `CoreDbContext`, not just `Product`.
@@ -136,3 +136,63 @@ Keep the two suites at different levels; do not duplicate the same behavior in b
 - `docs/samples/manual-purchase-orders/`, `docs/samples/automated-products/` — thin per-sample READMEs (what each demonstrates, routes, how to delete it).
 - `.github/skills/` — guided skill catalog (domain-modeling, crud-operations, api-endpoints, BDD, etc.). See `.github/skills/CATALOG.md`.
 - `specs/` — Spec-Kit feature specs; workflow docs in `SPEC_KIT.md`.
+
+## Feature lifecycle (plugin)
+
+A business feature is one vertical slice, addressable by its `<Feature>` folder name, which appears
+literally in ten fixed roots across six projects. `.claude/skills/dknet-feature-lifecycle/SKILL.md` is
+the authority on that footprint, the out-of-folder touchpoints a delete must also clean
+(`DomainSchemas`, `ServiceBusSetup` Produce/Consume, `FeatureOptions` + `FeatureManagement` JSON,
+migrations, docs links), and the migration rule on removal.
+
+Every scaffolding command takes `mode=manual|auto`, threaded end-to-end by the orchestrator. The mode
+is not a style preference — it changes which files exist, whether validation is enforced, whether
+create is idempotent, and how the acting user is attributed. Commands that omit `mode=` detect it by
+grepping the entity for `[CrudCreate]`.
+
+| Command | Purpose |
+|---|---|
+| `/dknet-feature <Feature> <Entity> [mode=…] [props…]` | Add a slice end-to-end (plan → domain → CRUD → endpoint → tests → BDD → docs) |
+| `/dknet-feature-remove <Feature>` | Retire a slice end-to-end, including touchpoints and a drop migration |
+| `/dknet-entity`, `/dknet-crud`, `/dknet-endpoint`, `/dknet-unit-tests`, `/dknet-bdd-test`, `/dknet-docs` | Individual phases, same `mode=` contract |
+
+`ls src/ApiEndpoints/Minimal.Domains/Features/` enumerates the features that exist — there is
+deliberately no registry file to drift out of sync.
+
+New `.claude/skills/<x>` must be mirrored byte-identically to `.github/skills/<x>` and added to
+`CORE_SKILLS` in `validate-plugin.sh`; check 3 enforces the pair.
+
+## The plugin ships to consumers — write guidance for THEIR tree, not this one
+
+`DKNet.Minimal.Template.nuspec` packs `.claude/{skills,commands,agents}`, `.claude-plugin/`,
+`.github/`, `docs/` and `AGENTS.md` into the template. A consumer running
+`dotnet new dknet-minimal -n Contoso` receives this plugin inside their own solution. Guidance files
+are therefore product, and their paths must be correct **in the generated tree**:
+
+- **No `src/` prefix.** The pack's content root is `src/`, so the generated layout is
+  `ApiEndpoints/<App>.Domains/…` with the solution at the root. Write every path relative to the
+  **solution root** — correct in both trees, since this repo's solution root is `src/`.
+- **Never name the solution file.** `dotnet build -c Release` and
+  `dotnet test --settings coverage.runsettings` work unqualified from the solution root; the `.sln` is
+  renamed per consumer (`Contoso.sln`).
+- **No `*.sh` reaches consumers** — the nuspec excludes them, so `add-migration.sh` does not exist
+  there. Inline the real command:
+  `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj` from
+  `ApiEndpoints/`.
+- **Write `Minimal.*`, never a sample name.** `sourceName` is `Minimal`, so `Minimal.Infra` in a
+  markdown file becomes `Contoso.Infra` for the consumer. A hardcoded example name like `Acme.Infra`
+  does **not** get rewritten and ships wrong to everyone.
+- **Only linked docs that are packed resolve.** `docs/**` is packed (excluding `docs/superpowers/`).
+
+Verify after touching shipped guidance — regenerating is the only real test:
+
+```bash
+cd src && dotnet pack DKNet.Minimal.Template.csproj -c Release -o /tmp/pkg
+dotnet new install /tmp/pkg/DKNet.Minimal.Template.1.0.0.nupkg --force
+cd /tmp && dotnet new dknet-minimal -n Contoso && cd Contoso && dotnet build -c Release
+grep -rn 'src/ApiEndpoints\|add-migration.sh' .claude/    # expect no hits
+dotnet new uninstall DKNet.Minimal.Template               # clean up after
+```
+
+`/dknet-scaffold`'s skill (`dknet-scaffold`) is the consumer's entry point: install, generate, the six
+template parameters, first run, and deleting the two shipped samples.

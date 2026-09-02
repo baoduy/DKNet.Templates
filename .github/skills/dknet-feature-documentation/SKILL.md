@@ -25,6 +25,18 @@ description: Generate structured technical documentation and Mermaid architectur
 
 **Diagram tool**: All diagrams use **Mermaid.js** — rendered natively in GitHub, VS Code Preview, and most wikis. No extra tools required.
 
+**Real examples already in this repo**: this skill is about documenting a *new* feature you just
+built, not about the two worked samples that ship with the template — but those samples are the
+best current reference for what "good enough to hand to another developer" looks like in this repo:
+[`docs/samples/manual-vs-automated.md`](../../../docs/samples/manual-vs-automated.md) (a full
+layer-by-layer comparison — the closest thing here to an `architecture.md` + `api-reference.md`
+combined) and the two thinner per-sample READMEs,
+[`docs/samples/manual-purchase-orders/README.md`](../../../docs/samples/manual-purchase-orders/README.md)
+and [`docs/samples/automated-products/README.md`](../../../docs/samples/automated-products/README.md).
+Skim those before writing your own — they show the level of detail and the "what does the developer
+give up" framing this repo expects, even though their file layout doesn't follow the five-document
+structure below.
+
 ---
 
 ## Prerequisites: Do You Know This?
@@ -40,7 +52,7 @@ description: Generate structured technical documentation and Mermaid architectur
 
 Collect this before you start:
 
-- [ ] **Feature name** (e.g., `PurchaseOrder`, `Orders`, `Invoices`)
+- [ ] **Feature name** (e.g., `PurchaseOrder`, `Product`, `Invoices`)
 - [ ] **Purpose**: What business problem does it solve? (1–2 sentences)
 - [ ] **Entity properties**: All fields with types and constraints
 - [ ] **Entity relationships**: Foreign keys and navigation properties
@@ -76,27 +88,30 @@ mkdir -p docs/features/purchase-orders
 ```markdown
 # Purchase Orders
 
-> Manages the lifecycle of a customer's purchase order — creation, amount changes, and cancellation.
+> Manages purchase order lifecycle — creation, amount changes, and cancellation.
 
 ## What Is This?
 
-The Purchase Orders feature provides a complete lifecycle for purchase-order records — creation,
-amount updates, and cancellation. Every order carries the identity of the user who created or last
-changed it.
+The Purchase Orders feature provides a complete lifecycle for purchase order records — creation,
+amount updates, and cancellation. Every layer here is hand-written (no declarative event/CRUD/DTO
+generation), which is a deliberate choice documented in `docs/samples/manual-vs-automated.md` — see
+that document if you're deciding whether a new feature should be hand-written like this one or
+generator-driven like `AutomatedSample/Product`.
 
 ## Why Does It Exist?
 
-Purchase orders are the entry point for a customer's spend in the system. This feature enables:
-- Order creation via REST API, protected by an idempotency key so a client retry can't create a duplicate
+Purchase orders are the transactional record between a customer and the business. This feature
+enables:
+- Purchase order creation via REST API, with idempotent retries
 - Amount correction after creation
-- Cancellation, which is rejected if the order is already cancelled
+- Cancellation, with a business rule blocking a double-cancel
 
 ## Quick Start
 
 ### Create a Purchase Order
 
 ```http
-POST /api/v1/purchase-orders
+POST /v1/purchase-orders
 Content-Type: application/json
 Authorization: Bearer {token}
 X-Idempotency-Key: 6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01
@@ -110,7 +125,7 @@ X-Idempotency-Key: 6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01
 ### Get a Purchase Order
 
 ```http
-GET /api/v1/purchase-orders/{id}
+GET /v1/purchase-orders/{id}
 Authorization: Bearer {token}
 ```
 
@@ -118,17 +133,18 @@ Authorization: Bearer {token}
 
 | Concept | Description |
 |---------|-------------|
-| **Status** | Lifecycle state: `Draft → Placed → Cancelled` |
-| **ByUser** | The authenticated user who created/modified the record, via `[FromClaim(ClaimTypes.Name)]` |
-| **Idempotency** | `POST` requires an `X-Idempotency-Key` header; a replayed key returns the original response instead of creating a duplicate |
-| **Cancellation guard** | Cancelling an already-cancelled order fails with a business-rule error instead of silently succeeding |
+| **Status** | Lifecycle state: created as `Placed`, transitions only to `Cancelled` |
+| **ByUser** | The authenticated user who created/modified the record — bound via `[FromClaim(ClaimTypes.Name)]`, never trusted from the request body |
+| **Idempotency** | `POST` requires `X-Idempotency-Key`; replaying the same key returns the original response instead of creating a duplicate |
+| **Cancel guard** | Cancelling an already-cancelled order fails with a business-rule error instead of silently succeeding |
 
 ## Feature Map
 
 ```
 Domain Modeling   → Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs
 EF Mapping        → Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs
-CRUD Handlers     → Minimal.AppServices/ManualSample/V1/Actions/
+CRUD/Actions      → Minimal.AppServices/ManualSample/V1/Actions/
+Queries           → Minimal.AppServices/ManualSample/V1/Queries/
 Domain Events     → Minimal.AppServices/ManualSample/V1/Events/
 API Endpoints     → Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs
 ```
@@ -172,10 +188,10 @@ graph TD
     end
 
     subgraph AppServices["Minimal.AppServices"]
-        REQ["Request Types\n(Create/Update/Delete/Approve/Reject)"]
+        REQ["Request Types\n(Create/Update/Cancel/Delete)"]
         VAL["Validators\n(FluentValidation)"]
         HDL["Command Handlers\n(IHandler)"]
-        SPEC["Query Specs\n(Ardalis.Specification)"]
+        SPEC["SpecGetPurchaseOrder\n(DKNet.EfCore.Specifications)"]
         EVT["Domain Events\n(PurchaseOrderCreatedEvent)"]
     end
 
@@ -186,10 +202,10 @@ graph TD
     subgraph Infra["Minimal.Infra"]
         MAP["PurchaseOrderConfigs.cs\n(EF Core Config)"]
         REPO["IRepositorySpec\n(EF Core + Spec)"]
-        EVH["Event Handlers\n(Azure Bus / In-Memory)"]
+        EVH["PurchaseOrderCreatedEventHandler\n(In-Memory bus)"]
     end
 
-    DB[("SQL Server")]
+    DB[("PostgreSQL")]
 
     Client -->|HTTP| EP
     EP -->|Message Bus| REQ
@@ -198,7 +214,7 @@ graph TD
     HDL -->|Query via Spec| SPEC
     SPEC -->|Reads| REPO
     HDL -->|Mutations| REPO
-    HDL -->|Publish| EVT
+    HDL -->|Publish via ctor| EVT
     REPO --> MAP
     MAP --> DB
     EVT --> EVH
@@ -216,21 +232,20 @@ sequenceDiagram
     participant REPO as IRepositorySpec
     participant EVT as EventPublisher
 
-    C->>EP: POST /api/v1/purchase-orders (X-Idempotency-Key header)
+    C->>EP: POST /v1/purchase-orders (X-Idempotency-Key required)
     EP->>BUS: bus.Send(CreatePurchaseOrderRequest)
     BUS->>VAL: Validate request
-    VAL-->>BUS: Valid ✓
+    VAL-->>BUS: Valid (CustomerName not empty, Amount > 0)
 
-    BUS->>HDL: Handle(request)
-    HDL->>HDL: new PurchaseOrder(...) — raises PurchaseOrderCreatedEvent itself
+    BUS->>HDL: OnHandle(request)
+    HDL->>HDL: new PurchaseOrder(name, amount, byUser)\n(raises PurchaseOrderCreatedEvent in the constructor)
     HDL->>REPO: AddAsync(order)
-    HDL->>REPO: SaveChangesAsync()
-    REPO-->>HDL: OK
+    REPO-->>HDL: OK (SaveChanges triggers event publish)
 
-    HDL->>EVT: PublishAsync(PurchaseOrderCreatedEvent)
+    HDL->>EVT: EventPublisher forwards PurchaseOrderCreatedEvent
     EVT-->>HDL: OK
 
-    HDL-->>BUS: Result<PurchaseOrderDto>.Success(dto)
+    HDL-->>BUS: mapper.ResultOf<PurchaseOrderDto>(order)
     BUS-->>EP: PurchaseOrderDto
     EP-->>C: 201 Created + PurchaseOrderDto
 ```
@@ -246,15 +261,15 @@ classDiagram
     }
 
     class CreatePurchaseOrderRequest {
-        +string ByUser
+        +string? ByUser
         +string CustomerName
         +decimal Amount
     }
 
     class CreatePurchaseOrderCommandHandler {
-        -IMapper _mapper
-        -IRepositorySpec _repository
-        +OnHandle(request) Result~PurchaseOrderDto~
+        -IRepositorySpec repository
+        -IMapper mapper
+        +OnHandle(request) IResult~PurchaseOrderDto~
     }
 
     class PurchaseOrder {
@@ -286,22 +301,27 @@ stateDiagram-v2
 
     Cancelled --> [*]
 
-    note right of Placed : Default status on creation
-    note right of Cancelled : Cancelling an already-cancelled order fails instead of re-transitioning
+    note right of Placed : Set by the constructor — every new order starts Placed
+    note right of Cancelled : Terminal — CancelPurchaseOrderCommandHandler rejects a\nsecond Cancel with a business-rule error
 ```
+
+`PurchaseOrderStatus` also declares a `Draft` value for future use — no current action transitions
+an order into or out of it. Document only the transitions actual handler code performs; don't
+document an enum member as reachable just because it exists.
 
 ## Event Flow
 
 ```mermaid
 graph LR
-    HDL["CreatePurchaseOrderCommandHandler"] -->|Publish| EVT["PurchaseOrderCreatedEvent"]
+    HDL["PurchaseOrder constructor"] -->|AddEvent| EVT["PurchaseOrderCreatedEvent"]
 
     EVT --> MEM["In-Memory Bus Handler\n(PurchaseOrderCreatedEventHandler)"]
-    EVT --> AZ["Azure Service Bus Handler\n(if AzureBus configured)"]
 
-    MEM -->|Side effects| LOG["Audit Log / Debug"]
-    AZ -->|Message to subscribers| EXT["External Systems\n(Notification, Billing)"]
+    MEM -->|Side effects| LOG["Structured log line"]
 ```
+
+This feature has no external Azure Service Bus wiring — that's the `AutomatedSample/Product`
+sample's demonstration instead (see `docs/samples/manual-vs-automated.md`).
 
 ## Layer Responsibilities
 
@@ -322,7 +342,7 @@ graph LR
 ````markdown
 # Purchase Orders — API Reference
 
-**Base Path**: `/api/v1/purchase-orders`
+**Base Path**: `/v1/purchase-orders`
 **Auth**: Bearer token required on all endpoints
 **Content-Type**: `application/json`
 
@@ -330,20 +350,20 @@ graph LR
 
 ## Endpoints Summary
 
-| Method | Path | Description | Request Type | Auth Required |
-|--------|------|-------------|--------------|---------------|
-| `GET` | `/` | List purchase orders (paginated, optional customer-name filter) | Query params | ✓ |
-| `GET` | `/{id}` | Get purchase order by ID | Route param | ✓ |
-| `POST` | `/` | Create new purchase order (idempotency key required) | Body (JSON) | ✓ |
-| `PUT` | `/{id}` | Update purchase order amount | Body (JSON) | ✓ |
-| `POST` | `/{id}/cancel` | Cancel purchase order | Route param | ✓ |
-| `DELETE` | `/{id}` | Delete purchase order | Route param | ✓ |
+| Method | Path | Description | Request Type | Idempotency |
+|--------|------|-------------|--------------|-------------|
+| `GET` | `/` | List purchase orders (paginated, optional customer-name filter) | Query params | — |
+| `GET` | `/{id}` | Get purchase order by ID | Route param | — |
+| `POST` | `/` | Create new purchase order | Body (JSON) | ✓ `X-Idempotency-Key` required |
+| `PUT` | `/{id}` | Update purchase order amount | Body (JSON) | — |
+| `POST` | `/{id}/cancel` | Cancel purchase order | Route param only | — |
+| `DELETE` | `/{id}` | Delete purchase order | Route param | — |
 
 ---
 
-## GET /api/v1/purchase-orders
+## GET /v1/purchase-orders
 
-Returns a paginated list of purchase orders.
+Returns a paginated list of purchase orders, optionally filtered by customer name.
 
 **Query Parameters**
 
@@ -351,36 +371,20 @@ Returns a paginated list of purchase orders.
 |-----------|------|---------|-------------|
 | `pageIndex` | int | 1 | Page number (1-based) |
 | `pageSize` | int | 20 | Items per page |
-| `customerName` | string | — | Filter by customer name |
+| `customerName` | string | — | Exact-match filter by customer name |
 
-**Response** `200 OK`
-
-```json
-{
-  "items": [
-    {
-      "id": "6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01",
-      "customerName": "Acme Pte Ltd",
-      "amount": 1250.00,
-      "status": "Placed",
-      "createdBy": "system"
-    }
-  ],
-  "pageIndex": 1,
-  "pageSize": 20
-}
-```
+**Response** `200 OK` — a paged list of `PurchaseOrderDto`.
 
 **curl Example**
 
 ```bash
-curl -X GET "https://api.example.com/api/v1/purchase-orders?pageSize=10&customerName=Acme" \
+curl -X GET "https://localhost:5001/v1/purchase-orders?pageSize=10&customerName=Acme%20Pte%20Ltd" \
   -H "Authorization: Bearer {token}"
 ```
 
 ---
 
-## GET /api/v1/purchase-orders/{id}
+## GET /v1/purchase-orders/{id}
 
 Returns a single purchase order by ID.
 
@@ -404,9 +408,10 @@ Returns a single purchase order by ID.
 
 ---
 
-## POST /api/v1/purchase-orders
+## POST /v1/purchase-orders
 
-Creates a new purchase order. Requires an `X-Idempotency-Key` header — a replayed key returns the original response instead of creating a duplicate.
+Creates a new purchase order. **Requires** an idempotency key header — a replayed key returns the
+original response instead of creating a duplicate.
 
 **Request Body**
 
@@ -419,31 +424,23 @@ Creates a new purchase order. Requires an `X-Idempotency-Key` header — a repla
 
 | Field | Type | Required | Rules |
 |-------|------|----------|-------|
-| `customerName` | string | ✓ | 1–200 characters |
-| `amount` | decimal | ✓ | Greater than 0 |
+| `customerName` | string | ✓ | 1–200 characters (FluentValidation, enforced) |
+| `amount` | decimal | ✓ | Must be greater than 0 (FluentValidation, enforced) |
 
-**Response** `201 Created`
+`byUser` is never a request field — it's bound server-side from the authenticated caller's claims.
 
-```json
-{
-  "id": "6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01",
-  "customerName": "Acme Pte Ltd",
-  "amount": 1250.00,
-  "status": "Placed",
-  "createdBy": "jane.doe"
-}
-```
+**Response** `201 Created` — a `PurchaseOrderDto` with `status: "Placed"`.
 
 **Error Responses**
 
 | Status | Reason |
 |--------|--------|
-| `400 Bad Request` | Validation failure (blank customer name, non-positive amount) or missing `X-Idempotency-Key` header |
+| `400 Bad Request` | Blank `customerName`, non-positive `amount`, or missing `X-Idempotency-Key` header — all three confirmed live |
 
 **curl Example**
 
 ```bash
-curl -X POST "https://api.example.com/api/v1/purchase-orders" \
+curl -X POST "https://localhost:5001/v1/purchase-orders" \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
   -H "X-Idempotency-Key: $(uuidgen)" \
@@ -452,9 +449,9 @@ curl -X POST "https://api.example.com/api/v1/purchase-orders" \
 
 ---
 
-## PUT /api/v1/purchase-orders/{id}
+## PUT /v1/purchase-orders/{id}
 
-Updates an existing purchase order's amount.
+Changes the amount of an existing purchase order.
 
 **Request Body**
 
@@ -464,31 +461,34 @@ Updates an existing purchase order's amount.
 }
 ```
 
+| Field | Type | Required | Rules |
+|-------|------|----------|-------|
+| `amount` | decimal | ✓ | Must be greater than 0 |
+
 **Error Responses**
 
 | Status | Reason |
 |--------|--------|
-| `400 Bad Request` | `amount` is not greater than 0 |
 | `404 Not Found` | No purchase order with this ID |
 
 ---
 
-## POST /api/v1/purchase-orders/{id}/cancel
+## POST /v1/purchase-orders/{id}/cancel
 
-Cancels a purchase order.
+Cancels a purchase order. No request body.
 
-**Response** `200 OK` — Returns the updated `PurchaseOrderDto` with `status: "Cancelled"`.
+**Response** `200 OK` — a `PurchaseOrderDto` with `status: "Cancelled"`.
 
 **Error Responses**
 
 | Status | Reason |
 |--------|--------|
+| `404 Not Found` | No purchase order with this ID |
 | `400 Bad Request` | The order is already cancelled |
-| `404 Not Found` | No purchase order with this ID |
 
 ---
 
-## DELETE /api/v1/purchase-orders/{id}
+## DELETE /v1/purchase-orders/{id}
 
 Deletes the purchase order.
 
@@ -504,20 +504,24 @@ Deletes the purchase order.
 
 ## Common Error Response Format
 
-All errors return a `ProblemDetails`-shaped structure:
+`result.Response()` (from `DKNet.AspCore.Extensions.Responses`) converts a failed `FluentResults`
+result into a standard `ProblemDetails` body, with the underlying error messages collected under the
+`errors` extension property:
 
 ```json
 {
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "Validation Error",
+  "type": "BadRequest",
+  "title": "Error",
   "status": 400,
-  "detail": "One or more validation errors occurred.",
-  "errors": {
-    "customerName": ["'Customer Name' must not be empty."],
-    "amount": ["'Amount' must be greater than '0'."]
-  }
+  "detail": "The purchase order 6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01 is already cancelled.",
+  "errors": [
+    "The purchase order 6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01 is already cancelled."
+  ]
 }
 ```
+
+A handler that fails with a `NotFoundError` (see `CancelPurchaseOrderCommandHandler`) produces the
+same shape with `status: 404`.
 ````
 
 ---
@@ -535,44 +539,50 @@ All errors return a `ProblemDetails`-shaped structure:
 erDiagram
     PURCHASE_ORDER {
         uniqueidentifier Id PK "Auto-generated GUID"
-        nvarchar(200)   CustomerName "Not null"
-        decimal         Amount "Precision (18,2)"
-        nvarchar(50)    Status "Draft / Placed / Cancelled, stored as string"
-        nvarchar(450)   CreatedBy "Linked to user"
+        nvarchar(200)   CustomerName "Not null, indexed (non-unique)"
+        decimal_18_2    Amount "Not null"
+        nvarchar        Status "Draft / Placed / Cancelled — stored as string"
+        nvarchar(450)   CreatedBy "Linked to acting user"
         datetime2       CreatedOn "UTC, auto-set"
         nvarchar(450)   UpdatedBy "Nullable"
-        datetime2       UpdatedOn "Nullable, UTC"
+        datetime2       UpdatedOn "UTC, auto-updated"
     }
 ```
+
+This feature has no related entity table — `PurchaseOrder` is a single-table aggregate with no
+owned types or child entities.
 
 ## Properties
 
 | Property | C# Type | DB Column | Constraints |
 |----------|---------|-----------|-------------|
-| `Id` | `Guid` | `Id` (PK) | Not null, generated in the constructor via `Guid.NewGuid()` |
-| `CustomerName` | `string` | `CustomerName` | Not null, max 200 chars, indexed (not unique) |
-| `Amount` | `decimal` | `Amount` | Precision `(18,2)`, must be greater than 0 |
-| `Status` | `PurchaseOrderStatus` | `Status` | Stored as string via `.HasConversion<string>()`; `Draft`/`Placed`/`Cancelled` |
-| `CreatedBy` | `string` | `CreatedBy` | Not null, set from `[FromClaim(ClaimTypes.Name)] ByUser` |
-| `UpdatedBy` | `string?` | `UpdatedBy` | Nullable, set by `SetUpdatedBy(userId)` on mutation |
+| `Id` | `Guid` | `Id` (PK) | Not null, auto-generated (`AggregateRoot` base) |
+| `CustomerName` | `string` | `CustomerName` | Not null, max 200 chars, non-unique index |
+| `Amount` | `decimal` | `Amount` | Not null, precision `(18,2)` |
+| `Status` | `PurchaseOrderStatus` (enum) | `Status` | Not null, stored `HasConversion<string>()` |
+| `CreatedBy` | `string` | `CreatedBy` | Not null — set from `[FromClaim(ClaimTypes.Name)] ByUser` at create |
+| `CreatedOn` | `DateTimeOffset` | `CreatedOn` | UTC, auto-set on insert (`AuditedEntity` base) |
+| `UpdatedBy` | `string?` | `UpdatedBy` | Nullable, set by `ChangeAmount`/`Cancel` via `SetUpdatedBy` |
+| `UpdatedOn` | `DateTimeOffset?` | `UpdatedOn` | Nullable, auto-updated on mutation |
 
 ## EF Core Mapping Configuration
 
 See `Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` for the full config.
 
 Key mapping decisions:
-- **Table name**: `PurchaseOrders` (schema: `manual_sample`)
-- **Index**: `CustomerName` (not unique — several orders can share a customer name)
-- **Enum storage**: `Status` stored as `string`, not the underlying `int`
-- **Precision**: `Amount` uses `HasPrecision(18, 2)`
+- **Table name**: `PurchaseOrders` (schema: `manual_sample`, a literal string — not a `DomainSchemas` constant)
+- **Index**: non-unique index on `CustomerName` (a query-performance index, not a business uniqueness rule — contrast with `AutomatedSample/Product`'s *unique* index on `Name`)
+- **Enum storage**: `Status` uses `HasConversion<string>()` so the raw table stores `"Placed"`/`"Cancelled"`, not an integer
+- **Seed data**: 3 fixed-`Guid` rows via `PurchaseOrderStaticData` (`DataSeedingConfiguration<PurchaseOrder>`) — see `dknet-efcore-config` for the seeding-wiring gotcha this template hit once
 
 ## Validation Rules
 
 | Rule | Details |
 |------|---------|
-| `CustomerName` required | `[Required][StringLength(200, MinimumLength = 1)]` on the create request + `NotEmpty().Length(1, 200)` FluentValidation rule |
-| `Amount` positive | `GreaterThan(0)` FluentValidation rule on both create and update requests |
-| Cancel is idempotent-unsafe by design | Cancelling an already-`Cancelled` order fails with a business-rule error rather than succeeding a second time (enforced in the command handler, see `dknet-ddd-principles`) |
+| `CustomerName` required, 1–200 chars | Enforced by FluentValidation (`CreatePurchaseOrderCommandValidator`) |
+| `Amount` must be > 0 | Enforced by FluentValidation on both Create and Update |
+| Cancel is terminal | `Cancel` on an order already `Cancelled` fails in the handler with a business-rule error, not a domain-entity exception |
+| Idempotent create | `X-Idempotency-Key` header required on `POST` — enforced at the endpoint, not the entity |
 ````
 
 ---
@@ -588,9 +598,11 @@ Key mapping decisions:
 
 ### PurchaseOrderCreatedEvent
 
-Raised by hand from `PurchaseOrder`'s own constructor (`AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))`), immediately when a new order is constructed — not in the handler.
+Raised inside the `PurchaseOrder` constructor, immediately when a new purchase order is created —
+by hand (`AddEvent(...)`), not by a declarative attribute. See `dknet-ddd-principles` for the
+hand-raised-vs-declared contrast (`AutomatedSample/Product` uses the declared alternative).
 
-**Published by**: `PurchaseOrder` constructor (via `AddEvent`), delivered by `Minimal.Infra/Services/EventPublisher.cs` after `SaveChangesAsync`
+**Published by**: `PurchaseOrder`'s constructor (called from `CreatePurchaseOrderCommandHandler`)
 
 **Payload**
 
@@ -600,27 +612,28 @@ public sealed record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, dec
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Id` | `Guid` | The newly created order's ID |
-| `CustomerName` | `string` | The order's customer name |
-| `Amount` | `decimal` | The order amount |
+| `Id` | `Guid` | The newly created purchase order's ID |
+| `CustomerName` | `string` | The customer name on the order |
+| `Amount` | `decimal` | The order amount at creation time |
 
 **Subscribers**
 
 | Subscriber | Bus | Action |
 |-----------|-----|--------|
-| `PurchaseOrderCreatedEventHandler` | In-Memory | Logs the event at Information level |
+| `PurchaseOrderCreatedEventHandler` | In-Memory | Logs at Information level |
 
-*(For an entity that instead declares `[RaisesEvent(...)]` rather than calling `AddEvent` by hand — see `Product` — the event is raised by DKNet's EF Core save hook instead of application code; only the consumer above is still hand-written. `Product`'s declared events are also consumed externally over Azure Service Bus — see `ProductCreatedNotificationHandler` for that pattern if this feature needs one too.)*
+This feature has no external Azure Service Bus subscriber — that demonstration lives in the
+`AutomatedSample/Product` sample instead (see `docs/samples/manual-vs-automated.md`).
 
 **Example Usage** — subscribing to this event:
 
 ```csharp
-internal sealed class LogPurchaseOrderCreatedHandler(ILogger<LogPurchaseOrderCreatedHandler> logger) :
-    Fluents.EventsConsumers.IHandler<PurchaseOrderCreatedEvent>
+internal sealed class PurchaseOrderCreatedEventHandler(ILogger<PurchaseOrderCreatedEventHandler> logger)
+    : Fluents.EventsConsumers.IHandler<PurchaseOrderCreatedEvent>
 {
     public Task OnHandle(PurchaseOrderCreatedEvent notification, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Purchase order {Id} created for {CustomerName}.", notification.Id, notification.CustomerName);
+        logger.LogInformation("Purchase order created: {PurchaseOrderId}", notification.Id);
         return Task.CompletedTask;
     }
 }
@@ -636,25 +649,23 @@ This feature does not currently consume events from other features.
 
 ## Event Bus Configuration
 
-- **In-Memory bus**: Always active. Used for local handlers in the same process.
-- **Azure Service Bus**: Active when `ConnectionStrings:AzureBus` is configured in `appsettings.json`.
+- **In-Memory bus**: Always active. Used for local handlers in the same process — this is the only
+  bus `PurchaseOrder`'s event reaches.
+- **Azure Service Bus**: Active when `ConnectionStrings:AzureBus` is configured — not wired for this
+  feature; see `Product`'s `ProductCreatedEvent` for the pattern if a future change needs it.
 
 See `Minimal.Infra/Extensions/ServiceBusSetup.cs` for the bus wiring.
 
 ```mermaid
 graph LR
-    HDLR["CreatePurchaseOrderCommandHandler"]
+    CTOR["PurchaseOrder constructor"]
     EVT["PurchaseOrderCreatedEvent"]
     MEM["In-Memory Bus"]
-    AZ["Azure Service Bus"]
-    INTL["Internal Handlers"]
-    EXT["External Subscribers"]
+    HDLR["PurchaseOrderCreatedEventHandler"]
 
-    HDLR -->|PublishAsync| EVT
+    CTOR -->|AddEvent| EVT
     EVT --> MEM
-    EVT --> AZ
-    MEM --> INTL
-    AZ --> EXT
+    MEM --> HDLR
 ```
 ````
 
@@ -705,7 +716,7 @@ They render automatically on GitHub, GitLab, VS Code (Markdown Preview), Docusau
 ```
 docs/
 └── features/
-    └── purchase-orders/        ← kebab-case folder name
+    └── purchase-orders/          ← kebab-case folder name
         ├── README.md             ← Overview (START HERE)
         ├── architecture.md       ← Diagrams + vertical slice
         ├── api-reference.md      ← Endpoints + examples + curl
@@ -714,11 +725,3 @@ docs/
         └── decisions/            ← Optional ADRs
             └── adr-001-idempotency-key-strategy.md
 ```
-
-## Real Reference Material Already in This Repo
-
-Neither of this template's own two worked samples (`PurchaseOrder`/`ManualSample`, `Product`/`AutomatedSample`) has this five-file `docs/features/<feature-name>/` treatment — they're documented instead by:
-- [`docs/samples/manual-vs-automated.md`](../../../docs/samples/manual-vs-automated.md) — the authoritative, layer-by-layer comparison of the two samples, closest thing in this repo to an `architecture.md` + `data-model.md` + `events.md` combined
-- [`docs/samples/manual-purchase-orders/README.md`](../../../docs/samples/manual-purchase-orders/README.md) and [`docs/samples/automated-products/README.md`](../../../docs/samples/automated-products/README.md) — thin per-sample overviews, the closest thing to a `README.md`
-
-Read those before documenting a *new* feature you've built — they show what "grounded in real code, not invented" looks like for this repo, and are a better model to imitate than any hypothetical example above.

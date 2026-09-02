@@ -67,12 +67,12 @@ Note: the domain entity folder and the `AppServices` slice use the same feature 
 
 You almost never register things manually in this codebase — these scans do it for you:
 
-- **EF Core model + seeding**: `UseAutoConfigModel` + `UseAutoDataSeeding` scan the assembly for `IEntityTypeConfiguration<T>` and `DataSeedingConfiguration<T>` classes. No manual `DbSet<T>` declarations. Both calls must be wired into **both** `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb` — see **dknet-efcore-config** for the real bug this template hit when they weren't.
+- **EF Core model + seeding**: `UseAutoConfigModel` + `UseAutoDataSeeding` scan the assembly for `IEntityTypeConfiguration<T>` and `DataSeedingConfiguration<T>` classes. No manual `DbSet<T>` declarations. Both calls must be wired into **both** `InfraSetup.AddInfraServices` (DI host path) and `InfraMigration.MigrateDb` (startup-migration path). Wiring seeding into only one is a real bug this template hit once — `PurchaseOrderStaticData` didn't appear over HTTP until `MigrateDb` got the same `.UseAutoDataSeeding(...)` call.
 - **Service registration**: Scrutor scans `Minimal.Infra`. Keep concrete repos/services `internal sealed` and place them under a `.Repos` or `.Services` namespace so the convention scan picks them up.
 - **Endpoint mapping helpers** (`DKNet.AspCore.Extensions`, not local to this template): hand-mapped routes use the raw minimal-API surface directly (see `PurchaseOrderV1Endpoint`); generator-driven routes call the package's generic `MapGetList`/`MapGetById`/`MapPost<TRequest,TDto>`/`MapPutById`/`MapDeleteById` (see the generated `ProductCrudEndpointExtensions.MapProductCrud()`). POST does NOT auto-add idempotency either way — call `.RequiredIdempotentKey()` explicitly (see `PurchaseOrderV1Endpoint`'s create route); clients then send `X-Idempotency-Key: {Guid}`. The automated sample's generated create route has no such call.
-- **`ByUser` / acting-user auto-fill**: `AddContextualRequestPopulation` (wired in `Program.cs`) populates any `[FromClaim(...)]`-decorated request property before validation and before the handler runs — no `RequestBase` class is involved. A **generated** CRUD request can never carry a `[FromClaim]` property (the generator forwards only DataAnnotations attributes), so the automated sample's acting-user stamping goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead.
+- **`ByUser` / acting-user auto-fill**: `AddContextualRequestPopulation` (wired in `Program.cs`) populates any `[FromClaim(...)]`-decorated request property before validation and before the handler runs (see `CreatePurchaseOrderRequest.ByUser`) — no `RequestBase` class is involved. A **generated** CRUD request can never carry a `[FromClaim]` property (the generator forwards only DataAnnotations attributes), so the automated sample's acting-user stamping goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `ServiceConfigs.cs` and applying to every entity on `CoreDbContext`.
 - **Mapster**: global config lives in `Minimal.AppServices/AppSetup.cs`. DTOs use `[GenerateDto(...)]` or a hand-written record. Lazy mapping after `SaveChanges` via `mapper.ResultOf<T>(entity)`.
-- **Domain events**: published by `Minimal.Infra/Services/EventPublisher.cs`, which forwards to `IMessageBus` (SlimMessageBus), whether raised by hand (`AddEvent`, see `PurchaseOrder`) or declared (`[RaisesEvent]`, see `Product`). An in-memory child bus (`ImMemory`) always exists for internal handlers; an Azure Service Bus child bus (`AzureBus`) is added only when `ConnectionStrings:AzureBus` is configured — that's where `Product`'s `Produce<ProductCreatedEvent>`/`Consume<ProductCreatedEvent>` topology lives.
+- **Domain events**: published by `Minimal.Infra/Services/EventPublisher.cs`, which forwards to `IMessageBus` (SlimMessageBus), whether raised by hand (`AddEvent`, see `PurchaseOrder`) or declared (`[RaisesEvent]`, see `Product` — raised by DKNet's EF Core save hook, not by application code). An in-memory child bus (`ImMemory`) always exists for internal handlers; an Azure Service Bus child bus (`AzureBus`) is added only when `ConnectionStrings:AzureBus` is configured — that's where `Product`'s `Produce<ProductCreatedEvent>`/`Consume<ProductCreatedEvent>` topology lives.
 
 ## Exemplar to Read When Unsure
 
@@ -85,10 +85,10 @@ Two worked examples cover all four layers — pick the one matching how your new
 - `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`
 
 **`Product`** (generator-driven CRUD + events):
-- `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`
-- `Minimal.Infra/Features/AutomatedSample/Mappers/`, `ExternalEvents/`
-- `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`, `Events/`
-- `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs`
+- `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs` (`[RaisesEvent]`, `[CrudCreate]`, `[CrudUpdate]`, `[CrudAction]`)
+- `Minimal.Infra/Features/AutomatedSample/Mappers/` (still hand-written), `ExternalEvents/`
+- `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs` (`[GenerateDto]`), `Events/`
+- `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` (`group.MapProductCrud()`)
 
 ---
 

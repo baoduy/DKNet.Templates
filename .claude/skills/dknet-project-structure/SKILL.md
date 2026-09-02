@@ -35,48 +35,59 @@ Minimal.AppHost      → Aspire orchestration only (Redis + PostgreSQL + Minimal
 
 ## Vertical Slice Folder Layout
 
-Every feature mirrors this table. Two worked examples live side by side under `src/ApiEndpoints/` —
-the hand-written `PurchaseOrder` (feature folder `ManualSample`) and the generator-driven `Product`
-(feature folder `AutomatedSample`) — see `docs/samples/manual-vs-automated.md` for the full
-layer-by-layer comparison:
+This template ships two complete worked examples of the same shape of feature, built two different ways — read
+[`docs/samples/manual-vs-automated.md`](../../../docs/samples/manual-vs-automated.md) for the full comparison before copying either.
+
+**Hand-written — mirror `ManualSample/PurchaseOrder`:**
 
 | Layer       | Location                                        | What goes here                                                          |
 |-------------|--------------------------------------------------|--------------------------------------------------------------------------|
-| Domains     | `Features/<Feature>/Entities/`                  | `AggregateRoot` subclass; mutation in methods, or class-level `[RaisesEvent]`/`[CrudCreate]`/`[CrudUpdate]` |
-| Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — indexes, lengths, schema (hand-written either way) |
-| Infra       | `Features/<Feature>/StaticData/`                | Seed data discovered by `UseAutoDataSeeding` (optional — `Product` has none)  |
-| AppServices | `<Feature>/V1/Actions/`                         | `*Request` (`[FromClaim]` for the acting user), `*CommandValidator`, `*CommandHandler` (sealed) — skipped entirely when the entity uses `[CrudCreate]`/`[CrudUpdate]`, the generator produces this layer instead |
-| AppServices | `<Feature>/V1/Specs/`                           | Specification classes for duplicate/filter queries — skipped when routes map through the generic `MapGetById`/`MapGetList` |
+| Domains     | `Features/<Feature>/Entities/`                  | `AggregateRoot` subclass; mutation in named methods; raises its own events via `AddEvent(...)` |
+| Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — indexes, lengths, schema                |
+| Infra       | `Features/<Feature>/StaticData/`                | Seed data discovered by `UseAutoDataSeeding`                            |
+| AppServices | `<Feature>/V1/Actions/`                         | `*Request` (`[FromClaim]` for the acting user), `*CommandValidator`, `*CommandHandler` (sealed) |
+| AppServices | `<Feature>/V1/Specs/`                           | Specification classes for duplicate/filter queries                      |
 | AppServices | `<Feature>/V1/Events/`                          | Domain event handlers                                                   |
-| AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | Hand-written DTO record, or one `[GenerateDto(typeof(Entity))]` partial record |
-| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; every route hand-mapped, or one `group.Map<Entity>Crud()` call |
+| AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | Hand-written DTO record — exposes exactly the fields you write into it  |
+| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; every route is a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call |
 
-Note: the domain entity folder and the AppServices slice use the same feature folder name in both
-samples (`ManualSample`, `AutomatedSample`) — the two namespaces don't have to match in general.
+**Generator-driven — mirror `AutomatedSample/Product`:**
+
+| Layer       | Location                                        | What goes here                                                          |
+|-------------|--------------------------------------------------|--------------------------------------------------------------------------|
+| Domains     | `Features/<Feature>/Entities/`                  | `AggregateRoot` subclass; class-level `[RaisesEvent(...)]`; `[CrudCreate]` ctor; `[CrudUpdate]` method(s) |
+| Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — still hand-written, no generator produces this |
+| AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | One `[GenerateDto(typeof(Entity))] public sealed partial record <Feature>Dto;` |
+| AppServices | `<Feature>/V1/Events/`                          | Hand-written consumer for a declared event — the generator raises, it does not consume |
+| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension, nothing hand-mapped |
+
+Note: the domain entity folder and the `AppServices` slice use the same feature folder name in both samples (`ManualSample`, `AutomatedSample`) — the two namespaces don't have to match in general.
 
 ## Key Auto-Discovery Wiring
 
 You almost never register things manually in this codebase — these scans do it for you:
 
-- **EF Core model + seeding**: `UseAutoConfigModel` + `UseAutoDataSeeding` in **both** `InfraSetup.AddInfraServices` (DI host path) and `InfraMigration.MigrateDb` (startup-migration path) scan the assembly for `IEntityTypeConfiguration<T>` and `IDataSeedingConfiguration<T>` classes. No manual `DbSet<T>` declarations. Wiring seeding into only one of the two paths is a real bug this template hit once — `PurchaseOrderStaticData` didn't appear over HTTP until `MigrateDb` got the same `.UseAutoDataSeeding(...)` call.
+- **EF Core model + seeding**: `UseAutoConfigModel` + `UseAutoDataSeeding` scan the assembly for `IEntityTypeConfiguration<T>` and `DataSeedingConfiguration<T>` classes. No manual `DbSet<T>` declarations. Both calls must be wired into **both** `InfraSetup.AddInfraServices` (DI host path) and `InfraMigration.MigrateDb` (startup-migration path). Wiring seeding into only one is a real bug this template hit once — `PurchaseOrderStaticData` didn't appear over HTTP until `MigrateDb` got the same `.UseAutoDataSeeding(...)` call.
 - **Service registration**: Scrutor scans `Minimal.Infra`. Keep concrete repos/services `internal sealed` and place them under a `.Repos` or `.Services` namespace so the convention scan picks them up.
-- **Endpoint helpers**: hand-mapped routes use the raw minimal-API surface directly (`group.MapPost/MapGet/MapPut/MapDelete`, see `PurchaseOrderV1Endpoint`); generator-driven routes call `DKNet.AspCore.Extensions`'s generic `MapGetById<TEntity,TKey,TDto>`/`MapGetList`/`MapPost<TRequest,TDto>`/`MapPutById`/`MapDeleteById` (see the generated `ProductCrudEndpointExtensions.MapProductCrud()`). POST does NOT auto-add idempotency either way — call `.RequiredIdempotentKey()` explicitly (see `PurchaseOrderV1Endpoint`'s create route); clients then send `X-Idempotency-Key: {Guid}`. The automated sample's generated create route has no such call.
-- **`ByUser` auto-fill**: `AddContextualRequestPopulation` (wired in `Program.cs`) populates any `[FromClaim(...)]`-decorated request property before the handler runs (see `CreatePurchaseOrderRequest.ByUser`). A **generated** CRUD request can never carry a `[FromClaim]` property — the generator forwards only `System.ComponentModel.DataAnnotations` attributes — so `Product`'s acting-user stamping goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `ServiceConfigs.cs`.
+- **Endpoint mapping helpers** (`DKNet.AspCore.Extensions`, not local to this template): hand-mapped routes use the raw minimal-API surface directly (see `PurchaseOrderV1Endpoint`); generator-driven routes call the package's generic `MapGetList`/`MapGetById`/`MapPost<TRequest,TDto>`/`MapPutById`/`MapDeleteById` (see the generated `ProductCrudEndpointExtensions.MapProductCrud()`). POST does NOT auto-add idempotency either way — call `.RequiredIdempotentKey()` explicitly (see `PurchaseOrderV1Endpoint`'s create route); clients then send `X-Idempotency-Key: {Guid}`. The automated sample's generated create route has no such call.
+- **`ByUser` / acting-user auto-fill**: `AddContextualRequestPopulation` (wired in `Program.cs`) populates any `[FromClaim(...)]`-decorated request property before validation and before the handler runs (see `CreatePurchaseOrderRequest.ByUser`) — no `RequestBase` class is involved. A **generated** CRUD request can never carry a `[FromClaim]` property (the generator forwards only DataAnnotations attributes), so the automated sample's acting-user stamping goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `ServiceConfigs.cs` and applying to every entity on `CoreDbContext`.
 - **Mapster**: global config lives in `Minimal.AppServices/AppSetup.cs`. DTOs use `[GenerateDto(...)]` or a hand-written record. Lazy mapping after `SaveChanges` via `mapper.ResultOf<T>(entity)`.
-- **Domain events**: published by `Minimal.Infra/Services/EventPublisher.cs`, whether raised by hand (`AddEvent`, see `PurchaseOrder`) or declared (`[RaisesEvent]`, see `Product` — raised by DKNet's EF Core save hook, not application code). An in-memory child bus (`ImMemory`) always exists for internal handlers; an Azure Service Bus child bus (`AzureBus`) is added only when `ConnectionStrings:AzureBus` is configured — that's where `Product`'s external publish/subscribe lives.
+- **Domain events**: published by `Minimal.Infra/Services/EventPublisher.cs`, which forwards to `IMessageBus` (SlimMessageBus), whether raised by hand (`AddEvent`, see `PurchaseOrder`) or declared (`[RaisesEvent]`, see `Product` — raised by DKNet's EF Core save hook, not by application code). An in-memory child bus (`ImMemory`) always exists for internal handlers; an Azure Service Bus child bus (`AzureBus`) is added only when `ConnectionStrings:AzureBus` is configured — that's where `Product`'s `Produce<ProductCreatedEvent>`/`Consume<ProductCreatedEvent>` topology lives.
 
 ## Exemplar to Read When Unsure
 
-`PurchaseOrder` (`ManualSample`) is the reference implementation for every hand-written layer:
+Two worked examples cover all four layers — pick the one matching how your new feature should be built (see `docs/samples/manual-vs-automated.md` for the full trade-off table):
+
+**`PurchaseOrder`** (hand-written, everything explicit):
 - `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`
-- `Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs`, `StaticData/PurchaseOrderStaticData.cs`
+- `Minimal.Infra/Features/ManualSample/Mappers/`, `StaticData/`
 - `Minimal.AppServices/ManualSample/V1/Actions/`, `Specs/`, `Events/`
 - `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`
 
-`Product` (`AutomatedSample`) is the reference implementation for the generator-driven shape:
-- `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs` (`[RaisesEvent]`, `[CrudCreate]`, `[CrudUpdate]`)
-- `Minimal.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs` (still hand-written)
-- `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs` (`[GenerateDto]`)
+**`Product`** (generator-driven CRUD + events):
+- `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs` (`[RaisesEvent]`, `[CrudCreate]`, `[CrudUpdate]`, `[CrudAction]`)
+- `Minimal.Infra/Features/AutomatedSample/Mappers/` (still hand-written), `ExternalEvents/`
+- `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs` (`[GenerateDto]`), `Events/`
 - `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` (`group.MapProductCrud()`)
 
 ---

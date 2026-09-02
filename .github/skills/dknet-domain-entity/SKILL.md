@@ -13,9 +13,22 @@ If the aggregate boundary, entity-vs-value-object choice, or invariant placement
 
 ## When to Use
 
-- Adding a new aggregate root entity (e.g., `PurchaseOrder`, `Product`, Invoice)
-- Adding a new owned value object (a plain nested type with no identity of its own, e.g. a `ShippingDetails` record embedded in an order)
+- Adding a new aggregate root entity (e.g., `PurchaseOrder`, Invoice, Shipment)
+- Adding a new owned value object (a plain class with no independent identity)
 - Adding domain service interfaces for the new feature
+
+> **Alternative: declare events/CRUD instead of hand-writing them.** Everything on this page
+> describes writing the entity, its events, and its mutation methods by hand — the pattern used by
+> `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`. An entity can instead declare
+> `[RaisesEvent(EventOperations.Created, Include = [...])]` / `[RaisesEvent(EventOperations.Updated, nameof(Prop))]`
+> at the class level, mark its constructor `[CrudCreate]`, and mark mutation methods `[CrudUpdate]` (or
+> `[CrudAction]` for a domain action) — the `DKNet.SlimBus.Generators` analyzer then generates the event
+> record, the create/update request + handler, and the CRUD routes for you. See
+> `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`. The trade-off: the generated request's
+> DataAnnotations (`[Required]`, `[Range]`, …) are **not enforced** under this template's own
+> endpoint-registration convention — see `docs/samples/manual-vs-automated.md` for why. Pick the
+> hand-written shape whenever that validation must actually run, or for any business rule beyond what a
+> DataAnnotations attribute can express.
 
 ## Inputs Required
 
@@ -42,19 +55,17 @@ AuditedEntity<Guid>        ← from DKNet.EfCore.Abstractions.Entities
 
 ### Key Rules
 
-- Entities inherit from `AggregateRoot` (or `DomainEntity` for non-root entities); mark the class `sealed` unless you have a concrete reason another type needs to derive from it (`PurchaseOrder` is `sealed`; `Product` isn't, only because its generator-driven constructor needed no further customization either way — sealing is the default, not the exception)
-- Properties use `{ get; private set; }` — mutation happens ONLY through named methods
-- Constructor sets immutable fields; a mutation method (e.g. `ChangeAmount`, `Cancel`) handles anything that changes later
-- `SetCreatedBy(userId)` and `SetUpdatedBy(userId)` are inherited from `AuditedEntity`
-- Entity uses `AddEvent(...)` to publish domain events by hand (inherited from base) — see the callout below for the declarative alternative
-- The public constructor calls `base(byUser)` — `AggregateRoot`'s own constructor auto-generates the Id (`Guid.NewGuid()`), you never assign it yourself. The `internal Guid id` overload (`base(id, byUser)`) exists only for rehydrating a known identity, e.g. static seed data — see `PurchaseOrder`'s internal constructor.
-
-> **Alternative: declare events/CRUD instead of hand-writing them.** Everything on this page describes writing the entity, its events, and its mutation methods by hand — the pattern used by `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`. An entity can instead declare `[RaisesEvent(EventOperations.Created, Include = [...])]` / `[RaisesEvent(EventOperations.Updated, nameof(Prop))]` at the class level, mark its constructor `[CrudCreate]`, and mark a mutation method `[CrudUpdate]` — the `DKNet.SlimBus.Generators` analyzer then generates the event record, the create/update request+handler, and the CRUD routes for you. See `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`. The trade-off: the generated create/update request's DataAnnotations (`[Required]`, `[Range]`, etc.) are **not enforced** under this template's own endpoint-registration convention — see `docs/samples/manual-vs-automated.md` for why. Pick the manual, hand-written shape whenever you need that validation to actually run, or any business rule beyond what a DataAnnotations attribute can express.
+- Entities inherit from `AggregateRoot` (or `DomainEntity` for non-root entities). Mark the class `sealed` unless something concrete needs to derive from it — `PurchaseOrder` is `sealed`; `Product` is not, only because nothing required it either way. Sealed is the default, not the exception.
+- Properties use `{ get; private set; }` — mutation happens ONLY through named methods (e.g. `PurchaseOrder.ChangeAmount(...)`, `PurchaseOrder.Cancel(...)` — not a single generic `Update(...)`)
+- Three constructors, as on `PurchaseOrder`: a **public** one setting every field for a new entity, forwarding to `base(byUser)`; an **internal** one rehydrating a known identity for static seeding, forwarding to `base(id, byUser)`; and a **private parameterless** one that exists solely for EF Core materialization
+- `SetCreatedBy(userId)` (via `base(byUser)`) and `SetUpdatedBy(userId)` are inherited from `AuditedEntity`/`AggregateRoot` — call `SetUpdatedBy` at the end of every mutation method
+- Entity uses `AddEvent(...)` to publish domain events by hand (inherited from base) — or, as an alternative, declares `[RaisesEvent]` and lets DKNet's EF Core save hook raise it (see the callout above)
+- The base `AggregateRoot(string byUser)` constructor auto-generates a new `Id` — you don't pass `Guid.Empty` yourself
 
 ### File Location
 
 ```
-src/ApiEndpoints/Minimal.Domains/
+ApiEndpoints/Minimal.Domains/
 ├── Features/
 │   └── {Feature}/
 │       └── Entities/
@@ -67,7 +78,7 @@ src/ApiEndpoints/Minimal.Domains/
 └── Share/
     ├── AggregateRoot.cs                 ← DO NOT MODIFY
     ├── DomainEntity.cs                  ← DO NOT MODIFY
-    ├── DomainSchemas.cs                 ← ADD your schema constant here
+    ├── DomainSchemas.cs                 ← optional named schema constant (see Step 1)
     └── Sequences.cs                     ← ADD sequence name if needed
 ```
 
@@ -75,22 +86,21 @@ src/ApiEndpoints/Minimal.Domains/
 
 ## Step-by-Step
 
-### Step 1: Add Schema Constant
+### Step 1: Pick a Schema
 
-Edit `src/ApiEndpoints/Minimal.Domains/Share/DomainSchemas.cs`:
-
-```csharp
-public static class DomainSchemas
-{
-    public const string Migration = "migrate";
-    public const string Profile = "pro";
-    public const string {Feature} = "{prefix}";    // ← ADD THIS
-}
-```
+`DomainSchemas.cs` holds named constants (`Migration`, `Profile`) for reuse across mappers, but a
+named constant isn't required — both current samples pass a literal schema string straight to
+`ToTable(...)` in their EF Core mapper instead (`"manual_sample"` for `PurchaseOrder`, `"sample"`
+for `Product` — see `dknet-efcore-config`). Add a constant to `DomainSchemas.cs` only if the schema
+name is reused by more than one entity; otherwise a literal string is fine and is what both samples do.
 
 ### Step 2: Create the Entity Class
 
-Create `src/ApiEndpoints/Minimal.Domains/Features/{Feature}/Entities/{Entity}.cs`:
+Create `ApiEndpoints/Minimal.Domains/Features/{Feature}/Entities/{Entity}.cs`. Mirror
+`PurchaseOrder`'s shape: a public constructor for new entities (forwards to `base(byUser)`, which
+auto-generates the `Id`), a second `internal` constructor for rehydrating a known identity (used by
+static seeding only — forwards to `base(id, byUser)`), and named mutation methods instead of one
+generic `Update(...)`:
 
 ```csharp
 using Minimal.Domains.Share;
@@ -105,54 +115,68 @@ public sealed class {Entity} : AggregateRoot
     #region Constructors
 
     /// <summary>
-    /// Creates a new {Entity} with a system-assigned identity (base's <c>Guid.NewGuid()</c> overload).
+    /// Creates a new {Entity}. Raises <see cref="{Entity}CreatedEvent"/>.
     /// </summary>
     public {Entity}({constructor params for immutable + mutable fields}, string byUser)
         : base(byUser)
     {
-        {ImmutableProp} = {value};
-        {MutableProp} = {value};
+        {Prop1} = {param1};
+        {Prop2} = {param2};
+
+        AddEvent(new {Entity}CreatedEvent(Id, {Prop1}, {Prop2}));
     }
 
     /// <summary>
-    /// Rehydrates an existing {Entity} with a known identity — used by static reference-data seeding only.
-    /// Does not re-raise any creation event.
+    /// Rehydrates a <see cref="{Entity}"/> with a known identity — used by static reference-data
+    /// seeding only. Does not re-raise <see cref="{Entity}CreatedEvent"/>.
     /// </summary>
     internal {Entity}(Guid id, {all params}, string byUser)
         : base(id, byUser)
     {
-        {ImmutableProp} = {value};
-        {MutableProp} = {value};
+        {Prop1} = {param1};
+        {Prop2} = {param2};
+    }
+
+    private {Entity}()
+    {
     }
 
     #endregion
 
     #region Properties
 
-    // Immutable properties (set only in constructor)
-    public string {ImmutableProp} { get; private set; } = null!;
+    public string {Prop1} { get; private set; } = null!;
 
-    // Mutable properties (changed via named mutation methods)
-    public string? {MutableProp} { get; private set; }
+    public decimal {Prop2} { get; private set; }
 
     #endregion
 
     #region Methods
 
-    /// <summary>
-    /// Named, single-purpose mutation — prefer one method per state transition
-    /// (e.g. <c>ChangeAmount</c>, <c>Cancel</c>) over a catch-all <c>Update</c>.
-    /// </summary>
-    public void Change{MutableProp}({type} {param}, string userId)
+    public void Change{Prop2}({type} value, string userId)
     {
-        {MutableProp} = {param};
+        {Prop2} = value;
+        SetUpdatedBy(userId);
+    }
 
+    /// <summary>
+    /// Example of a guarded state transition — reject the call if the invariant it would
+    /// establish already holds (see <c>PurchaseOrder.Cancel</c>'s "already cancelled" case,
+    /// enforced one layer up in the command handler — see dknet-ddd-principles).
+    /// </summary>
+    public void {Transition}(string userId)
+    {
+        {StateProp} = {NewState};
         SetUpdatedBy(userId);
     }
 
     #endregion
 }
 ```
+
+This is a direct mirror of `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs` — read
+it alongside the template above; the real file is short (~55 lines) and shows every one of these
+pieces with real names (`CustomerName`, `Amount`, `ChangeAmount`, `Cancel`, `PurchaseOrderStatus`).
 
 ### Step 3: Create Owned Value Objects (if needed)
 
@@ -186,7 +210,7 @@ public interface I{Service} : IDomainService
 
 ### Step 5: Add Sequence (if using auto-generated IDs)
 
-Edit `src/ApiEndpoints/Minimal.Domains/Share/Sequences.cs` to add sequence name:
+Edit `ApiEndpoints/Minimal.Domains/Share/Sequences.cs` to add sequence name:
 
 ```csharp
 public static class Sequences
@@ -199,9 +223,14 @@ public static class Sequences
 
 ## Reference: PurchaseOrder (actual production code)
 
-Every layer of this entity is hand-written — no declarative event/CRUD attribute is used anywhere on it (`Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`):
-
 ```csharp
+public enum PurchaseOrderStatus
+{
+    Draft,
+    Placed,
+    Cancelled
+}
+
 public sealed class PurchaseOrder : AggregateRoot
 {
     public PurchaseOrder(string customerName, decimal amount, string byUser)
@@ -214,13 +243,18 @@ public sealed class PurchaseOrder : AggregateRoot
         AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount));
     }
 
-    // Rehydration constructor — used by static reference-data seeding only, does NOT re-raise the event
+    // Rehydrates with a known identity — used by static reference-data seeding only.
+    // Does not re-raise PurchaseOrderCreatedEvent.
     internal PurchaseOrder(Guid id, string customerName, decimal amount, string byUser)
         : base(id, byUser)
     {
         CustomerName = customerName;
         Amount = amount;
         Status = PurchaseOrderStatus.Placed;
+    }
+
+    private PurchaseOrder()
+    {
     }
 
     public string CustomerName { get; private set; } = null!;
@@ -241,25 +275,61 @@ public sealed class PurchaseOrder : AggregateRoot
 }
 ```
 
-Note the shape here: rather than one generic `Update(...)` method, `PurchaseOrder` exposes named, single-purpose mutation methods (`ChangeAmount`, `Cancel`) — each one is exactly the state transition it names. Prefer this over a catch-all `Update` when the mutations are conceptually distinct operations, as they are here.
+Note what `PurchaseOrder` does *not* do that the generic template above shows for illustration: it
+has no "ignore null/empty to preserve current value" update method — `ChangeAmount` and `Cancel` are
+narrow, named, single-purpose mutations, which is the preferred shape when a mutation isn't a
+generic partial-update. The "already cancelled" guard lives in the command handler, not on `Cancel`
+itself (see `dknet-ddd-principles`).
+
+### Alternative: Product's declarative shape
+
+`Product` (`Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`) reaches the same outcome
+— a constructor, an update method, a created/updated event — without writing any of it by hand:
+
+```csharp
+[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]
+[RaisesEvent(EventOperations.Updated, nameof(Price))]
+public class Product : AggregateRoot
+{
+    [CrudCreate]
+    public Product([Required, StringLength(150)] string name, [Range(0.01, double.MaxValue)] decimal price)
+    {
+        Name = name;
+        Price = price;
+    }
+
+    public string Name { get; private set; } = null!;
+    public decimal Price { get; private set; }
+
+    [CrudUpdate]
+    public void ChangePrice([Range(0.01, double.MaxValue)] decimal price) => Price = price;
+}
+```
+
+`[CrudCreate]`/`[CrudUpdate]` generate the create/update request, handler, and route registration
+(see `dknet-appservices-actions` and `dknet-endpoint-config`); `[RaisesEvent]` is raised by DKNet's
+EF Core save hook, not by any line you write. **Important gap**: `Price`'s `[Range(0.01, double.MaxValue)]`
+is genuinely forwarded onto the generated request but is never enforced under this template's own
+endpoint-registration convention — confirmed live, `POST /v1/products` with a negative price returns
+`201`, not `400`. See `docs/samples/manual-vs-automated.md` before picking this shape for an entity
+whose validation needs to actually run.
 
 ---
 
 ## Validation Checklist
 
-- [ ] Entity inherits from `AggregateRoot`, not using the `required` keyword on properties
+- [ ] Entity inherits from `AggregateRoot` (not using `required` keyword) — `sealed` is fine and is what `PurchaseOrder` does; leave it unsealed only if a later `[RaisesEvent]`/`[CrudCreate]` conversion is anticipated (`Product` is unsealed)
 - [ ] Properties use `{ get; private set; }` — no public setters
-- [ ] Public constructor takes `string byUser` as last param; passes to `base(byUser)` (auto-generates the Id)
-- [ ] Internal rehydration constructor (`base(id, byUser)`) exists only if the feature needs static seed data with fixed Ids
-- [ ] Mutation methods are named per state transition (e.g. `ChangeAmount`, `Cancel`), not a single catch-all `Update`
-- [ ] Every mutation method calls `SetUpdatedBy(userId)` at the end
+- [ ] Public constructor's last param is `string byUser`; passes to `base(byUser)` (auto-generates `Id`)
+- [ ] Internal rehydration constructor takes `Guid id` first, passes to `base(id, byUser)` — used by static seeding only
+- [ ] Named mutation methods (e.g. `ChangeAmount`, `Cancel`) call `SetUpdatedBy(userId)` at the end — prefer these over one generic `Update(...)` unless the operation genuinely is a partial update of many fields
 - [ ] Immutable fields set only in constructor
-- [ ] Schema constant added to `DomainSchemas.cs`
+- [ ] Schema is either a `DomainSchemas` constant or an inline literal string passed to `ToTable(...)` (both samples use the inline literal — see `dknet-efcore-config`)
 - [ ] Namespace follows `Minimal.Domains.Features.{Feature}.Entities`
-- [ ] File placed in `src/ApiEndpoints/Minimal.Domains/Features/{Feature}/Entities/`
+- [ ] File placed in `ApiEndpoints/Minimal.Domains/Features/{Feature}/Entities/`
 - [ ] Domain service interface extends `IDomainService` (if applicable)
 - [ ] XML doc comments on class and all public members
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes with zero warnings
+- [ ] `dotnet build -c Release` passes with zero warnings
 
 ---
 
@@ -269,10 +339,10 @@ Note the shape here: rather than one generic `Update(...)` method, `PurchaseOrde
 |---------|-----|
 | Using `required` keyword on properties | Use `{ get; private set; }` — values set in constructor |
 | Public setters on properties | Make setters `private set` — mutate via methods only |
-| Missing `SetUpdatedBy()` in a mutation method | Always call at end of every method that changes state |
+| Missing `SetUpdatedBy()` in a mutation method | Always call at end of every method that changes mutable state |
 | Using `DateTime.UtcNow` directly | Audit timestamps handled by `AuditedEntity` base class |
-| Forgetting `internal` on the rehydration constructor | Mark it `internal` — only infra (e.g. static seed data) should call it |
-| Assigning `Id` yourself in the public constructor | Don't — `base(byUser)` generates it via `Guid.NewGuid()` internally |
+| Forgetting `internal` on the rehydration constructor | Mark it `internal` — only infra (static seeding) should call it |
+| Writing one generic `Update(...)` that silently no-ops on null/empty | Prefer named single-purpose methods (`ChangeAmount`, `Cancel`) — easier to test and to guard with a business rule in the handler |
 
 ---
 

@@ -36,15 +36,13 @@ Additionally, tests should include at least one DTO consistency check when the f
 - verify key response fields expected from the entity mapping are present and correctly populated
 - catch request/response drift introduced by manual record edits
 
-> **Status on this branch**: neither of the template's two worked samples (`PurchaseOrder` in `ManualSample/`, `Product` in `AutomatedSample/`) has a committed unit or integration test suite yet — that's a separate QA cycle's job, not part of building the sample. Nothing below names an existing test file for either sample; treat every path/class name as a placeholder to fill in when that work happens.
-
 ## Inputs Required
 
-1. **Feature name** and entity class (e.g., `ManualSample` / `PurchaseOrder`, or `AutomatedSample` / `Product`)
-2. **AppServices request types** for the feature (Create / Update / Delete / Query requests)
-3. **Spec class** for querying the entity (e.g., `SpecGetPurchaseOrder`)
+1. **Feature name** and entity class (e.g., `ManualSample` / `PurchaseOrder`, `AutomatedSample` / `Product`)
+2. **AppServices request types** for the feature (Create / Update / Cancel-or-other-transition / Delete / Query requests) — or none at all, if the entity uses `[CrudCreate]`/`[CrudUpdate]` and the layer is generated (see `dknet-appservices-actions`)
+3. **Spec class** for querying the entity (e.g., `SpecGetPurchaseOrder`) — may not exist if reads go through the generic `MapGetById`/`MapGetList`
 4. **Domain entity constructor** signature (to seed test data directly)
-5. **Business rules** to cover: duplicate checks, not-found paths, validation failures
+5. **Business rules** to cover: duplicate checks, not-found paths, validation failures, guarded state transitions (e.g. `PurchaseOrder.Cancel` rejecting an already-cancelled order)
 
 ---
 
@@ -53,7 +51,7 @@ Additionally, tests should include at least one DTO consistency check when the f
 ### Test Project Structure
 
 ```
-src/ApiEndpoints/Minimal.App.Tests/
+ApiEndpoints/Minimal.App.Tests/
 ├── GlobalUsings.cs                         ← AutoBogus, Shouldly, JsonSerializer, IMapper
 ├── Integration/
 │   ├── Support/
@@ -101,7 +99,7 @@ You still need explicit `using` for:
 
 ### Step 1: Create the Test Class File
 
-Create `src/ApiEndpoints/Minimal.App.Tests/Integration/{Feature}/V1/{Entity}ActionsIntegrationTests.cs`:
+Create `ApiEndpoints/Minimal.App.Tests/Integration/{Feature}/V1/{Entity}ActionsIntegrationTests.cs`:
 
 ```csharp
 using DKNet.EfCore.Specifications;
@@ -387,18 +385,50 @@ public void {Entity}MappingShouldProduceValidDto()
 
 ---
 
-## What the suite would cover for the two current samples (not yet written)
+## Reference: the committed suite for PurchaseOrder / Product
 
-No `PurchaseOrderActionsIntegrationTests` or `ProductActionsIntegrationTests` class exists on this branch — this is what dev-qc's later Verify-stage pass would need to prove, using the step-by-step pattern above:
+Both samples already have tests. **Read them before writing new ones** — mirror their shape rather
+than inventing a parallel structure:
 
-For `PurchaseOrder` (`Minimal.AppServices/ManualSample/V1/Actions/`):
-- Create persists a new order and raises `PurchaseOrderCreatedEvent` (assert the in-memory handler's side effect, or just that create succeeds)
-- Update changes `Amount` via `ChangeAmount`
-- Cancel succeeds once, then fails with a specific message the second time (the "already cancelled" business rule) — a business-rule failure test this skill's Step 4 pattern maps directly onto
-- Delete removes the order; a not-found id 404s via `NotFoundError` on every action
-- FluentValidation rejects a blank `CustomerName` and a non-positive `Amount`
+| File | Tests |
+|---|---:|
+| `Minimal.App.Tests/Integration/ManualSample/V1/PurchaseOrderActionsIntegrationTests.cs` | 13 |
+| `Minimal.App.Tests/Integration/ManualSample/V1/PurchaseOrderSecurityTests.cs` | 3 |
+| `Minimal.App.Tests/Integration/ManualSample/V1/PurchaseOrderListPagingTests.cs` | 3 |
+| `Minimal.App.Tests/Unit/ManualSample/` (entity, validators, spec, static data) | 16 |
+| `Minimal.App.Tests/Integration/AutomatedSample/V1/ProductSecurityTests.cs` | 4 |
+| `Minimal.App.Tests/Integration/AutomatedSample/V1/ProductOwnershipIsolationTests.cs` | 3 |
+| `Minimal.App.Tests/Unit/AutomatedSample/` (entity, notification handler) | 8 |
 
-For `Product` (`Minimal.AppServices/AutomatedSample/V1/`): the create/update requests and handlers are generator-produced (`Minimal.AppServices.Crud` namespace, inspect under `obj/Generated/` after a build), so a test still sends the same generated request types through `IMessageBus` — but there is no hand-written validator to test, and per `docs/samples/manual-vs-automated.md`, a negative `Price` is expected to succeed (`201`), not fail, because the DataAnnotations range check is never enforced under this template's generated-route convention. A future test suite for `Product` should assert that gap explicitly rather than assume validation runs.
+`PurchaseOrderActionsIntegrationTests` is the canonical exemplar — a
+`<Entity>ActionsIntegrationTests(ApiFixture fixture) : IClassFixture<ApiFixture>` class resolving
+`IMessageBus` and `IRepositorySpec` from the same `fixture.CreateScope()`. What it covers:
+
+| Test method | What it proves |
+|------|---------------|
+| `Create_ShouldPersistOrder_AndReturnMatchingDto` | `bus.Send(new CreatePurchaseOrderRequest{...})` persists via `repository.AddAsync`; returns the mapped DTO |
+| `Create_ShouldFail_WhenByUserIsMissing` | The handler's `string.IsNullOrEmpty(request.ByUser)` guard fails the request |
+| `Update_ShouldChangeAmount_WhenOrderExists` | `ChangeAmount` persists; `Result.Ok` returns the mapped DTO |
+| `Update_ShouldFail_WhenOrderNotFound` | Fails with `NotFoundError` for an unknown `Id` |
+| `Cancel_ShouldSucceedOnce_ThenFail_WhenAlreadyCancelled` | The `order.Status == PurchaseOrderStatus.Cancelled` guard — the concrete business-rule test this sample exists to demonstrate |
+| `Cancel_ShouldFail_WhenOrderNotFound` / `Delete_ShouldFail_WhenOrderNotFound` | Same not-found shape on every action |
+| `Delete_ShouldRemoveOrder` | Delete returns `IResultBase`; assert `IsSuccess`, not `Value` |
+| `*_ShouldFail_WhenByUserIsMissing` (Update / Cancel / Delete) | All four hand-written handlers carry the same `ByUser` guard |
+| `GetById_ShouldReturnNull_WhenNotFound`, `List_ShouldFilterByCustomerName` | Query paths through the spec |
+
+For `Product` (`AutomatedSample`), there is no hand-written handler to unit-test at all for
+create/update — the generated `CreateProductHandler`/`ChangePriceProductHandler` are produced code,
+and this template's own convention doesn't unit-test generated handlers directly. Coverage for
+`Product` instead centers on the entity's declared behavior (`[RaisesEvent]` firing on save — an
+integration-level assertion through `ApiFixture`, not a handler-level one), row-level ownership
+isolation, and the hand-written `ProductCreatedEventHandler`/`ProductCreatedNotificationHandler`
+consumers.
+
+**Do not write a validation test against a generated route.** Per
+`docs/samples/manual-vs-automated.md`, a negative `Price` is expected to **succeed** (`201`), not
+fail — the forwarded `[Range]` is never enforced under this template's generated-route convention. If
+you assert that gap, assert what actually happens; never "fix" such a test by relaxing it into
+claiming the validation runs.
 
 The same scope provides both `IMessageBus` and `IRepositorySpec` — they share the same `DbContext` instance, so `SaveChangesAsync` on the repository commits what the bus handler staged.
 
@@ -417,8 +447,8 @@ The same scope provides both `IMessageBus` and `IRepositorySpec` — they share 
 - [ ] Seeding test data goes through `repository.AddAsync` + `SaveChangesAsync` (not `bus.Send`)
 - [ ] `ByUser` is always set on requests (e.g., `"integration-test"`)
 - [ ] Per-feature fixture calls `base.ConfigureWebHost(builder)` before adding services
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
-- [ ] `dotnet test src/DKNet.Templates.sln` passes with all new tests green
+- [ ] `dotnet build -c Release` passes
+- [ ] `dotnet test` passes with all new tests green
 
 ---
 
@@ -430,7 +460,7 @@ The same scope provides both `IMessageBus` and `IRepositorySpec` — they share 
 | Seeding via `bus.Send(createRequest)` then testing the same path again | Seed directly via `repository.AddAsync` + `SaveChangesAsync` to isolate the scenario under test |
 | Not calling `ResetDatabaseAsync()` at the start | Tests sharing state produce false positives; always reset |
 | Asserting `result.Value` on a delete (returns `IResultBase`, not `IResult<T>`) | Use `result.IsSuccess.ShouldBeTrue()` — delete handlers have no value |
-| Missing `ByUser` on a request built directly in a test (bypassing `[FromClaim]` population) | `ByUser` is read by the aggregate's constructor/mutation methods for audit stamping; omitting it in a bus-level test (no HTTP pipeline to populate it) causes an "unauthenticated caller" failure or incorrect audit data |
+| Missing `ByUser` on requests | Every hand-written handler checks `string.IsNullOrEmpty(request.ByUser)` and fails the request — set it explicitly in tests (there's no request base class auto-filling it outside the running app's claim-population pipeline) |
 | Creating a per-feature fixture without calling `base.ConfigureWebHost` | The in-memory DB and service overrides in `ApiFixture` will be skipped |
 
 ---
@@ -440,11 +470,11 @@ The same scope provides both `IMessageBus` and `IRepositorySpec` — they share 
 After writing integration tests, run:
 
 ```bash
-dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage"
+dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
 ```
 
 To add a new migration after testing revealed schema gaps:
 
 ```bash
-cd src/Minimal.ApiEndpoints && ./add-migration.sh <MigrationName>
+cd ApiEndpoints && dotnet ef migrations add <MigrationName> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
 ```

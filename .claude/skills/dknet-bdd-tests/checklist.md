@@ -33,7 +33,7 @@ Use this checklist before considering BDD scenario work complete.
 
 ## Validation
 
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` succeeds
-- [ ] `dotnet test src/ApiEndpoints/Minimal.App.BDDTests` passes
+- [ ] `dotnet build -c Release` succeeds
+- [ ] `dotnet test ApiEndpoints/Minimal.App.BDDTests` passes
 - [ ] No undefined or pending Reqnroll steps
 - [ ] Scenario names are readable in test output

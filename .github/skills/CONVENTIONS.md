@@ -106,7 +106,7 @@ Every skill's `metadata.json` MUST include these fields:
   "relatedSkills": ["dknet-crud-operations", "dknet-api-endpoints"],
   "folderPath": ".github/skills/domain-modeling",
   "examplesPath": ".github/skills/domain-modeling/examples/purchase-order-example",
-  "testPath": "src/Minimal.ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs"
+  "testPath": "ApiEndpoints/Minimal.App.Tests/Skills/DomainModelingSkillTests.cs"
 }
 ```
 

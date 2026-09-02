@@ -11,7 +11,7 @@ description: Create and maintain Reqnroll + NUnit BDD .feature scenarios for DKN
 
 ## Overview
 
-Use this skill to build high-quality BDD scenarios for `src/ApiEndpoints/Minimal.App.BDDTests/` that are traceable to feature documentation and specifications.
+Use this skill to build high-quality BDD scenarios for `ApiEndpoints/Minimal.App.BDDTests/` that are traceable to feature documentation and specifications.
 
 This skill enforces a context-first workflow:
 1. Read `docs/features/**` for business intent and architecture context.
@@ -27,7 +27,7 @@ Assertion policy:
 
 ## When to Use
 
-- Adding a new `.feature` file under `src/ApiEndpoints/Minimal.App.BDDTests/Features/`.
+- Adding a new `.feature` file under `ApiEndpoints/Minimal.App.BDDTests/Features/`.
 - Expanding existing feature files with new scenarios.
 - Aligning existing BDD tests with updated docs/spec requirements.
 - Standardizing step text and assertions across the BDD test suite.
@@ -41,10 +41,19 @@ Gather these first:
 - [ ] Feature name and target domain (for example: `ManualSample` / `PurchaseOrder`, `AutomatedSample` / `Product`).
 - [ ] Matching docs folder under `docs/features/<feature-name>/`.
 - [ ] Matching spec folder under `specs/<feature-id-or-name>/`.
-- [ ] API contract details: route, method, headers, expected response behavior — for a `POST`, check whether the target endpoint is hand-mapped with `.RequiredIdempotentKey()` (mirrors `PurchaseOrderV1Endpoint`, which requires an `X-Idempotency-Key` header on every scenario that creates a purchase order) or generator-driven via `Map<Entity>Crud()` (mirrors `ProductV1Endpoint`, which has no idempotency header at all — omit it from those scenarios).
+- [ ] API contract details: route, method, headers, expected response behavior — including whether the create route is hand-mapped with `.RequiredIdempotentKey()` or generated via `Map<Entity>Crud()`. They differ on the `X-Idempotency-Key` header; see **Implement Step Bindings**.
 - [ ] Existing hooks/fixtures in `Minimal.App.BDDTests/Support/`.
 
-**Status on this branch**: no `.feature` files exist yet for either `PurchaseOrder` or `Product` — both samples' BDD coverage is owed at a later Verify cycle, not written at Build. Don't assume a `Features/ManualSample/` or `Features/AutomatedSample/` folder already has scenarios to extend.
+**Existing scenarios to read before writing new ones** — both samples already have BDD coverage, and
+the folder is named for the *route resource*, not the feature folder:
+
+| File | Scenarios | Covers |
+|---|---:|---|
+| `Minimal.App.BDDTests/Features/PurchaseOrders/PurchaseOrder.feature` | 10 | hand-mapped flow, incl. `X-Idempotency-Key` |
+| `Minimal.App.BDDTests/Features/Products/Product.feature` | 10 | generated flow, no idempotency |
+| `Minimal.App.BDDTests/Features/Products/ProductList.feature` | 12 | generic list contract (filter/search/orderBy/paging) |
+
+Read the matching `Steps/*.cs` alongside each. Extend these rather than starting a parallel suite.
 
 ---
 
@@ -82,7 +91,7 @@ Use this branching logic:
 ### Step 3: Author the .feature File
 
 Location pattern:
-- `src/ApiEndpoints/Minimal.App.BDDTests/Features/<Domain>/<Action>.feature`
+- `ApiEndpoints/Minimal.App.BDDTests/Features/<Domain>/<Action>.feature`
 
 Authoring rules:
 
@@ -97,14 +106,14 @@ Authoring rules:
 ### Step 4: Implement Step Definitions
 
 Location pattern:
-- `src/ApiEndpoints/Minimal.App.BDDTests/Features/<Domain>/Steps/<Action>Steps.cs`
+- `ApiEndpoints/Minimal.App.BDDTests/Features/<Domain>/Steps/<Action>Steps.cs`
 
 Implementation rules:
 
 - Add `[Binding]` class with constructor injection for shared context (`HttpClient`, `ScenarioState`, and other registered services).
 - Keep step methods concise: arrange input, call API, assert outcome.
 - Serialize requests using `SharedConsts.JsonSerializerOptions`.
-- Include idempotency header where required (`X-Idempotency-Key`).
+- Include idempotency header where required (`X-Idempotency-Key`). This is a per-endpoint decision, not a blanket rule — `PurchaseOrderV1Endpoint`'s create route calls `.RequiredIdempotentKey()`, so a `POST` scenario against it needs a fresh `Guid.NewGuid()` header value per the project's BDD convention, and a replayed-key scenario is worth its own test. `ProductV1Endpoint`'s generated create route has no such call — no header is required, and there's no idempotency behavior to assert at all for it (a replayed request there simply creates a second product).
 - Parse response JSON with deterministic property assertions against the contract.
 - Validate response at three levels whenever applicable:
    - HTTP status code
@@ -117,8 +126,8 @@ Implementation rules:
 
 Run and verify:
 
-1. `dotnet build src/DKNet.Templates.sln -c Release`
-2. `dotnet test src/ApiEndpoints/Minimal.App.BDDTests`
+1. `dotnet build -c Release`
+2. `dotnet test ApiEndpoints/Minimal.App.BDDTests`
 
 Then confirm:
 

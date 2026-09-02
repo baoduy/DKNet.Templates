@@ -28,7 +28,7 @@
 - [ ] Each endpoint has at least one `curl` example that can be copy-pasted
 - [ ] Error response table lists all possible error status codes and reasons
 - [ ] Common `ProblemDetails` error format documented at end
-- [ ] Custom action endpoints (e.g. `PurchaseOrder`'s `POST {id}/cancel`) documented
+- [ ] Custom action endpoints beyond plain CRUD (e.g. `PurchaseOrder`'s `POST {id}/cancel`) documented
 - [ ] GET list endpoint documents all query parameters (pagination, sorting, filtering)
 
 ## data-model.md (Data Model)

@@ -27,19 +27,30 @@ If you're unsure whether a business rule belongs on the entity or in the handler
 5. **Business rules**: duplicate checks, validation constraints
 6. **Events to publish**: what happened notifications?
 
-## DTO Strategy (GenerateDto-First)
+## DTO Strategy: hand-written vs. generated
 
-Default policy for this repository:
+This template ships both, side by side, and either is a legitimate choice:
 
-1. **Response DTOs**: use `[GenerateDto(typeof(Entity), Exclude = [...])]` by default.
-2. **Request records**: use generated DTO shapes **when contract shape matches entity fields** (for example, full update payloads), and only hand-write request records when workflow-specific fields diverge.
-3. **Manual request records** are required when any of these apply:
-    - server-side/generated fields must be hidden from clients
-    - request uses different names/types from entity
-    - operation is partial/mutation-specific and not a 1:1 entity projection
-4. Match property names 1:1 with the entity wherever possible — Mapster maps by convention with no attribute needed for either current sample; reach for `[MapsFrom(typeof(Entity))]` (`Minimal.AppServices/Extensions/MapsFromAttribute.cs`) only if Mapster can't infer the source type on its own.
+1. **Hand-written response DTO** (`PurchaseOrderDto` — a plain `record` with exactly the fields the
+   API should expose, no attribute). Full control over the response shape; you own every property.
+2. **Generated response DTO** (`ProductDto` — one line: `[GenerateDto(typeof(Product))] public sealed
+   partial record ProductDto;`). Generates every audited property on the entity by default
+   (`Id`, `Name`, `Price`, `CreatedBy`, `CreatedOn`, `LastModifiedBy`, ... ) — use `Exclude`/`Include`
+   to narrow, or accept that every caller sees the full audit trail.
+3. **Hand-written request records are the norm for hand-mapped actions** in this template — see
+   `CreatePurchaseOrderRequest`/`UpdatePurchaseOrderRequest`/`CancelPurchaseOrderRequest`/
+   `DeletePurchaseOrderRequest` in `Actions/`. None of them is a mechanical 1:1 projection of the
+   entity: `CreatePurchaseOrderRequest` carries `ByUser` (via `[FromClaim(ClaimTypes.Name)]`, never
+   trusted from the client payload), `CustomerName`, and `Amount` — no `Status`, no `Id`.
+4. **Generated request records** exist only for an entity using `[CrudCreate]`/`[CrudUpdate]` (see
+   "Generated alternative" below) — there is no hand-written request/validator/handler for those at all.
 
-This keeps request/response property names consistent with entities and reduces mapping drift.
+Neither sample uses a `[MapsFrom(...)]` attribute on its request records — `PurchaseOrder`'s handlers
+construct the entity directly (`new PurchaseOrder(request.CustomerName, request.Amount, request.ByUser)`)
+rather than `mapper.Map<PurchaseOrder>(request)`. Reach for `[MapsFrom]` + `mapper.Map<TEntity>(request)`
+only when the request is a genuine 1:1 field-for-field projection of the entity's constructor — for a
+request with a subset of fields plus an acting-user claim, constructing the entity directly is simpler
+and is what the codebase's own example does.
 
 ---
 
@@ -53,45 +64,58 @@ This project does NOT use custom repository interfaces or service classes. Inste
 - **Handlers** implement `Fluents.Requests.IHandler<TRequest, TResponse>` or `Fluents.Requests.IHandler<TRequest>`
 - **Data access** uses `IRepositorySpec` (injected) — a generic spec-based repository
 - **Queries** use `Specification<TEntity>` pattern
-- **Mapping** uses `Mapster` via `IMapper` — plain `mapper.Map<TDto>(entity)`/`mapper.ResultOf<TDto>(entity)`, matched by property name; no per-request attribute is needed for the two current samples
+- **Mapping** uses `Mapster` via `IMapper`; `[MapsFrom(typeof(Entity))]` is available for a request that's a genuine 1:1 entity projection, but neither sample in this template uses it — both construct the entity directly or call an entity mutation method
 - **Results** use `FluentResults` — `Result.Ok(dto)`, `Result.Fail<T>("message")`
 - **Lazy mapping**: `mapper.ResultOf<TDto>(entity)` — maps AFTER SaveChanges
 
-### Acting-user attribution on the request
+### Acting-User Property
 
-There is no `RequestBase` class in this codebase. A hand-written request instead declares its own claim-bound property:
+There is no shared request base class in this template. Each request that needs the acting user
+declares its own property directly, decorated with `[FromClaim(ClaimTypes.Name)]`:
 
 ```csharp
 [FromClaim(ClaimTypes.Name)]
 public string? ByUser { get; set; }
 ```
 
-`AddContextualRequestPopulation` (wired once in `Program.cs`) populates any `[FromClaim(...)]` property before validation and before the handler runs, falling back to `SharedConsts.SystemAccount` only when `RequireAuthorization` is off. See `CreatePurchaseOrderRequest` for the real usage. An authenticated caller with no `ClaimTypes.Name` claim is left with `ByUser` unset, so every handler in the manual sample re-checks `string.IsNullOrEmpty(request.ByUser)` before touching the entity — that guard is the live no-claim path, not defensive dead code — copy it.
+`AddContextualRequestPopulation` (wired in `Program.cs`) fills this in from the authenticated
+`ClaimsPrincipal` before validation and before the handler runs — it is the only mechanism that
+sets `ByUser`; no endpoint stamps it by hand. It only falls back to `SharedConsts.SystemAccount`
+when `RequireAuthorization` is off. An authenticated caller whose token carries no
+`ClaimTypes.Name` claim is left with `ByUser` unset, which is why every `*CommandHandler` in
+`ManualSample/V1/Actions/` checks `string.IsNullOrEmpty(request.ByUser)` and fails the request if
+it's missing — that guard is the live no-claim path, not defensive dead code. This mechanism only
+works for a hand-written request; a **generated** `[CrudCreate]`/`[CrudUpdate]` request can never
+carry a `[FromClaim]` property, because the generator forwards only
+`System.ComponentModel.DataAnnotations` attributes (see "Generated alternative" below).
 
 ### File Locations
 
 ```
-src/ApiEndpoints/Minimal.AppServices/
+ApiEndpoints/Minimal.AppServices/
 ├── {Feature}/
 │   └── V{N}/
 │       ├── {Entity}Dto.cs                  ← Response DTO (hand-written record, or [GenerateDto])
 │       ├── Actions/
 │       │   ├── Create.cs                   ← Request + Validator + Handler
 │       │   ├── Update.cs                   ← Request + Validator + Handler
-│       │   ├── Cancel.cs                   ← Request + Handler (business-rule guard, no validator needed)
+│       │   ├── Cancel.cs / other transitions← Request (+ Validator) + Handler, one per business action
 │       │   └── Delete.cs                   ← Request + Handler
 │       ├── Specs/
 │       │   └── SpecGet{Entity}.cs          ← Query specification
+│       ├── Queries/
+│       │   └── Get{Entity}ById.cs, List{Entity}s.cs ← Query + Handler pairs
 │       └── Events/
-│           └── {Event}Handlers.cs          ← Event record + handlers
+│           └── {Event}Handlers.cs          ← In-memory subscriber for a domain event
 ├── Share/
-│   ├── IPrincipalProvider.cs               ← DO NOT MODIFY
-│   └── Generics/                           ← Generic list/paged specs
+│   └── IPrincipalProvider.cs               ← DO NOT MODIFY
 ├── Extensions/
-│   ├── MapsFromAttribute.cs                ← available if Mapster needs an explicit source-type hint; unused by either sample today
-│   └── LazyMapper/                         ← DO NOT MODIFY
+│   └── MapsFromAttribute.cs                ← DO NOT MODIFY (available, unused by either sample)
 └── GlobalUsings.cs                         ← Global imports (Fluents, FluentResults, etc.)
 ```
+
+Lazy mapping (`mapper.ResultOf<T>(entity)` / `mapper.LazyMap<T>()`) comes from the `DKNet.SlimBus.Extensions`
+package now — there is no local `LazyMapper/` folder to edit.
 
 ### Global Usings (already available)
 
@@ -111,31 +135,45 @@ global using MapsterMapper;
 
 ### Step 1: Create Response DTO
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/{Entity}Dto.cs`:
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/{Entity}Dto.cs`. Either shape is valid —
+pick hand-written when you want to control exactly which fields the API exposes (mirrors
+`PurchaseOrderDto`), or generated when "everything audited" is acceptable (mirrors `ProductDto`):
 
 ```csharp
+// Hand-written — see Minimal.AppServices/ManualSample/V1/PurchaseOrderDto.cs
+namespace Minimal.AppServices.{Feature}.V1;
+
+public sealed record {Entity}Dto
+{
+    public Guid Id { get; init; }
+    public string {Field1} { get; init; } = null!;
+    public decimal {Field2} { get; init; }
+    public string CreatedBy { get; init; } = null!;
+}
+```
+
+```csharp
+// Generated — see Minimal.AppServices/AutomatedSample/V1/ProductDto.cs
 using DKNet.EfCore.DtoGenerator;
 
 namespace Minimal.AppServices.{Feature}.V1;
 
-[GenerateDto(typeof({Entity}), Exclude = [])]
+[GenerateDto(typeof({Entity}))]
 public sealed partial record {Entity}Dto;
 ```
 
-`[GenerateDto]` auto-generates all properties from the entity (this is exactly how `ProductDto` is written — see `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`, a single line). Use `Exclude = ["InternalProp"]` to hide fields; the default is "everything audited", not "only what you chose to expose".
-
-If instead you want full control over which fields leave the process — the manual sample's choice — hand-write the DTO as a plain `record` with exactly the fields you want (see `PurchaseOrderDto`, 5 fields, no `[GenerateDto]`) and skip this step entirely.
+`[GenerateDto]` auto-generates every audited property from the entity (including `CreatedOn`,
+`LastModifiedBy`, etc.) — use `Exclude = [...]`/`Include = [...]` to narrow, or hand-write the record
+if you want an explicit allow-list instead of an implicit "everything" default.
 
 ### Step 2: Create Action — Create.cs
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Create.cs`:
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Create.cs`, mirroring
+`Minimal.AppServices/ManualSample/V1/Actions/Create.cs`:
 
 ```csharp
-using System.Data;
-using DKNet.EfCore.Specifications;
-using DKNet.EfCore.Specifications.Extensions;
-using Minimal.AppServices.{Feature}.V1.Events;
-using Minimal.AppServices.{Feature}.V1.Specs;
+using DKNet.EfCore.Specifications.Repositories;
+using Minimal.Domains.Features.{Feature}.Entities;
 
 namespace Minimal.AppServices.{Feature}.V1.Actions;
 
@@ -147,37 +185,35 @@ public sealed record Create{Entity}Request : Fluents.Requests.IWitResponse<{Enti
     #region Properties
 
     /// <summary>
-    /// The identity of the acting user. Always overwritten by
-    /// <c>AddContextualRequestPopulation</c> from the authenticated caller — a payload value is
-    /// never trusted (see <c>CreatePurchaseOrderRequest</c>).
+    /// Gets or sets the identity of the acting user. Always overwritten by the endpoint from the
+    /// authenticated caller — a payload value is never trusted.
     /// </summary>
     [FromClaim(ClaimTypes.Name)]
     public string? ByUser { get; set; }
 
-    [Required] public string {RequiredField1} { get; set; } = null!;
-    [Required] public string {RequiredField2} { get; set; } = null!;
-    public string? {OptionalField} { get; set; }
+    [Required]
+    [StringLength({max}, MinimumLength = 1)]
+    public string {RequiredField1} { get; set; } = null!;
+
+    public decimal {RequiredField2} { get; set; }
 
     #endregion
 }
 
-/// <summary>
-/// Validator for <see cref="Create{Entity}Request"/>.
-/// </summary>
-internal sealed class Create{Entity}RequestValidator : AbstractValidator<Create{Entity}Request>
+internal sealed class Create{Entity}CommandValidator : AbstractValidator<Create{Entity}Request>
 {
-    public Create{Entity}RequestValidator()
+    public Create{Entity}CommandValidator()
     {
-        RuleFor(a => a.{RequiredField1}).NotEmpty().Length({min}, {max});
-        RuleFor(a => a.{RequiredField2}).NotEmpty().EmailAddress().Length(1, {max});
+        RuleFor(a => a.{RequiredField1}).NotEmpty().Length(1, {max});
+        RuleFor(a => a.{RequiredField2}).GreaterThan(0);
     }
 }
 
 /// <summary>
-/// Handler: guards on the acting user, optionally checks a business rule, constructs the
-/// aggregate (which may raise its own event — see <c>PurchaseOrder</c>), persists, returns the DTO.
+/// Handles <see cref="Create{Entity}Request" /> by constructing the aggregate — which raises its
+/// own domain event in the constructor — and persisting it.
 /// </summary>
-internal sealed class Create{Entity}Handler(IRepositorySpec repository, IMapper mapper)
+internal sealed class Create{Entity}CommandHandler(IRepositorySpec repository, IMapper mapper)
     : Fluents.Requests.IHandler<Create{Entity}Request, {Entity}Dto>
 {
     public async Task<IResult<{Entity}Dto>> OnHandle(
@@ -189,35 +225,34 @@ internal sealed class Create{Entity}Handler(IRepositorySpec repository, IMapper 
             return Result.Fail<{Entity}Dto>("The caller is not authenticated.");
         }
 
-        // Optional: reject a duplicate before constructing the aggregate.
-        // if (await repository.AnyAsync(new SpecGet{Entity}(by{UniqueField}: request.{UniqueField}), cancellationToken))
-        //     return Result.Fail<{Entity}Dto>($"{UniqueField} {request.{UniqueField}} already exists.");
-
         var entity = new {Entity}(request.{RequiredField1}, request.{RequiredField2}, request.ByUser);
 
         await repository.AddAsync(entity, cancellationToken);
 
-        // Lazy-mapped DTO — resolves after SaveChanges, so any DB-computed field is populated.
+        // Lazy mapping — resolves AFTER SaveChanges, so generated/audit fields are populated.
         return mapper.ResultOf<{Entity}Dto>(entity);
     }
 }
 ```
 
-For `Create*Request`, use a manual record only for the writable subset plus the `[FromClaim]` acting-user property. Do not duplicate server-generated, audit, or immutable entity fields unless the API contract explicitly requires them.
+The request carries only the writable subset (plus `ByUser`) — not `Id`, not `Status`. The handler
+constructs the entity directly; there's no `mapper.Map<{Entity}>(request)` step because the
+constructor already raises the created event itself (see `dknet-domain-entity`).
 
 ### Step 3: Create Action — Update.cs
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Update.cs`:
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Update.cs`, mirroring
+`Minimal.AppServices/ManualSample/V1/Actions/Update.cs`:
 
 ```csharp
-using DKNet.EfCore.Specifications;
 using DKNet.EfCore.Specifications.Extensions;
+using DKNet.EfCore.Specifications.Repositories;
 using Minimal.AppServices.{Feature}.V1.Specs;
 
 namespace Minimal.AppServices.{Feature}.V1.Actions;
 
 /// <summary>
-/// Command that changes a mutable field on an existing {entity}.
+/// Command that changes the {mutable field} of an existing {entity}.
 /// </summary>
 public sealed record Update{Entity}Request : Fluents.Requests.IWitResponse<{Entity}Dto>
 {
@@ -226,20 +261,20 @@ public sealed record Update{Entity}Request : Fluents.Requests.IWitResponse<{Enti
 
     public Guid Id { get; init; }
 
-    public string? {MutableField1} { get; init; }
+    public decimal {MutableField} { get; init; }
 }
 
-internal sealed class Update{Entity}RequestValidator : AbstractValidator<Update{Entity}Request>
+internal sealed class Update{Entity}CommandValidator : AbstractValidator<Update{Entity}Request>
 {
-    public Update{Entity}RequestValidator()
+    public Update{Entity}CommandValidator()
     {
-        // Id comes from the route, not the body — an unknown/empty Id is a 404 from the
-        // spec lookup below, not a validation error. Don't add a NotEmpty rule on it.
-        RuleFor(a => a.{MutableField1}).NotEmpty();
+        // Id comes from the route, not the body — an unknown/empty Id is a 404 from the spec
+        // lookup below, not a validation error. Don't add a NotEmpty rule on Id here.
+        RuleFor(a => a.{MutableField}).GreaterThan(0);
     }
 }
 
-internal sealed class Update{Entity}Handler(IRepositorySpec repository, IMapper mapper)
+internal sealed class Update{Entity}CommandHandler(IRepositorySpec repository, IMapper mapper)
     : Fluents.Requests.IHandler<Update{Entity}Request, {Entity}Dto>
 {
     public async Task<IResult<{Entity}Dto>> OnHandle(
@@ -255,33 +290,89 @@ internal sealed class Update{Entity}Handler(IRepositorySpec repository, IMapper 
 
         if (entity is null)
         {
-            return Result.Fail<{Entity}Dto>(new NotFoundError($"The {Entity} {request.Id} was not found."));
+            return Result.Fail<{Entity}Dto>(new NotFoundError($"The {entity} {request.Id} was not found."));
         }
 
-        // Call the entity's named mutation method — see dknet-domain-entity
-        entity.Change{MutableField1}(request.{MutableField1}, request.ByUser);
+        entity.Change{MutableField}(request.{MutableField}, request.ByUser);
 
         return Result.Ok(mapper.Map<{Entity}Dto>(entity));
     }
 }
 ```
 
-Keep the `Id` off the validator's rules entirely — `UpdatePurchaseOrderRequest`'s validator only checks `Amount`, precisely because a stale/missing `Id` check on the request body would run before the route value is patched in (see the "two real bugs" section of `docs/samples/manual-vs-automated.md`).
+A real bug this pattern already hit once: don't add a `NotEmpty()` validator rule on `Id` when `Id`
+is bound from the route — route-value binding happens after FluentValidation's auto-validation runs,
+so the rule would 400 on a value that hasn't been patched in yet. Let an unknown/empty id 404 from
+the spec lookup instead (fixed in `UpdatePurchaseOrderRequest`, see `docs/samples/manual-vs-automated.md`).
 
-### Step 4: Create Action — Delete.cs
+### Step 4: Create Action — a business-rule transition (Cancel.cs)
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Delete.cs`:
+Not every action is Create/Update/Delete. `Minimal.AppServices/ManualSample/V1/Actions/Cancel.cs`
+shows the shape for a state-transition action with a guard, the pattern to reach for whenever a
+mutation should be rejected under some existing condition:
 
 ```csharp
-using DKNet.EfCore.Specifications;
 using DKNet.EfCore.Specifications.Extensions;
+using DKNet.EfCore.Specifications.Repositories;
+using Minimal.AppServices.{Feature}.V1.Specs;
+using Minimal.Domains.Features.{Feature}.Entities;
+
+namespace Minimal.AppServices.{Feature}.V1.Actions;
+
+public sealed record Cancel{Entity}Request : Fluents.Requests.IWitResponse<{Entity}Dto>
+{
+    [FromClaim(ClaimTypes.Name)]
+    public string? ByUser { get; set; }
+
+    public required Guid Id { get; init; }
+}
+
+internal sealed class Cancel{Entity}CommandHandler(IRepositorySpec repository, IMapper mapper)
+    : Fluents.Requests.IHandler<Cancel{Entity}Request, {Entity}Dto>
+{
+    public async Task<IResult<{Entity}Dto>> OnHandle(
+        Cancel{Entity}Request request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(request.ByUser))
+        {
+            return Result.Fail<{Entity}Dto>("The caller is not authenticated.");
+        }
+
+        var entity = await repository.FirstOrDefaultAsync(new SpecGet{Entity}(request.Id), cancellationToken);
+
+        if (entity is null)
+        {
+            return Result.Fail<{Entity}Dto>(new NotFoundError($"The {entity} {request.Id} was not found."));
+        }
+
+        if (entity.Status == {Entity}Status.Cancelled)
+        {
+            return Result.Fail<{Entity}Dto>($"The {entity} {request.Id} is already cancelled.");
+        }
+
+        entity.Cancel(request.ByUser);
+
+        return Result.Ok(mapper.Map<{Entity}Dto>(entity));
+    }
+}
+```
+
+The "already cancelled" guard lives in the **handler**, not on `Cancel()` itself — see
+`dknet-ddd-principles` for why that's the right layer for a cross-cutting business rule check.
+
+### Step 5: Create Action — Delete.cs
+
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Delete.cs`, mirroring
+`Minimal.AppServices/ManualSample/V1/Actions/Delete.cs`:
+
+```csharp
+using DKNet.EfCore.Specifications.Extensions;
+using DKNet.EfCore.Specifications.Repositories;
 using Minimal.AppServices.{Feature}.V1.Specs;
 
 namespace Minimal.AppServices.{Feature}.V1.Actions;
 
-/// <summary>
-/// Command to delete a {entity} by ID.
-/// </summary>
 public sealed record Delete{Entity}Request : Fluents.Requests.INoResponse
 {
     [FromClaim(ClaimTypes.Name)]
@@ -290,7 +381,7 @@ public sealed record Delete{Entity}Request : Fluents.Requests.INoResponse
     public required Guid Id { get; init; }
 }
 
-internal sealed class Delete{Entity}Handler(IRepositorySpec repository)
+internal sealed class Delete{Entity}CommandHandler(IRepositorySpec repository)
     : Fluents.Requests.IHandler<Delete{Entity}Request>
 {
     public async Task<IResultBase> OnHandle(Delete{Entity}Request request, CancellationToken cancellationToken)
@@ -304,7 +395,7 @@ internal sealed class Delete{Entity}Handler(IRepositorySpec repository)
 
         if (entity is null)
         {
-            return Result.Fail(new NotFoundError($"The {Entity} {request.Id} was not found."));
+            return Result.Fail(new NotFoundError($"The {entity} {request.Id} was not found."));
         }
 
         repository.Delete(entity);
@@ -314,39 +405,11 @@ internal sealed class Delete{Entity}Handler(IRepositorySpec repository)
 }
 ```
 
-For a "reject this operation if the entity is already in state X" business rule (rather than an unconditional delete), see `CancelPurchaseOrderRequest`'s handler — it fetches the entity, then adds one extra check (`if (order.Status == PurchaseOrderStatus.Cancelled) return Result.Fail(...)`) before calling the mutation method.
-
-### Step 5: Create Query Specification
-
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Specs/SpecGet{Entity}.cs`:
-
-```csharp
-using DKNet.EfCore.Specifications;
-
-namespace Minimal.AppServices.{Feature}.V1.Specs;
-
-internal sealed class SpecGet{Entity} : Specification<{Entity}>
-{
-    public SpecGet{Entity}(Guid? byId = null, string? by{UniqueField} = null)
-    {
-        var predicator = CreatePredicate();
-
-        if (byId is not null)
-            predicator = predicator.And(a => a.Id == byId);
-
-        if (!string.IsNullOrEmpty(by{UniqueField}))
-            predicator = predicator.And(a => a.{UniqueField} == by{UniqueField});
-
-        WithFilter(predicator);
-    }
-}
-```
-
 ### Step 6: Create the Event Handler
 
 The event record itself lives with the entity in `Minimal.Domains` (see `PurchaseOrderCreatedEvent.cs` — a one-line `public sealed record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, decimal Amount);`), raised by `AddEvent(...)` in the constructor. The AppServices layer only owns the **consumer**:
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Events/{Entity}CreatedEventHandler.cs`:
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Events/{Entity}CreatedEventHandler.cs`:
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -372,65 +435,127 @@ internal sealed class {Entity}CreatedEventHandler(ILogger<{Entity}CreatedEventHa
 }
 ```
 
-If the entity instead declares `[RaisesEvent(...)]` (the `Product` shape), the event record is generated for you and never appears as a source file — only the consumer above is still hand-written; see the generated-actions section above.
+Mirror `Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs`.
+
+If the entity instead declares `[RaisesEvent(...)]` (the `Product` shape), the event record is generated for you and never appears as a source file — only the consumer above is still hand-written. The generator raises events; it does not consume them.
+
+### Step 7: Create Query Specification
+
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Specs/SpecGet{Entity}.cs`, mirroring
+`Minimal.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs`:
+
+```csharp
+using DKNet.EfCore.Specifications.Definitions;
+using Minimal.Domains.Features.{Feature}.Entities;
+
+namespace Minimal.AppServices.{Feature}.V1.Specs;
+
+internal sealed class SpecGet{Entity} : Specification<{Entity}>
+{
+    public SpecGet{Entity}(Guid? byId = null, string? by{Field} = null)
+    {
+        var predicator = CreatePredicate();
+
+        if (byId is not null)
+        {
+            predicator = predicator.And(a => a.Id == byId);
+        }
+
+        if (!string.IsNullOrEmpty(by{Field}))
+        {
+            predicator = predicator.And(a => a.{Field} == by{Field});
+        }
+
+        if (byId is null && string.IsNullOrEmpty(by{Field}))
+        {
+            // An unstarted predicate builder compiles to WHERE FALSE — without this, "no filter"
+            // would silently match nothing instead of listing every row. A real bug this pattern
+            // hit once; see docs/samples/manual-vs-automated.md.
+            predicator = predicator.And(_ => true);
+        }
+
+        WithFilter(predicator);
+    }
+}
+```
+
+Add a paired `Get{Entity}ById.cs` / `List{Entity}s.cs` query+handler pair under `Queries/` when you
+need a read side beyond what the spec's filter alone provides — see
+`Minimal.AppServices/ManualSample/V1/Queries/GetPurchaseOrderById.cs` and `ListPurchaseOrders.cs` for
+the `Fluents.Queries.IHandler<TQuery, TDto>` / `IPageHandler<TQuery, TDto>` shapes.
+
+### Step 8: Add Entity to GlobalUsings (if frequently referenced)
+
+Edit `ApiEndpoints/Minimal.AppServices/GlobalUsings.cs`:
+
+```csharp
+global using Minimal.Domains.Features.{Feature}.Entities;
+```
 
 ---
 
 ## Reference: PurchaseOrder Actions (actual production code)
 
-Every request/validator/handler below is hand-written — `Minimal.AppServices/ManualSample/V1/Actions/`. Nothing here uses `[MapsFrom]`; instead the acting user comes from `[FromClaim(ClaimTypes.Name)]` on the request, populated by `AddContextualRequestPopulation` before the handler runs.
-
-### Create Pattern (`Create.cs`)
-- `CreatePurchaseOrderRequest : Fluents.Requests.IWitResponse<PurchaseOrderDto>` — `ByUser` via `[FromClaim(ClaimTypes.Name)]`, `CustomerName` `[Required][StringLength(200, MinimumLength = 1)]`, `Amount`
-- `CreatePurchaseOrderCommandValidator : AbstractValidator<CreatePurchaseOrderRequest>` — `CustomerName` `NotEmpty().Length(1, 200)`, `Amount` `GreaterThan(0)`
+### Create Pattern
+- `CreatePurchaseOrderRequest : Fluents.Requests.IWitResponse<PurchaseOrderDto>` — `ByUser` via `[FromClaim(ClaimTypes.Name)]`, `CustomerName` `[Required][StringLength(200)]`, `Amount`
+- `CreatePurchaseOrderCommandValidator : AbstractValidator<CreatePurchaseOrderRequest>` — `NotEmpty().Length(1,200)` on `CustomerName`, `GreaterThan(0)` on `Amount`
 - `CreatePurchaseOrderCommandHandler(IRepositorySpec, IMapper) : Fluents.Requests.IHandler<CreatePurchaseOrderRequest, PurchaseOrderDto>`
-- Flow: guard on empty `ByUser` → `new PurchaseOrder(request.CustomerName, request.Amount, request.ByUser)` (the constructor raises `PurchaseOrderCreatedEvent` itself) → `repository.AddAsync` → `mapper.ResultOf<PurchaseOrderDto>(order)`
+- Flow: check `ByUser` is present → `new PurchaseOrder(request.CustomerName, request.Amount, request.ByUser)` (constructor raises `PurchaseOrderCreatedEvent` itself) → `repository.AddAsync` → `mapper.ResultOf<PurchaseOrderDto>(order)`
 
-### Update Pattern (`Update.cs`)
+### Update Pattern
 - `UpdatePurchaseOrderRequest : Fluents.Requests.IWitResponse<PurchaseOrderDto>` — `Id`, `Amount`
-- Validator only checks `Amount` `GreaterThan(0)` — deliberately **no** `NotEmpty` rule on `Id`, because `Id` comes from the route, not the body; an unknown/empty id 404s from the repository lookup instead (a real bug this sample's build caught and fixed)
-- Handler: fetch via `SpecGetPurchaseOrder(request.Id)` → 404 (`NotFoundError`) on miss → `order.ChangeAmount(request.Amount, request.ByUser)` → `Result.Ok(mapper.Map<PurchaseOrderDto>(order))`
+- Handler: check `ByUser` → fetch via `SpecGetPurchaseOrder` → 404 (`NotFoundError`) on miss → `order.ChangeAmount(request.Amount, request.ByUser)` → `Result.Ok(mapper.Map<PurchaseOrderDto>(order))`
 
-### Cancel Pattern (`Cancel.cs`)
-- `CancelPurchaseOrderRequest : Fluents.Requests.IWitResponse<PurchaseOrderDto>` — `Id` only, no validator needed (nothing beyond presence/shape to check)
-- Handler: fetch via spec → 404 on miss → **business-rule guard**: `if (order.Status == PurchaseOrderStatus.Cancelled) return Result.Fail<PurchaseOrderDto>(...)` → `order.Cancel(request.ByUser)` → `Result.Ok(mapper.Map<PurchaseOrderDto>(order))`. This is the pattern to copy whenever an operation must reject an already-applied state transition — that rule lives in the handler because it needs to *read* current state before deciding, but the transition itself (`Cancel`) still lives on the entity.
+### Cancel Pattern (business-rule transition)
+- `CancelPurchaseOrderRequest : Fluents.Requests.IWitResponse<PurchaseOrderDto>` — `Id`
+- Handler: fetch via spec → 404 on miss → fail with a plain message if `order.Status == PurchaseOrderStatus.Cancelled` → `order.Cancel(request.ByUser)` → return mapped DTO
 
-### Delete Pattern (`Delete.cs`)
-- `DeletePurchaseOrderRequest : Fluents.Requests.INoResponse` — `Id` only
-- Handler: fetch via spec → 404 (`NotFoundError`) on miss → `repository.Delete(order)` → `Result.Ok()`
+### Delete Pattern
+- `DeletePurchaseOrderRequest : Fluents.Requests.INoResponse` — `Id`
+- Handler: check `ByUser` → fetch via spec → 404 on miss → `repository.Delete(order)` → `Result.Ok()`
 
----
+### Alternative: generated CRUD (`[CrudCreate]`/`[CrudUpdate]`)
 
-## Alternative: generated actions (no hand-written layer at all)
+For an entity like `Product` that declares `[CrudCreate]` on its constructor and `[CrudUpdate]` on a
+mutation method, **this entire layer is generated, not hand-written** — there is no `Actions/`
+folder, no validator, no handler class in source for create/update at all. The
+`DKNet.SlimBus.Generators` analyzer produces `CreateProductRequest`/`ChangePriceProductRequest`
+(requests) and `CreateProductHandler`/`ChangePriceProductHandler` (handlers) in the
+`Minimal.AppServices.Crud` namespace, inspectable only after a build (not committed to source).
+`GetById`/`GetList`/`Delete` skip even that — they map straight to `DKNet.AspCore.Extensions`'s
+generic `MapGetById<TEntity,TKey,TDto>`/`MapGetList`/`MapDeleteById`, so there's no per-entity query,
+spec, or handler class for those regardless of generator use.
 
-For an entity whose constructor is `[CrudCreate]` and whose mutation method is `[CrudUpdate]` (see `Product` in **dknet-domain-entity**), this entire Actions layer — request, validator, handler — does not exist as hand-written source. `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs` is one line (`[GenerateDto(typeof(Product))] public sealed partial record ProductDto;`), and the `DKNet.SlimBus.Generators` analyzer produces `CreateProductRequest`/`CreateProductHandler` and `ChangePriceProductRequest`/`ChangePriceProductHandler` in the `Minimal.AppServices.Crud` namespace (inspect them under `obj/Generated/` after a build — they are not committed to source). There is no generated FluentValidation validator either.
-
-The DataAnnotations on `Product`'s `[CrudCreate]` constructor parameters and `[CrudUpdate]` method parameter (`[Required]`, `[StringLength]`, `[Range]`) are forwarded onto the generated request's properties — but **not enforced**: this template's own routing convention (see **dknet-endpoint-config**) maps generated CRUD routes through a generic library wrapper the .NET 10 validation source generator can't see through. Confirmed live: `POST /v1/products` with a negative price returns `201`, not `400`. Pick the generated shape only when you either don't need that validation enforced, or the entity's rules are simple enough that this gap is acceptable — see `docs/samples/manual-vs-automated.md` for the full account.
-
-There is also no generated query/spec layer: `GetById`/`GetList`/`Delete` for `Product` map straight to `DKNet.AspCore.Extensions`'s generic `MapGetById`/`MapGetList`/`MapDeleteById` — no per-entity query object exists to add a filter parameter to.
+**The gap that matters most if you pick this path**: a DataAnnotations attribute on a `[CrudCreate]`/
+`[CrudUpdate]` parameter (e.g. `[Range(0.01, double.MaxValue)]` on `Product.Price`) is forwarded onto
+the generated request property but is **not enforced** — confirmed live, `POST /v1/products` with a
+negative price returns `201`. See `docs/samples/manual-vs-automated.md` for the full explanation
+(the .NET 10 validation source generator can't see through the generic `Map*<TRequest,TDto>` wrapper
+these routes are registered through). Pick the hand-written shape above whenever a request needs
+validation that must actually run.
 
 ---
 
 ## Validation Checklist
 
-- [ ] Response DTO is either `[GenerateDto(typeof(Entity))]` (exposes everything audited) or a hand-written `record` with exactly the fields you want exposed
+- [ ] Response DTO is a hand-written `record` (full control) or uses `[GenerateDto(typeof(Entity))]` (generates every audited property)
 - [ ] Create request implements `Fluents.Requests.IWitResponse<{Dto}>`
-- [ ] Create/Update/Cancel requests carry `[FromClaim(ClaimTypes.Name)] public string? ByUser { get; set; }` for the acting user
+- [ ] Create/Update/Cancel/Delete requests that need the acting user declare `[FromClaim(ClaimTypes.Name)] public string? ByUser { get; set; }` directly — no shared base class
 - [ ] Update request implements `Fluents.Requests.IWitResponse<{Dto}>`
 - [ ] Delete request implements `Fluents.Requests.INoResponse`
-- [ ] Validators are `internal sealed` and extend `AbstractValidator<T>`; no rule on `Id` when it comes from the route
+- [ ] Every handler defensively checks `string.IsNullOrEmpty(request.ByUser)` and fails if missing
+- [ ] Validators are `internal sealed` and extend `AbstractValidator<T>`
 - [ ] Handlers are `internal sealed` with primary constructor injection
 - [ ] Handlers use `IRepositorySpec` (not custom repos)
-- [ ] Every handler guards on `string.IsNullOrEmpty(request.ByUser)` before touching the entity
+- [ ] Create handler checks duplicates via Specification before adding, only when the feature has a uniqueness rule (`PurchaseOrder` has none — not every Create needs this check)
 - [ ] Create handler uses `mapper.ResultOf<T>()` for lazy mapping
-- [ ] Update/Cancel handlers fetch entity via `Specification`, 404 via `NotFoundError` on miss, call a named mutation method, return the mapped DTO
-- [ ] A business-rule guard (e.g. "already cancelled") lives in the handler, right after the fetch, before calling the mutation method
+- [ ] Update handler fetches entity, calls mutation method, returns mapped DTO
 - [ ] Delete handler returns `IResultBase` (not `IResult<T>`)
-- [ ] Domain events are `sealed record` types, raised via `AddEvent(...)` in the entity's own constructor (or declared via `[RaisesEvent]` — see the generated-actions section above)
+- [ ] Domain events are `sealed record` types
 - [ ] Event handlers implement `Fluents.EventsConsumers.IHandler<T>`
 - [ ] Spec class is `internal sealed` extending `Specification<T>`
 - [ ] Namespace follows `Minimal.AppServices.{Feature}.V1.Actions`
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
+- [ ] `dotnet build -c Release` passes
 
 ---
 
@@ -441,10 +566,11 @@ There is also no generated query/spec layer: `GetById`/`GetList`/`Delete` for `P
 | Creating custom `IRepository` interface | Use `IRepositorySpec` — it's already registered |
 | Using `record struct` for requests | Use `record` (reference type) — needed for bus serialization |
 | Making handlers `public` | Must be `internal sealed` |
-| Extending a `RequestBase` class | It doesn't exist in this codebase — declare `[FromClaim(ClaimTypes.Name)] ByUser` directly on the request |
-| Using `Result.Ok(entity)` instead of `mapper.ResultOf<T>()` | Lazy mapping ensures DTO reflects post-SaveChanges state |
-| Adding a `NotEmpty` validator rule on a route-supplied `Id` | It runs before the route value is patched in — let the repository lookup 404 instead (a real bug this template's build hit and fixed) |
-| Trusting `request.ByUser` without a null/empty guard | Every handler in the manual sample checks it first and fails with "The caller is not authenticated." |
+| Reaching for `[MapsFrom]` + `mapper.Map<TEntity>(request)` when the request isn't a 1:1 projection | Construct the entity directly from request fields, as `CreatePurchaseOrderCommandHandler` does — simpler when the request only carries a subset of constructor params plus `ByUser` |
+| Using `Result.Ok(entity)` instead of `mapper.ResultOf<T>()` on Create | Lazy mapping ensures the DTO reflects post-SaveChanges state (audit fields, generated Id) |
+| Skipping the `string.IsNullOrEmpty(request.ByUser)` guard | Every hand-written handler in this template checks it and fails the request rather than trusting an empty claim |
+| Adding a `NotEmpty()` validator rule on a route-bound `Id` | Route values patch in after auto-validation runs — let an unknown/empty id 404 from the spec lookup instead (see `UpdatePurchaseOrderRequest`) |
+| Hand-writing a validator/handler for an entity that already has `[CrudCreate]`/`[CrudUpdate]` | That layer is generated — hand-writing one defeats the point and won't be wired to the generated route |
 
 ---
 

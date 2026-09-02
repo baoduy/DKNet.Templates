@@ -115,7 +115,7 @@
    - Scenarios map to acceptance criteria from specs/contracts
    - Step text matches binding attributes exactly
    - Assertions validate status and payload semantics
-   - `dotnet test src/ApiEndpoints/Minimal.App.BDDTests` passes
+   - `dotnet test ApiEndpoints/Minimal.App.BDDTests` passes
 - **Related Skills**: dknet-crud-operations, dknet-api-endpoints, dknet-feature-documentation
 - **Folder**: [`.github/skills/dknet-bdd-tests/`](./dknet-bdd-tests/)
 

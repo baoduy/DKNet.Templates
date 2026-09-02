@@ -34,7 +34,7 @@ This is the hand-written path — follow it when the plan calls for idempotent w
 1. **Domain** — entity (`AggregateRoot`/`DomainEntity`), owned types, `DomainSchemas` constant, sequence name (if used), domain service interface (if needed). `PurchaseOrder` raises its own creation event by calling `AddEvent(new PurchaseOrderCreatedEvent(...))` directly inside the constructor — no attribute involved.
 2. **Infra mapper** — `internal sealed : DefaultEntityTypeConfiguration<T>`, `base.Configure(builder)` first, indexes, lengths, `ToTable("...", DomainSchemas.X)` (see `PurchaseOrderConfigs`).
 3. **Infra services / static seed data** — `internal sealed` in `.Services` or `Features/<X>/StaticData/` so Scrutor + auto-seeding pick them up (see `PurchaseOrderStaticData`). Wire `.UseAutoDataSeeding(...)` into **both** `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb` — seeding only from one of the two paths means seed rows silently never appear over HTTP (a real bug this template hit once).
-4. **EF migration** — `cd src/ApiEndpoints && ./add-migration.sh <Name>`. Inspect the generated migration before continuing.
+4. **EF migration** — `cd ApiEndpoints && dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`. Inspect the generated migration before continuing.
 5. **AppServices** — hand-written DTO record (no `[GenerateDto]`; see `PurchaseOrderDto` — exposes exactly the fields you write into it), `Create*Request` / `Update*Request` / `Delete*Request` (`Fluents.Requests.IWitResponse<TDto>` or `INoResponse`, `[FromClaim(ClaimTypes.Name)] ByUser` for the acting user — never trust a payload value for it), `AbstractValidator`, `internal sealed` handlers using `IRepositorySpec` + `IMapper`, `SpecGet<Entity>`, domain event record + handler.
 6. **Api endpoint** — new `*V1Endpoint : IEndpointConfig`; map every route with literal `group.MapPost/MapGet/MapPut/MapDelete(...)` calls against the raw minimal-API surface (see `PurchaseOrderV1Endpoint`). Add `.RequiredIdempotentKey()` to the POST chain — clients then send `X-Idempotency-Key: {Guid}`; a replayed key returns the original response instead of creating a duplicate.
 7. **Tests** — invoke `/dknet-unit-tests` and `/dknet-bdd-test` (or follow the corresponding skills directly). Don't claim done until both pass.
@@ -51,9 +51,9 @@ For an entity with no business rule beyond DataAnnotations, skip steps 2–6's A
 
 ## Build/verify gates
 
-Run `dotnet build src/DKNet.Templates.sln -c Release` after each major step (entity+mapper, migration, AppServices, endpoint). The solution enforces warnings-as-errors — do not `--no-warn` your way past failures.
+Run `dotnet build -c Release` after each major step (entity+mapper, migration, AppServices, endpoint). The solution enforces warnings-as-errors — do not `--no-warn` your way past failures.
 
-After implementation: `dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings`.
+After implementation: `dotnet test --settings coverage.runsettings`.
 
 ## Style rules (non-negotiable)
 

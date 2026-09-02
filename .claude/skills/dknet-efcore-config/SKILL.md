@@ -44,7 +44,7 @@ Note: this layer is hand-written the same way for both a hand-written entity and
 ### File Locations
 
 ```
-src/ApiEndpoints/Minimal.Infra/
+ApiEndpoints/Minimal.Infra/
 ├── Features/
 │   └── {Feature}/
 │       ├── Mappers/
@@ -77,7 +77,7 @@ Services are auto-registered when they meet ALL of:
 
 ### Step 1: Create the Mapper Class
 
-Create `src/ApiEndpoints/Minimal.Infra/Features/{Feature}/Mappers/{Entity}Configs.cs`. Both samples
+Create `ApiEndpoints/Minimal.Infra/Features/{Feature}/Mappers/{Entity}Configs.cs`. Both samples
 in this template hand-write this class the same way — nothing about `[CrudCreate]`/`[RaisesEvent]`
 changes this layer (see `PurchaseOrderConfigs` and `ProductConfigs`):
 
@@ -101,6 +101,8 @@ internal sealed class {Entity}Configs : DefaultEntityTypeConfiguration<{Entity}>
         // Property configurations
         builder.Property(p => p.{StringProp}).HasMaxLength({max}).IsRequired();
         builder.Property(p => p.{DecimalProp}).HasPrecision(18, 2);
+        builder.Property(p => p.{OptionalProp}).HasMaxLength({max}).IsRequired(false);
+        builder.Property(p => p.{DateProp}).HasColumnType("Date");
 
         // Table mapping — a DomainSchemas constant, or (as both samples do) an inline literal:
         builder.ToTable("{TableName}", "{schema}");
@@ -118,7 +120,7 @@ internal sealed class {Entity}Configs : DefaultEntityTypeConfiguration<{Entity}>
 ### Step 2: Configure Owned Types (if entity has value objects)
 
 If your entity has an owned value object (a plain class with no independent identity — see
-`dknet-ddd-principles`), register it in `src/ApiEndpoints/Minimal.Infra/Contexts/OwnedDataContext.cs`:
+`dknet-ddd-principles`), register it in `ApiEndpoints/Minimal.Infra/Contexts/OwnedDataContext.cs`:
 
 ```csharp
 // Inside OwnedDataContext, add to the existing ConfigureConventions or OnModelCreating:
@@ -132,7 +134,7 @@ Neither `PurchaseOrder` nor `Product` currently has an owned type — both sampl
 
 ### Step 3: Add Static Seed Data (optional)
 
-Create `src/ApiEndpoints/Minimal.Infra/Features/{Feature}/StaticData/{Entity}StaticData.cs`,
+Create `ApiEndpoints/Minimal.Infra/Features/{Feature}/StaticData/{Entity}StaticData.cs`,
 mirroring `PurchaseOrderStaticData` — inherit `DataSeedingConfiguration<TEntity>` and override
 `GetDataAsync`, using the entity's `internal` rehydration constructor with fixed `Guid`s so seeding
 is idempotent across re-runs:
@@ -171,7 +173,7 @@ call — the migration ran, the seed rows never got inserted. Fixed by adding th
 
 ### Step 4: Implement Domain Service (if interface exists)
 
-Create `src/ApiEndpoints/Minimal.Infra/Services/{Service}.cs`:
+Create `ApiEndpoints/Minimal.Infra/Services/{Service}.cs`:
 
 ```csharp
 using Minimal.Domains.Services;
@@ -203,11 +205,11 @@ internal sealed class {Service} : I{Service}
 ### Step 5: Run Migration
 
 ```bash
-cd src/ApiEndpoints
-./add-migration.sh {MigrationName}
+cd ApiEndpoints
+dotnet ef migrations add {MigrationName} -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
 ```
 
-Verify the generated migration in `src/ApiEndpoints/Minimal.Infra/Migrations/`.
+Verify the generated migration in `ApiEndpoints/Minimal.Infra/Migrations/`.
 
 ---
 
@@ -216,6 +218,7 @@ Verify the generated migration in `src/ApiEndpoints/Minimal.Infra/Migrations/`.
 ### Mappers (both hand-written)
 
 ```csharp
+// Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs
 internal sealed class PurchaseOrderConfigs : DefaultEntityTypeConfiguration<PurchaseOrder>
 {
     public override void Configure(EntityTypeBuilder<PurchaseOrder> builder)
@@ -230,6 +233,7 @@ internal sealed class PurchaseOrderConfigs : DefaultEntityTypeConfiguration<Purc
     }
 }
 
+// Minimal.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs
 internal sealed class ProductConfigs : DefaultEntityTypeConfiguration<Product>
 {
     public override void Configure(EntityTypeBuilder<Product> builder)
@@ -252,15 +256,15 @@ table without a lookup.
 
 ### Service Implementation
 
+Neither sample implements a domain service — Step 4 above is the generic template for when a feature
+needs one. `IMembershipService` / `SequenceService` / `Sequences` are pre-existing infra scaffolding
+for exactly that pattern, wired by neither `PurchaseOrder` nor `Product`. The real implementation is a
+one-line primary-constructor subclass, not a hand-written `NextValueAsync` body:
+
 ```csharp
-internal sealed class MembershipService(ISequenceServices sequence) : IMembershipService
-{
-    public async Task<string> NextValueAsync()
-    {
-        var seq = await sequence.NextValueAsync(Sequences.MembershipSeq);
-        return $"MEM-{seq:D6}";
-    }
-}
+// Minimal.Infra/Services/MembershipService.cs
+internal sealed class MembershipService(CoreDbContext dbContext)
+    : SequenceService(dbContext, Sequences.Membership), IMembershipService;
 ```
 
 ---
@@ -277,8 +281,8 @@ internal sealed class MembershipService(ISequenceServices sequence) : IMembershi
 - [ ] If adding `IDataSeedingConfiguration<T>`, `UseAutoDataSeeding` is wired into **both** `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb` — check both call sites, not just one
 - [ ] File placed in `Minimal.Infra/Features/{Feature}/Mappers/`
 - [ ] Service implementations are `internal sealed` in `.Services` namespace
-- [ ] Migration generates cleanly: `./add-migration.sh {Name}`
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
+- [ ] Migration generates cleanly: `dotnet ef migrations add {Name} -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`
+- [ ] `dotnet build -c Release` passes
 
 ---
 

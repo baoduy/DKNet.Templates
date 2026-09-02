@@ -7,7 +7,7 @@ description: Add DKNet's Core, EF Core, messaging/CQRS, or blob-storage NuGet pa
 
 This skill is for a project that already exists with its own namespaces and folder layout — it does not assume `dotnet new dknet-minimal` was run, and never references `Minimal.*` types. If you're scaffolding a brand-new solution from the template instead, use **dknet-project-structure** and the other `dknet-*` skills.
 
-Each package below is independent — install only what the feature needs. All packages target **.NET 10.0+** (EF Core packages additionally need **EF Core 10.0+**); consult `src/Directory.Packages.props` (or your project's own central version file) before adding a version attribute per-project.
+Each package below is independent — install only what the feature needs. All packages target **.NET 10.0+** (EF Core packages additionally need **EF Core 10.0+**); consult `Directory.Packages.props` (or your project's own central version file) before adding a version attribute per-project.
 
 ---
 

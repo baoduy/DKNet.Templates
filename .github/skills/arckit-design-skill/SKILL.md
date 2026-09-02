@@ -57,15 +57,15 @@ Analyze the plan.md for completeness:
 **If gaps exist**, ask up to 5 targeted clarification questions and wait for answers before finalizing the design.
 
 ### 3. Map Feature to Repository Patterns
-- **Endpoint location**: Api/ApiEndpoints/<Feature>V1/...
-- **Command/Query handlers**: AppServices/Features/<Feature>/Actions/ or /Queries/
+- **Endpoint location**: `Minimal.Api/ApiEndpoints/<Feature>/<Entity>V1Endpoint.cs`
+- **Command/Query handlers**: `Minimal.AppServices/<Feature>/V1/Actions/` or `/Queries/`
 - **Validators**: same file as command, internal sealed class
-- **Services**: AppServices/Features/<Feature>/Services/
-- **Domain aggregate**: Mx.Pgw.Domains/.../<DomainName>/ (UpperCamelCase)
-- **Event handlers**: AppServices/Features/<Feature>/EventHandlers/
-- **Repositories**: Infra layer, use generic IRepository<T> and specs
-- **EF Core config**: Infra/Contexts/Configurations/<Entity>Configuration.cs
-- **Migrations**: Infra/Migrations/ (use add-migration.sh script)
+- **Services**: `Minimal.Infra/Services/` (`internal sealed`, `.Services` namespace)
+- **Domain aggregate**: `Minimal.Domains/Features/<Feature>/Entities/` (UpperCamelCase)
+- **Event handlers**: `Minimal.AppServices/<Feature>/V1/Events/`
+- **Repositories**: Infra layer — use `IRepositorySpec` with a `Specification`; do not add a per-entity repo interface
+- **EF Core config**: `Minimal.Infra/Features/<Feature>/Mappers/<Entity>Configs.cs`
+- **Migrations**: `Minimal.Infra/Migrations/` — run `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj` from `ApiEndpoints/`
 
 ### 4. Design Layered Architecture
 Respect the standard .NET vertical-slice pattern:
@@ -88,7 +88,7 @@ Respect the standard .NET vertical-slice pattern:
 
 **Infra Layer** (persistence and external integrations):
 - EF Core DbContext, configurations, migrations.
-- Generic repositories implementing IRepository<T>, IReadRepository<T>.
+- Generic repositories implementing IRepositorySpec.
 - External client implementations.
 - Event publishers/subscribers wiring.
 
@@ -106,7 +106,7 @@ Example slot to fill:
 |---|---|---|---|---|---|
 | Feature service | IOrderSummaryService | OrderSummaryService | CreateOrderHandler | Scoped | AddOrderServices (ext method) |
 | Mapper | IMapper | Mapster config | Handler | Singleton | TypeAdapterConfig.GlobalSettings |
-| Repo | IRepository<Order> | Repository<Order> | Service | Scoped | AddRepositories |
+| Repo | IRepositorySpec | Repository<Order> | Service | Scoped | AddRepositories |
 
 ### 6. Design Data and Persistence Architecture
 Address:
@@ -314,12 +314,12 @@ Validate the architecture against three criteria:
 **Repository Architecture Constraints**
 - [ ] Respects vertical-slice pattern.
 - [ ] Api → AppServices → Domains/Infra layer boundaries maintained.
-- [ ] Features organized under AppServices/Features/<Feature>/.
+- [ ] Features organized under `Minimal.AppServices/<Feature>/V1/`.
 - [ ] Naming follows UpperCamelCase for commands, queries, DTOs.
-- [ ] Event handlers under EventHandlers/ subfolder.
-- [ ] Repositories use generic IRepository<T> and specs.
-- [ ] EF configurations under Infra/Contexts/Configurations/.
-- [ ] Migrations use add-migration.sh helper script.
+- [ ] Event handlers under the `Events/` subfolder.
+- [ ] Data access goes through `IRepositorySpec` + a `Specification`.
+- [ ] EF configurations under `Minimal.Infra/Features/<Feature>/Mappers/`.
+- [ ] Migrations created with `dotnet ef migrations add ... -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`.
 
 **Pass/Fail Verdict**
 
@@ -367,7 +367,7 @@ internal sealed class CreateThingRequestValidator : AbstractValidator<CreateThin
 }
 
 internal sealed class CreateThingRequestHandler(
-    IRepository<Thing> repo,
+    IRepositorySpec repo,
     IMapper mapper)
     : Fluents.Requests.IHandler<CreateThingRequest, ThingDto>
 {
@@ -417,7 +417,7 @@ public interface IOrderCancellationService
 }
 
 internal sealed class OrderCancellationService(
-    IRepository<Order> repo,
+    IRepositorySpec repo,
     IEventPublisher eventPublisher)
     : IOrderCancellationService
 {

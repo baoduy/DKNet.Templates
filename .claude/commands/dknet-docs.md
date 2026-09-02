@@ -1,5 +1,5 @@
 ---
-description: Generate or refresh feature documentation (README + architecture diagrams + API reference) under src/docs or docs/features for an implemented DKNet feature.
+description: Generate or refresh feature documentation (README + architecture diagrams + API reference) under docs or docs/features for an implemented DKNet feature.
 argument-hint: <Feature>
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
@@ -15,7 +15,16 @@ You are producing authoritative feature documentation for a vertical slice that 
 ## Steps
 
 1. Inspect the implemented slice to harvest facts: entity properties, mapper indexes, request/response DTOs, validator rules, endpoint routes, event names, test coverage.
-2. Render the four required artifacts under `docs/features/<feature>/` (or `src/docs/<feature>/` if the slice is template-internal):
+   Determine which flow the slice uses (a `[CrudCreate]` on the entity means the automated flow) and
+   document it explicitly — a reader cannot tell from the route table alone, and the two flows differ
+   in behavior a consumer will hit:
+   - whether the create route is idempotent (`X-Idempotency-Key`),
+   - whether validation is enforced (it is **not** on generated routes — say so plainly rather than
+     listing a `[Range]` as if it returns `400`),
+   - how the acting user is attributed (`[FromClaim]` vs `DataOwnerHook`).
+   For automated slices, read event names off the compiled assembly, not off a guess at the
+   composition rule.
+2. Render the four required artifacts under `docs/features/<feature>/` (or `docs/<feature>/` if the slice is template-internal):
    - `README.md` (feature overview + quick links)
    - `architecture.md` (Mermaid diagrams: layer flow, sequence for Create, ER snippet)
    - `data-model.md`

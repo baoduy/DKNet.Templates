@@ -44,11 +44,6 @@ Additionally, tests should include at least one DTO consistency check when the f
 4. **Domain entity constructor** signature (to seed test data directly)
 5. **Business rules** to cover: duplicate checks, not-found paths, validation failures, guarded state transitions (e.g. `PurchaseOrder.Cancel` rejecting an already-cancelled order)
 
-**Status on this branch**: neither `PurchaseOrder` nor `Product` has a committed unit or BDD test
-suite yet — a separate QA cycle authors the full suite for both samples at Verify. Nothing under
-`Minimal.App.Tests/Integration/ManualSample/` or `.../AutomatedSample/` exists to copy from today;
-use the generic pattern below and the real `Actions`/`Entities` source files as your only ground truth.
-
 ---
 
 ## Project Conventions
@@ -56,7 +51,7 @@ use the generic pattern below and the real `Actions`/`Entities` source files as 
 ### Test Project Structure
 
 ```
-src/ApiEndpoints/Minimal.App.Tests/
+ApiEndpoints/Minimal.App.Tests/
 ├── GlobalUsings.cs                         ← AutoBogus, Shouldly, JsonSerializer, IMapper
 ├── Integration/
 │   ├── Support/
@@ -104,7 +99,7 @@ You still need explicit `using` for:
 
 ### Step 1: Create the Test Class File
 
-Create `src/ApiEndpoints/Minimal.App.Tests/Integration/{Feature}/V1/{Entity}ActionsIntegrationTests.cs`:
+Create `ApiEndpoints/Minimal.App.Tests/Integration/{Feature}/V1/{Entity}ActionsIntegrationTests.cs`:
 
 ```csharp
 using DKNet.EfCore.Specifications;
@@ -390,33 +385,50 @@ public void {Entity}MappingShouldProduceValidDto()
 
 ---
 
-## Reference: what to write for PurchaseOrder / Product (no committed suite exists yet)
+## Reference: the committed suite for PurchaseOrder / Product
 
-There is no existing `PurchaseOrderActionsIntegrationTests` or `ProductActionsIntegrationTests` file
-to read on this branch — describing the pattern generically, grounded in the real `Actions`/`Entities`
-source, is the honest thing to do here rather than inventing a path that doesn't exist:
+Both samples already have tests. **Read them before writing new ones** — mirror their shape rather
+than inventing a parallel structure:
 
-A test class following `<Entity>ActionsIntegrationTests(ApiFixture fixture) : IClassFixture<ApiFixture>`
-naming, resolving `IMessageBus` and `IRepositorySpec` from the same `fixture.CreateScope()`, should
-cover — for `PurchaseOrder` (reading `Minimal.AppServices/ManualSample/V1/Actions/*.cs` as the source
-of truth for exact behavior):
+| File | Tests |
+|---|---:|
+| `Minimal.App.Tests/Integration/ManualSample/V1/PurchaseOrderActionsIntegrationTests.cs` | 13 |
+| `Minimal.App.Tests/Integration/ManualSample/V1/PurchaseOrderSecurityTests.cs` | 3 |
+| `Minimal.App.Tests/Integration/ManualSample/V1/PurchaseOrderListPagingTests.cs` | 3 |
+| `Minimal.App.Tests/Unit/ManualSample/` (entity, validators, spec, static data) | 16 |
+| `Minimal.App.Tests/Integration/AutomatedSample/V1/ProductSecurityTests.cs` | 4 |
+| `Minimal.App.Tests/Integration/AutomatedSample/V1/ProductOwnershipIsolationTests.cs` | 3 |
+| `Minimal.App.Tests/Unit/AutomatedSample/` (entity, notification handler) | 8 |
 
-| Test | What it proves |
+`PurchaseOrderActionsIntegrationTests` is the canonical exemplar — a
+`<Entity>ActionsIntegrationTests(ApiFixture fixture) : IClassFixture<ApiFixture>` class resolving
+`IMessageBus` and `IRepositorySpec` from the same `fixture.CreateScope()`. What it covers:
+
+| Test method | What it proves |
 |------|---------------|
-| Create — happy path | `bus.Send(new CreatePurchaseOrderRequest{...})` persists via `repository.AddAsync`; `PurchaseOrderCreatedEvent` fires |
-| Create — missing `ByUser` | `CreatePurchaseOrderCommandHandler` fails with `"The caller is not authenticated."` when `ByUser` is empty |
-| Update — happy path | `ChangeAmount` persists; `Result.Ok` returns the mapped DTO |
-| Update — not found | Fails with `NotFoundError` for an unknown `Id` |
-| Cancel — happy path | `order.Status` transitions to `Cancelled` |
-| Cancel — already cancelled | Handler's guard (`order.Status == PurchaseOrderStatus.Cancelled`) fails the request — the concrete business-rule test this sample exists to demonstrate |
-| Delete — happy path / not found | Mirrors the Update not-found shape |
+| `Create_ShouldPersistOrder_AndReturnMatchingDto` | `bus.Send(new CreatePurchaseOrderRequest{...})` persists via `repository.AddAsync`; returns the mapped DTO |
+| `Create_ShouldFail_WhenByUserIsMissing` | The handler's `string.IsNullOrEmpty(request.ByUser)` guard fails the request |
+| `Update_ShouldChangeAmount_WhenOrderExists` | `ChangeAmount` persists; `Result.Ok` returns the mapped DTO |
+| `Update_ShouldFail_WhenOrderNotFound` | Fails with `NotFoundError` for an unknown `Id` |
+| `Cancel_ShouldSucceedOnce_ThenFail_WhenAlreadyCancelled` | The `order.Status == PurchaseOrderStatus.Cancelled` guard — the concrete business-rule test this sample exists to demonstrate |
+| `Cancel_ShouldFail_WhenOrderNotFound` / `Delete_ShouldFail_WhenOrderNotFound` | Same not-found shape on every action |
+| `Delete_ShouldRemoveOrder` | Delete returns `IResultBase`; assert `IsSuccess`, not `Value` |
+| `*_ShouldFail_WhenByUserIsMissing` (Update / Cancel / Delete) | All four hand-written handlers carry the same `ByUser` guard |
+| `GetById_ShouldReturnNull_WhenNotFound`, `List_ShouldFilterByCustomerName` | Query paths through the spec |
 
 For `Product` (`AutomatedSample`), there is no hand-written handler to unit-test at all for
 create/update — the generated `CreateProductHandler`/`ChangePriceProductHandler` are produced code,
 and this template's own convention doesn't unit-test generated handlers directly. Coverage for
 `Product` instead centers on the entity's declared behavior (`[RaisesEvent]` firing on save — an
-integration-level assertion through `ApiFixture`, not a handler-level one) and the hand-written
-`ProductCreatedEventHandler`/`ProductCreatedNotificationHandler` consumers.
+integration-level assertion through `ApiFixture`, not a handler-level one), row-level ownership
+isolation, and the hand-written `ProductCreatedEventHandler`/`ProductCreatedNotificationHandler`
+consumers.
+
+**Do not write a validation test against a generated route.** Per
+`docs/samples/manual-vs-automated.md`, a negative `Price` is expected to **succeed** (`201`), not
+fail — the forwarded `[Range]` is never enforced under this template's generated-route convention. If
+you assert that gap, assert what actually happens; never "fix" such a test by relaxing it into
+claiming the validation runs.
 
 The same scope provides both `IMessageBus` and `IRepositorySpec` — they share the same `DbContext` instance, so `SaveChangesAsync` on the repository commits what the bus handler staged.
 
@@ -435,8 +447,8 @@ The same scope provides both `IMessageBus` and `IRepositorySpec` — they share 
 - [ ] Seeding test data goes through `repository.AddAsync` + `SaveChangesAsync` (not `bus.Send`)
 - [ ] `ByUser` is always set on requests (e.g., `"integration-test"`)
 - [ ] Per-feature fixture calls `base.ConfigureWebHost(builder)` before adding services
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
-- [ ] `dotnet test src/DKNet.Templates.sln` passes with all new tests green
+- [ ] `dotnet build -c Release` passes
+- [ ] `dotnet test` passes with all new tests green
 
 ---
 
@@ -458,11 +470,11 @@ The same scope provides both `IMessageBus` and `IRepositorySpec` — they share 
 After writing integration tests, run:
 
 ```bash
-dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage"
+dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
 ```
 
 To add a new migration after testing revealed schema gaps:
 
 ```bash
-cd src/Minimal.ApiEndpoints && ./add-migration.sh <MigrationName>
+cd ApiEndpoints && dotnet ef migrations add <MigrationName> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
 ```
