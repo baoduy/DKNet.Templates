@@ -21,6 +21,9 @@
     <AnalysisMode>All</AnalysisMode>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel>
   </PropertyGroup>
   <PropertyGroup>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -78,6 +81,7 @@
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageVersion Include="OwaspHeaders.Core" Version="10.4.0" />
     <PackageVersion Include="OpenTelemetry" Version="1.18.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.18.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
@@ -142,7 +146,11 @@
       CA1822; <!-- Mark member static when instance state is not accessed. -->
       CA1510; <!-- Prefer ArgumentNullException.ThrowIfNull. -->
       CA1816; <!-- Dispose methods should call GC.SuppressFinalize. -->
-      S2699; <!-- Test methods should contain at least one assertion. --></WarningsAsErrors>
+      S2699; <!-- Test methods should contain at least one assertion. -->
+      NU1901; <!-- Package with known low severity vulnerability. -->
+      NU1902; <!-- Package with known moderate severity vulnerability. -->
+      NU1903; <!-- Package with known high severity vulnerability. -->
+      NU1904; <!-- Package with known critical severity vulnerability. --></WarningsAsErrors>
     <!-- Suppressed warnings — accepted trade-offs or style preferences. -->
     <NoWarn>
       ASPIRE002; <!-- .NET Aspire analyzer project-specific guidance. -->

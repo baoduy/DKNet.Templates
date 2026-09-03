@@ -67,7 +67,7 @@
   ],
   "mainPath": [
     "request",
-    "cors",
+    "edge",
     "limiter",
     "auth",
     "filters",
@@ -84,13 +84,13 @@
       "width": 170
     },
     {
-      "id": "cors",
+      "id": "edge",
       "lane": "middleware",
       "col": 1,
       "type": "cloud",
-      "label": "CORS + HSTS",
-      "sublabel": "Cors:AllowedOrigins",
-      "tag": "CORS unwired when the list is empty",
+      "label": "Forwarded, headers, CORS",
+      "sublabel": "TrustedProxies, AllowedOrigins",
+      "tag": "security headers ride 200, 404 and 500 alike",
       "width": 170
     },
     {
@@ -98,8 +98,8 @@
       "lane": "middleware",
       "col": 2,
       "type": "cloud",
-      "label": "Routing + rate limiter",
-      "sublabel": "EnableRateLimit, per key",
+      "label": "Routing, bounds, limiter",
+      "sublabel": "bounds and budget per key",
       "width": 170
     },
     {
@@ -109,7 +109,8 @@
       "type": "cloud",
       "label": "Authentication",
       "sublabel": "RequireAuthorization",
-      "width": 170
+      "width": 170,
+      "tag": "default deny unless AllowAnonymous"
     },
     {
       "id": "filters",
@@ -140,11 +141,20 @@
       "width": 170
     },
     {
+      "id": "oversize",
+      "lane": "rejected",
+      "col": 1,
+      "type": "security",
+      "label": "413 Payload Too Large",
+      "sublabel": "body over 1 MB, at the server",
+      "width": 170
+    },
+    {
       "id": "throttled",
       "lane": "rejected",
       "col": 2,
       "type": "security",
-      "label": "429 Too Many Requests",
+      "label": "429, or 504 at 30 s",
       "sublabel": "before auth and validation",
       "width": 170
     },
@@ -178,14 +188,14 @@
   ],
   "edges": [
     {
-      "id": "request-cors",
+      "id": "request-edge",
       "from": "request",
-      "to": "cors",
+      "to": "edge",
       "variant": "emphasis"
     },
     {
-      "id": "cors-limiter",
-      "from": "cors",
+      "id": "edge-limiter",
+      "from": "edge",
       "to": "limiter",
       "variant": "emphasis"
     },
@@ -219,6 +229,14 @@
       "from": "idem",
       "to": "handler",
       "label": "unseen key only"
+    },
+    {
+      "id": "edge-oversize",
+      "from": "edge",
+      "to": "oversize",
+      "label": "body over the 1 MB limit",
+      "variant": "security",
+      "role": "error"
     },
     {
       "id": "limiter-throttled",

@@ -341,17 +341,18 @@ rect.c-bg-rect { fill: var(--bg); }
 
 
         <!-- Edge paths -->
-        <path data-edge-from="auth" data-edge-to="filters" data-edge-label="principal resolved" data-edge-key="0" data-edge-id="auth-filters" data-composition-points="649,272;649,372;742,372" d="M 649 272 L 649 372 L 742 372" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="auth" data-edge-to="filters" data-edge-label="principal resolved" data-edge-key="0" data-edge-id="auth-filters" data-composition-points="649,280;649,372;742,372" d="M 649 280 L 649 372 L 742 372" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="auth" data-edge-to="idem" data-edge-label="routes that opt in" data-edge-key="1" data-edge-id="auth-idem" data-composition-points="564,246;548,246;548,552;827,552;827,524" d="M 564 246 L 548 246 L 548 552 L 827 552 L 827 524" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="auth" data-edge-to="unauthorized" data-edge-label="rejected" data-edge-key="2" data-edge-id="auth-unauthorized" data-composition-points="564,246;548,246;548,678;649,678;649,650" d="M 564 246 L 548 246 L 548 678 L 649 678 L 649 650" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="cors" data-edge-to="limiter" data-edge-key="3" data-edge-id="cors-limiter" data-composition-points="338,246;366,246" d="M 338 246 L 366 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="filters" data-edge-to="handler" data-edge-key="4" data-edge-id="filters-handler" data-composition-points="912,372;940,372" d="M 912 372 L 940 372" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="filters" data-edge-to="invalid" data-edge-label="rule failed" data-edge-key="5" data-edge-id="filters-invalid" data-composition-points="912,372;928,372;928,678;827,678;827,650" d="M 912 372 L 928 372 L 928 678 L 827 678 L 827 650" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="handler" data-edge-to="problem" data-edge-label="unhandled exception" data-edge-key="6" data-edge-id="handler-problem" data-composition-points="1110,372;1207.2,372;1207.2,624;1110,624" d="M 1110 372 L 1207.2 372 L 1207.2 624 L 1110 624" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="idem" data-edge-to="handler" data-edge-label="unseen key only" data-edge-key="7" data-edge-id="idem-handler" data-composition-points="827,524;827,552;924,552;924,372;940,372" d="M 827 524 L 827 552 L 924 552 L 924 372 L 940 372" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="limiter" data-edge-to="auth" data-edge-key="8" data-edge-id="limiter-auth" data-composition-points="451,272;451,288;649,288;649,272" d="M 451 272 L 451 288 L 649 288 L 649 272" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="limiter" data-edge-to="throttled" data-edge-label="over the window or concurrency limit" data-edge-key="9" data-edge-id="limiter-throttled" data-composition-points="451,272;451,420;350,420;350,624;366,624" d="M 451 272 L 451 420 L 350 420 L 350 624 L 366 624" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="request" data-edge-to="cors" data-edge-key="10" data-edge-id="request-cors" data-composition-points="218,120;253,120;253,212" d="M 218 120 L 253 120 L 253 212" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="edge" data-edge-to="limiter" data-edge-key="3" data-edge-id="edge-limiter" data-composition-points="338,246;366,246" d="M 338 246 L 366 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="edge" data-edge-to="oversize" data-edge-label="body over the 1 MB limit" data-edge-key="4" data-edge-id="edge-oversize" data-composition-points="168,253;20,253;20,624;168,624" d="M 168 253 L 20 253 L 20 624 L 168 624" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="filters" data-edge-to="handler" data-edge-key="5" data-edge-id="filters-handler" data-composition-points="912,372;940,372" d="M 912 372 L 940 372" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="filters" data-edge-to="invalid" data-edge-label="rule failed" data-edge-key="6" data-edge-id="filters-invalid" data-composition-points="912,372;928,372;928,678;827,678;827,650" d="M 912 372 L 928 372 L 928 678 L 827 678 L 827 650" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="handler" data-edge-to="problem" data-edge-label="unhandled exception" data-edge-key="7" data-edge-id="handler-problem" data-composition-points="1110,372;1207.2,372;1207.2,624;1110,624" d="M 1110 372 L 1207.2 372 L 1207.2 624 L 1110 624" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="idem" data-edge-to="handler" data-edge-label="unseen key only" data-edge-key="8" data-edge-id="idem-handler" data-composition-points="827,524;827,552;924,552;924,372;940,372" d="M 827 524 L 827 552 L 924 552 L 924 372 L 940 372" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="limiter" data-edge-to="auth" data-edge-key="9" data-edge-id="limiter-auth" data-composition-points="451,272;451,300;649,300;649,280" d="M 451 272 L 451 300 L 649 300 L 649 280" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="limiter" data-edge-to="throttled" data-edge-label="over the window or concurrency limit" data-edge-key="10" data-edge-id="limiter-throttled" data-composition-points="451,272;451,420;350,420;350,624;366,624" d="M 451 272 L 451 420 L 350 420 L 350 624 L 366 624" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="request" data-edge-to="edge" data-edge-key="11" data-edge-id="request-edge" data-composition-points="218,120;253,120;253,212" d="M 218 120 L 253 120 L 253 212" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Nodes -->
         <g id="node-request" data-node-id="request" data-node-label="HTTP request" tabindex="0" role="button" aria-label="Focus HTTP request, POST a purchase order, Caller › Edge middleware" aria-pressed="false" data-node-kind="external" data-node-sublabel="POST a purchase order" data-node-context="Caller › Edge middleware">
@@ -366,38 +367,39 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="133" y="132" class="t-muted" font-size="8" text-anchor="middle">POST a purchase order</text>
         </g>
 
-        <g id="node-cors" data-node-id="cors" data-node-label="CORS + HSTS" tabindex="0" role="button" aria-label="Focus CORS + HSTS, Cors:AllowedOrigins, Middleware (UseAppConfig) › Edge middleware" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="Cors:AllowedOrigins" data-node-tag="CORS unwired when the list is empty" data-node-context="Middleware (UseAppConfig) › Edge middleware">
-          <title>CORS + HSTS · Cors:AllowedOrigins · Middleware (UseAppConfig) › Edge middleware · CORS unwired when the list is empty</title>
+        <g id="node-edge" data-node-id="edge" data-node-label="Forwarded, headers, CORS" tabindex="0" role="button" aria-label="Focus Forwarded, headers, CORS, TrustedProxies, AllowedOrigins, Middleware (UseAppConfig) › Edge middleware" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="TrustedProxies, AllowedOrigins" data-node-tag="security headers ride 200, 404 and 500 alike" data-node-context="Middleware (UseAppConfig) › Edge middleware">
+          <title>Forwarded, headers, CORS · TrustedProxies, AllowedOrigins · Middleware (UseAppConfig) › Edge middleware · security headers ride 200, 404 and 500 alike</title>
           <rect x="168" y="212" width="170" height="68" rx="6" class="c-mask"/>
           <rect x="168" y="212" width="170" height="68" rx="6" class="c-cloud" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(174 218) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" x="253" y="233" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CORS + HSTS</text>
-          <text x="253" y="250" class="t-muted" font-size="8" text-anchor="middle">Cors:AllowedOrigins</text>
-        <text x="253" y="268" class="t-cloud" font-size="7" text-anchor="middle">CORS unwired when the list is empty</text>
+          <text data-node-label="" x="253" y="233" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Forwarded, headers, CORS</text>
+          <text x="253" y="250" class="t-muted" font-size="8" text-anchor="middle">TrustedProxies, AllowedOrigins</text>
+        <text x="253" y="268" class="t-cloud" font-size="6.1" text-anchor="middle">security headers ride 200, 404 and 500 alike</text>
         </g>
 
-        <g id="node-limiter" data-node-id="limiter" data-node-label="Routing + rate limiter" tabindex="0" role="button" aria-label="Focus Routing + rate limiter, EnableRateLimit, per key, Middleware (UseAppConfig) › Edge middleware" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="EnableRateLimit, per key" data-node-context="Middleware (UseAppConfig) › Edge middleware">
-          <title>Routing + rate limiter · EnableRateLimit, per key · Middleware (UseAppConfig) › Edge middleware</title>
+        <g id="node-limiter" data-node-id="limiter" data-node-label="Routing, bounds, limiter" tabindex="0" role="button" aria-label="Focus Routing, bounds, limiter, bounds and budget per key, Middleware (UseAppConfig) › Edge middleware" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="bounds and budget per key" data-node-context="Middleware (UseAppConfig) › Edge middleware">
+          <title>Routing, bounds, limiter · bounds and budget per key · Middleware (UseAppConfig) › Edge middleware</title>
           <rect x="366" y="220" width="170" height="52" rx="6" class="c-mask"/>
           <rect x="366" y="220" width="170" height="52" rx="6" class="c-cloud" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(372 226) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" x="451" y="241" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Routing + rate limiter</text>
-          <text x="451" y="258" class="t-muted" font-size="8" text-anchor="middle">EnableRateLimit, per key</text>
+          <text data-node-label="" x="451" y="241" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Routing, bounds, limiter</text>
+          <text x="451" y="258" class="t-muted" font-size="8" text-anchor="middle">bounds and budget per key</text>
         </g>
 
-        <g id="node-auth" data-node-id="auth" data-node-label="Authentication" tabindex="0" role="button" aria-label="Focus Authentication, RequireAuthorization, Middleware (UseAppConfig) › Identity" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="RequireAuthorization" data-node-context="Middleware (UseAppConfig) › Identity">
-          <title>Authentication · RequireAuthorization · Middleware (UseAppConfig) › Identity</title>
-          <rect x="564" y="220" width="170" height="52" rx="6" class="c-mask"/>
-          <rect x="564" y="220" width="170" height="52" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(570 226) scale(0.6875)">
+        <g id="node-auth" data-node-id="auth" data-node-label="Authentication" tabindex="0" role="button" aria-label="Focus Authentication, RequireAuthorization, Middleware (UseAppConfig) › Identity" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="RequireAuthorization" data-node-tag="default deny unless AllowAnonymous" data-node-context="Middleware (UseAppConfig) › Identity">
+          <title>Authentication · RequireAuthorization · Middleware (UseAppConfig) › Identity · default deny unless AllowAnonymous</title>
+          <rect x="564" y="212" width="170" height="68" rx="6" class="c-mask"/>
+          <rect x="564" y="212" width="170" height="68" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(570 218) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" x="649" y="241" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Authentication</text>
-          <text x="649" y="258" class="t-muted" font-size="8" text-anchor="middle">RequireAuthorization</text>
+          <text data-node-label="" x="649" y="233" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Authentication</text>
+          <text x="649" y="250" class="t-muted" font-size="8" text-anchor="middle">RequireAuthorization</text>
+        <text x="649" y="268" class="t-cloud" font-size="7" text-anchor="middle">default deny unless AllowAnonymous</text>
         </g>
 
         <g id="node-filters" data-node-id="filters" data-node-label="[FromClaim], validation" tabindex="0" role="button" aria-label="Focus [FromClaim], validation, claims win over the body, Endpoint pipeline › Per-request" aria-pressed="false" data-node-kind="backend" data-node-sublabel="claims win over the body" data-node-tag="validation reaches literal Map* routes only" data-node-context="Endpoint pipeline › Per-request">
@@ -434,15 +436,27 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="827" y="510" class="t-muted" font-size="8" text-anchor="middle">.RequiredIdempotentKey()</text>
         </g>
 
-        <g id="node-throttled" data-node-id="throttled" data-node-label="429 Too Many Requests" tabindex="0" role="button" aria-label="Focus 429 Too Many Requests, before auth and validation, Short-circuited › Edge middleware" aria-pressed="false" data-node-kind="security" data-node-sublabel="before auth and validation" data-node-context="Short-circuited › Edge middleware">
-          <title>429 Too Many Requests · before auth and validation · Short-circuited › Edge middleware</title>
+        <g id="node-oversize" data-node-id="oversize" data-node-label="413 Payload Too Large" tabindex="0" role="button" aria-label="Focus 413 Payload Too Large, body over 1 MB, at the server, Short-circuited › Edge middleware" aria-pressed="false" data-node-kind="security" data-node-sublabel="body over 1 MB, at the server" data-node-context="Short-circuited › Edge middleware">
+          <title>413 Payload Too Large · body over 1 MB, at the server · Short-circuited › Edge middleware</title>
+          <rect x="168" y="598" width="170" height="52" rx="6" class="c-mask"/>
+          <rect x="168" y="598" width="170" height="52" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(174 604) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-node-label="" x="253" y="619" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">413 Payload Too Large</text>
+          <text x="253" y="636" class="t-muted" font-size="8" text-anchor="middle">body over 1 MB, at the server</text>
+        </g>
+
+        <g id="node-throttled" data-node-id="throttled" data-node-label="429, or 504 at 30 s" tabindex="0" role="button" aria-label="Focus 429, or 504 at 30 s, before auth and validation, Short-circuited › Edge middleware" aria-pressed="false" data-node-kind="security" data-node-sublabel="before auth and validation" data-node-context="Short-circuited › Edge middleware">
+          <title>429, or 504 at 30 s · before auth and validation · Short-circuited › Edge middleware</title>
           <rect x="366" y="598" width="170" height="52" rx="6" class="c-mask"/>
           <rect x="366" y="598" width="170" height="52" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(372 604) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" x="451" y="619" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">429 Too Many Requests</text>
+          <text data-node-label="" x="451" y="619" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">429, or 504 at 30 s</text>
           <text x="451" y="636" class="t-muted" font-size="8" text-anchor="middle">before auth and validation</text>
         </g>
 
@@ -496,21 +510,25 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="598.5" y="668" class="t-security" font-size="8" text-anchor="middle">rejected</text>
         </g>
 
+        <g data-edge-from="edge" data-edge-to="oversize" data-edge-label="body over the 1 MB limit" data-edge-key="4" data-edge-id="edge-oversize">
+          <rect x="31.400000000000006" y="233" width="125.19999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="94" y="243" class="t-security" font-size="8" text-anchor="middle">body over the 1 MB limit</text>
+        </g>
 
-        <g data-edge-from="filters" data-edge-to="invalid" data-edge-label="rule failed" data-edge-key="5" data-edge-id="filters-invalid">
+        <g data-edge-from="filters" data-edge-to="invalid" data-edge-label="rule failed" data-edge-key="6" data-edge-id="filters-invalid">
           <rect x="846.1" y="658" width="62.8" height="14" rx="3" class="c-mask"/>
           <text x="877.5" y="668" class="t-security" font-size="8" text-anchor="middle">rule failed</text>
         </g>
-        <g data-edge-from="handler" data-edge-to="problem" data-edge-label="unhandled exception" data-edge-key="6" data-edge-id="handler-problem">
+        <g data-edge-from="handler" data-edge-to="problem" data-edge-label="unhandled exception" data-edge-key="7" data-edge-id="handler-problem">
           <rect x="1108" y="352" width="101.2" height="14" rx="3" class="c-mask"/>
           <text x="1158.6" y="362" class="t-security" font-size="8" text-anchor="middle">unhandled exception</text>
         </g>
-        <g data-edge-from="idem" data-edge-to="handler" data-edge-label="unseen key only" data-edge-key="7" data-edge-id="idem-handler">
+        <g data-edge-from="idem" data-edge-to="handler" data-edge-label="unseen key only" data-edge-key="8" data-edge-id="idem-handler">
           <rect x="834.5" y="532" width="82" height="14" rx="3" class="c-mask"/>
           <text x="875.5" y="542" class="t-muted" font-size="8" text-anchor="middle">unseen key only</text>
         </g>
 
-        <g data-edge-from="limiter" data-edge-to="throttled" data-edge-label="over the window or concurrency limit" data-edge-key="9" data-edge-id="limiter-throttled">
+        <g data-edge-from="limiter" data-edge-to="throttled" data-edge-label="over the window or concurrency limit" data-edge-key="10" data-edge-id="limiter-throttled">
           <rect x="309.1" y="400" width="182.79999999999998" height="14" rx="3" class="c-mask"/>
           <text x="400.5" y="410" class="t-security" font-size="8" text-anchor="middle">over the window or concurrency limit</text>
         </g>

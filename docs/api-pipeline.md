@@ -13,21 +13,26 @@ Where an environment overlay relaxes it, the row says so. Full flag matrix:
 
 | # | Stage | Default |
 |---|---|---|
-| 1 | Antiforgery cookie middleware | `FeatureManagement:EnableAntiforgery` = `false` — not wired |
-| 2 | CORS | `Cors:AllowedOrigins` empty — CORS not wired |
-| 3 | HSTS and HTTPS redirect | `FeatureManagement:EnableHttps` = `true` (`false` in Development/Testing) |
-| 4 | Health-check endpoints | `FeatureManagement:EnableHealthCheck` = `true` |
-| 5 | Routing and endpoint registration | — |
-| 6 | Rate limiting | `FeatureManagement:EnableRateLimit` = `true` (`false` in Development/Testing) |
-| 7 | Authentication / authorization | `FeatureManagement:RequireAuthorization` = `true` (`false` in Development/Testing) |
-| 8 | Global exception handling and OpenAPI/Scalar | `EnableSwagger` = `false` |
-| 9 | `[FromClaim]` population (endpoint filter) | — |
-| 10 | FluentValidation auto-validation (endpoint filter) | — |
-| 11 | Idempotency on POST (endpoint filter) | opt-in per route |
-| 12 | Handler | — |
+| 0 | Kestrel request limits — max body size, header-read timeout, no `Server` header | `FeatureManagement:EnableRequestBounds` = `true` (`false` in Development); server-level, not middleware |
+| 1 | Forwarded headers (`X-Forwarded-For`, `X-Forwarded-Proto`) | `FeatureManagement:EnableForwardedHeaders` = `true` (`false` in Development), `Security:TrustedProxies` empty — forwarded values ignored |
+| 2 | Security response headers | `FeatureManagement:EnableSecurityHeaders` = `true` (`false` in Development) |
+| 3 | Antiforgery cookie middleware | `FeatureManagement:EnableAntiforgery` = `false` — not wired |
+| 4 | CORS | `Cors:AllowedOrigins` empty — CORS not wired |
+| 5 | HSTS and HTTPS redirect | `FeatureManagement:EnableHttps` = `true` (`false` in Development/Testing) |
+| 6 | Health-check endpoints | `FeatureManagement:EnableHealthCheck` = `true` |
+| 7 | Routing and endpoint registration | — |
+| 8 | Request timeouts | `FeatureManagement:EnableRequestBounds` = `true`; 30 s, then `504` |
+| 9 | Rate limiting | `FeatureManagement:EnableRateLimit` = `true` (`false` in Development/Testing) |
+| 10 | Authentication / authorization | `FeatureManagement:RequireAuthorization` = `true` (`false` in Development/Testing) |
+| 11 | Global exception handling and OpenAPI/Scalar | `EnableSwagger` = `false` |
+| 12 | `[FromClaim]` population (endpoint filter) | — |
+| 13 | FluentValidation auto-validation (endpoint filter) | — |
+| 14 | Idempotency on POST (endpoint filter) | opt-in per route |
+| 15 | Handler | — |
 
-That table is registration order in `Minimal.Api/Configs/AppConfig.cs`'s `UseAppConfig`, which is
-execution order. The sections below explain each stage, grouped for reading rather than re-sorted
+Rows 1–15 are registration order in `Minimal.Api/Configs/AppConfig.cs`'s `UseAppConfig`, which is
+execution order; row 0 is not middleware at all — those are Kestrel limits, enforced by the server
+before the first middleware sees the request. The sections below explain each stage, grouped for reading rather than re-sorted
 into that sequence — the table is the authority on what runs when. Two consequences are easy to get wrong:
 
 - **Rate limiting runs before authentication, validation and idempotency.** An over-limit request
@@ -36,11 +41,72 @@ into that sequence — the table is the authority on what runs when. Two consequ
 - **The global exception handler is registered after the endpoints and still wraps them.**
   `WebApplication` appends endpoint execution at the very end of the pipeline, so anything
   registered after `UseEndpointConfigs` still sits upstream of the handler at request time.
+- **Forwarded headers and security headers run before everything else.** The first rewrites the
+  caller's address before CORS or the rate limiter reads it; the second must sit upstream of the
+  exception handler, or an unhandled `500` would answer without security headers.
 
 **API versioning** is absent from the table because it is not a middleware. It shapes the route
 template when the group is registered — see [API versioning](#api-versioning) below.
 
-![Workflow diagram of the request pipeline: a request passes CORS and HSTS, then routing and the rate limiter, then authentication, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 429, 401 or 403, 400, and the 500 problem+json the global exception handler writes.](diagrams/templates-request-pipeline.svg)
+![Workflow diagram of the request pipeline: a request passes the edge middleware that applies forwarded headers, security response headers and CORS, then routing with the request bounds and the rate limiter, then authentication with its default-deny fallback, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 413 for an oversized body, 429 or 504, 401 or 403, 400, and the 500 problem+json the global exception handler writes.](diagrams/templates-request-pipeline.svg)
+
+## Forwarded headers
+
+`Minimal.Api/Configs/ForwardedHeadersConfig.cs` is the first middleware in the pipeline, gated on
+`FeatureManagement:EnableForwardedHeaders` (default `true`; `false` in the `Development` overlay). It
+reads the trusted-proxy list from `Security:TrustedProxies` — **empty in the shipped base file** —
+and:
+
+- **empty list** → `ForwardedHeaders.None`. Nothing is honoured: `Connection.RemoteIpAddress` stays
+  the immediate peer and `Request.Scheme` stays what the peer actually used. This is deliberate.
+  `ForwardedHeadersMiddleware`'s own restriction check is a no-op when `KnownProxies` and
+  `KnownIPNetworks` are both empty — it then trusts the header from *any* peer — so "no trusted
+  proxy configured" has to switch the feature off outright to actually mean "trust nobody".
+- **non-empty list** → `X-Forwarded-For` and `X-Forwarded-Proto` are applied, but only when the
+  immediate peer is one of the listed addresses. `KnownProxies` and `KnownIPNetworks` are cleared
+  first, so ASP.NET Core's seeded loopback entry is gone unless you list `127.0.0.1` yourself.
+
+A caller that is not a listed proxy therefore cannot claim another client's address — its
+`X-Forwarded-For` is ignored and it is rate-limited as itself. Behind an ingress you *do* list,
+each client gets its own rate-limit partition instead of all of them sharing the ingress's.
+
+Entries are single IP addresses parsed with `IPAddress.Parse`; a CIDR range is not accepted. Keys:
+[`configuration-reference.md`](configuration-reference.md#security).
+
+## Security response headers
+
+`Minimal.Api/Configs/SecurityHeadersConfig.cs` (`FeatureManagement:EnableSecurityHeaders`, default
+`true`, `false` in the `Development` overlay) adds the `OwaspHeaders.Core` header set:
+`X-Frame-Options`, `X-Content-Type-Options`, a default `Content-Security-Policy`,
+`X-Permitted-Cross-Domain-Policies`, `Referrer-Policy`, `Cache-Control`, `X-XSS-Protection` and
+`Cross-Origin-Resource-Policy`.
+
+It is registered second — before routing and before the global exception handler — and writes the
+headers from `HttpResponse.OnStarting`, so a `200`, a `404` for an unpublished path and the `500`
+problem+json the exception handler writes all carry them. The `OnStarting` detour is load-bearing:
+the exception-handler path clears the response before writing its own, which would drop headers
+added the ordinary way.
+
+`Strict-Transport-Security` is **not** emitted here — `Minimal.Api/Configs/HttpsConfig.cs` owns that
+header, with its `max-age` from `Https:HstsMaxAgeDays` (default `365` days, and `preload` requested
+only at 365 days or more). One owner, so the header is never sent twice.
+
+## Request bounds
+
+`Minimal.Api/Configs/RequestBoundsConfig.cs` (`FeatureManagement:EnableRequestBounds`, default
+`true`, `false` in the `Development` overlay) states three bounds the template would otherwise
+inherit from Kestrel, all from the `RequestBounds` section:
+
+| Bound | Default | Over the bound |
+|---|---|---|
+| `RequestTimeoutSeconds` | `30` | `504 Gateway Timeout`, from the default request-timeout policy |
+| `MaxRequestBodySizeBytes` | `1048576` (1 MB) | `413 Payload Too Large`, from Kestrel |
+| `RequestHeadersTimeoutSeconds` | `10` | Kestrel drops the connection while the headers are still arriving |
+
+Only the timeout is middleware — `UseRequestTimeouts()` sits right after `UseRouting()`, as ASP.NET
+Core requires, which means it bounds endpoint execution. The other two are server limits enforced
+before any middleware runs, so a request that is both oversized and slow is rejected on size first.
+The same module sets `AddServerHeader = false`: no response names the web-server product.
 
 ## CORS
 
@@ -49,9 +115,16 @@ template when the group is registered — see [API versioning](#api-versioning) 
 `AddCors(...)` nor the `UseCors()` middleware is registered at all — a cross-origin request is still
 served, but the response carries no `Access-Control-Allow-*` header, so the browser refuses to hand
 it to the calling page. This is "not wired", not "wired but permissive". When the array is
-non-empty, the default policy allows exactly those origins, any header and any method; an origin
-that isn't listed is never reflected back. Credentials are never allowed — `AllowCredentials()` is
-not called on any path.
+non-empty, the default policy allows exactly those origins and exactly the methods and headers
+enumerated in `Cors:AllowedMethods` (default `GET, POST, PUT, PATCH` — **no `DELETE`**) and
+`Cors:AllowedHeaders` (default `Authorization`, `Content-Type`, `Accept`, `X-Idempotency-Key`, the
+header the template's own create route requires); an origin, method or header that isn't listed is
+never reflected back, so its preflight fails. Credentials are never allowed — `AllowCredentials()`
+is not called on any path.
+
+Both lists fall back to those defaults only when the key is absent. A key present but empty (`[]`)
+means "nothing allowed" and is not widened back. Per-key detail:
+[`configuration-reference.md`](configuration-reference.md#cors).
 
 Entries are absolute origins: scheme included, no trailing slash and no path —
 `https://app.example.com`, not `app.example.com` or `https://app.example.com/`.
@@ -101,6 +174,12 @@ at once:
   `Minimal.Api/Configs/Auth/AuthConfig.cs`) when it's `true`.
 - The same flag is passed to `UseEndpointConfigs` as `o.RequireAuthorization`, which is applied to
   every route group after mapping and before `IEndpointConfig.Map` runs.
+
+Authorization is **default-deny** when the flag is on: `AddAuthConfig()` sets
+`options.FallbackPolicy` to `RequireAuthenticatedUser()`, so an endpoint that neither declares a
+policy nor declares itself anonymous still requires an authenticated caller — a route published
+outside a configured group is not anonymous by accident. The public health probes at `/healthz` and
+`/` are the declared exception (`.AllowAnonymous()`).
 
 When it is `false` no authentication middleware is added at all — this is not a permissive policy
 but the absence of any identity, which is why the base file must never ship it off.
@@ -182,6 +261,13 @@ The partition key comes from `Minimal.Api/Configs/RateLimits/RateLimitKeyProvide
 `User.Identity.Name`, falling back to the remote IP address, falling back to the request host.
 Since the limiter runs before authentication, `User.Identity.Name` is only populated for a caller
 already authenticated by an earlier middleware — in practice the shipped pipeline partitions by IP.
+
+That IP is `Connection.RemoteIpAddress` as the [forwarded-headers
+middleware](#forwarded-headers) left it: the real client when the immediate peer is a proxy listed
+in `Security:TrustedProxies`, and the immediate peer itself otherwise. The provider never parses
+`X-Forwarded-For` on its own, so an untrusted peer's forwarded claim spends that peer's own budget
+rather than someone else's. Behind an ingress that is not listed — the shipped default, since the
+list is empty — every client shares one partition; list the ingress and they are separated again.
 Both providers are public interfaces you can replace; see
 [`extension-points.md`](extension-points.md#rate-limiting).
 
@@ -213,9 +299,23 @@ raw stack trace.
 
 ## Health checks and OpenAPI/Scalar
 
-- **Health checks** (`FeatureManagement:EnableHealthCheck`, default `true`) — an EF Core
-  connectivity check plus a custom `HealthCheckHandler`, mapped at both `/healthz` and `/` by
-  `Minimal.Api/Configs/Healthz/HealthzConfig.cs`.
+- **Health checks** (`FeatureManagement:EnableHealthCheck`, default `true`) — a `CoreDbContext`
+  connectivity check plus a custom `HealthCheckHandler`, mapped by
+  `Minimal.Api/Configs/Healthz/HealthzConfig.cs` at three paths:
+  - `/healthz` and `/` — anonymous (`.AllowAnonymous()`, so the default-deny fallback policy does
+    not apply). Both evaluate every registered check, so a service whose database is unreachable
+    does not report healthy, but the body is the overall status and nothing else —
+    `{"status":"Healthy"}`. No check name, duration, description or exception text is ever written
+    to this surface, in any state.
+  - `/healthz/detail` — the full per-check report, carrying `.RequireAuthorization()`.
 - **OpenAPI/Scalar** (`FeatureManagement:EnableSwagger`, default `false`) —
   `Minimal.Api/Configs/Swagger/SwaggerConfig.cs` maps the OpenAPI 3.0 document and a Scalar UI at
-  `/docs`, pre-configured with a Bearer-auth scheme.
+  `/docs`, pre-configured with a Bearer-auth scheme. Outside `Development` both carry
+  `.RequireAuthorization()`, so a deployed service's API surface is not readable by whoever finds
+  the URL; in `Development` they stay anonymous.
+
+Both of those `RequireAuthorization()` calls need authorization middleware to evaluate them, and
+that is only wired when `FeatureManagement:RequireAuthorization` is on. With authorization off — the
+`Development` and `Testing` overlays — `/healthz/detail` is anonymous, and so is `/docs` in a
+non-Development environment. The base `appsettings.json` ships the flag on, so a deployed service
+protects both.

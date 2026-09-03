@@ -30,6 +30,11 @@ internal static class AuthConfig
 
         services.AddAuthorization(options =>
         {
+            // Default deny: any endpoint not explicitly declared anonymous requires an authenticated caller.
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+
             // TODO: Replace "sample-scope" with the actual scope value from your identity provider,
             //       then apply the policy to an endpoint with .RequireAuthorization(HasScopeRequirement.PolicyName).
             options.AddPolicy(
