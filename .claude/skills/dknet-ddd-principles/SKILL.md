@@ -22,7 +22,7 @@ This template is a single microservice / single bounded context — these are ta
 
 An aggregate is a transactional consistency boundary: everything inside it is saved together and its invariants are enforced together. The rule of thumb —
 
-- If two pieces of data must always be consistent with each other *at the moment they're saved* (e.g. an order and its line items, where a total must match the sum of lines), they belong in the same aggregate.
+- If two pieces of data must always be consistent with each other *at the moment they're saved* (e.g. a `PurchaseOrder`'s `Amount` and its `Status` — cancelling and re-pricing an order in the same save must not leave those two fields disagreeing), they belong in the same aggregate. That's why `PurchaseOrder` owns both `Amount` and `Status` directly rather than splitting them into two persisted types.
 - If two pieces of data can be consistent *eventually*, a moment apart, they belong in separate aggregates, coordinated through a domain event — not a direct object reference.
 - Aggregates reference each other by ID (`Guid`), never by object reference. `PurchaseOrder` (`Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`) does not hold a `Customer` object — it holds a plain `CustomerName` string, no navigation property back to another aggregate.
 
@@ -37,21 +37,24 @@ Ask: "Do I ever need to fetch or reference this thing on its own, independent of
 
 ## Invariant Enforcement
 
-An invariant is a rule that must always hold true for an entity (e.g. "an already-cancelled order can't be cancelled again"). In this codebase, invariants are enforced by construction and by the entity's own mutation methods — never by a public setter:
+An invariant is a rule that must always hold true for an entity (e.g. "amount is never negative," "a cancelled order stays cancelled"). In this codebase, invariants are enforced by construction and by the entity's own mutation methods — never by a public setter:
 
 - Properties are `{ get; private set; }`. Nothing outside the entity can put it into an invalid state directly.
-- The constructor establishes the invariant for a new entity. Named mutation methods re-establish it for every change, and are the *only* path to changing mutable state — see `PurchaseOrder.ChangeAmount(...)` and `PurchaseOrder.Cancel(...)` in `dknet-domain-entity`.
-- `PurchaseOrder.Cancel(string userId)` is the clearest example of an invariant guarded outside the constructor: the *handler* (`CancelPurchaseOrderCommandHandler`, in `Minimal.AppServices/ManualSample/V1/Actions/Cancel.cs`) checks `order.Status == PurchaseOrderStatus.Cancelled` and fails the request before calling `Cancel` — a business rule enforced at the aggregate boundary, one call into the entity method away from being violated by a second caller who skips that check.
+- The constructor establishes the invariant for a new entity. Named mutation methods (`ChangeAmount`, `Cancel` — see `PurchaseOrder` in `dknet-domain-entity`) re-establish it for every mutation, and are the *only* path to changing mutable state.
+- A rule that depends on the entity's **own current state** belongs on the entity, or right next to the fetch in the handler when it must read the stored row first. `PurchaseOrder.Cancel(string userId)` is the clearest example: `CancelPurchaseOrderCommandHandler` (`Minimal.AppServices/ManualSample/V1/Actions/Cancel.cs`) checks `order.Status == PurchaseOrderStatus.Cancelled` and fails the request *before* calling `Cancel`; the transition itself still lives on the entity. Note the weakness this leaves — the guard is one call away from being bypassed by a second caller who skips it, so treat handler-side guards as a boundary check, not as the invariant's home.
 - If a rule needs data external to the entity (e.g. "customer name must be unique across all orders"), that's not an entity invariant — it's a cross-entity business rule, and it belongs in the command handler as a duplicate-check `Specification` query (see `dknet-appservices-actions`), because the entity has no way to see other entities.
 
 ## When to Use a Domain Event
 
 This codebase has two equally valid ways to raise the same kind of event — pick the one that matches how much control you need over the raise:
 
-- **Hand-raised** (`PurchaseOrder`): the constructor calls `AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))` directly, in application code you can step through in a debugger. Use this when the event's payload, timing, or "did this actually happen" condition needs logic more specific than "a tracked property changed."
+- **Hand-raised** (`PurchaseOrder`): the constructor calls `AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))` directly, in application code you can step through in a debugger. You write the payload by hand. Use this when the event's payload, timing, or "did this actually happen" condition needs logic more specific than "a tracked property changed."
 - **Declared** (`Product`): the class carries `[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]` and `[RaisesEvent(EventOperations.Updated, nameof(Price))]` — no line of application code calls `AddEvent` anywhere in `AutomatedSample/`. DKNet's EF Core save hook reads these declarations and raises the composed event records (`ProductCreatedEvent`, `ProductPriceUpdatedEvent`) after a successful `SaveChanges`, driven by the change tracker. Use this when the event is a straightforward "this property changed" notification and you're already using `[CrudCreate]`/`[CrudUpdate]` for the entity.
+  The trade-offs: you cannot single-step from "constructor ran" to "event raised" the way you can with `AddEvent`, and the payload's name and shape follow a fixed composition rule (`<Entity><NarrowingProps><Operation>Event`) rather than one you choose — verify the composed name against the compiled assembly before wiring a consumer to it.
 
-Either way, publish a domain event (delivered via `Minimal.Infra/Services/EventPublisher.cs`) when **something outside this aggregate might care that this happened** — another aggregate needs to react, or an external system needs to be notified. `Product`'s declared `Created` event reaches an external Azure Service Bus subscriber (`ProductCreatedNotificationHandler`) exactly like a hand-raised one would.
+Both styles are delivered identically afterward: `Minimal.Infra/Services/EventPublisher.cs` forwards to `IMessageBus` regardless of which raised the event.
+
+Reach for either one when **something outside this aggregate might care that this happened** — another aggregate needs to react, or an external system needs to be notified. `Product`'s declared `Created` event is consumed both in-process and over Azure Service Bus (`ProductCreatedNotificationHandler`), exactly as a hand-raised one would be.
 
 Do NOT reach for an event when the effect is entirely local to this one request:
 - Setting a computed field during the same handler → just do it in the handler or the entity method, no event needed.
@@ -63,7 +66,7 @@ If you can't name a concrete future subscriber (even a logging handler counts, b
 
 An anemic model is an entity that's just a property bag, with all the actual business logic living in command handlers. Symptoms to watch for:
 
-- A handler reads several properties off an entity, computes something, then writes several properties back — that computation belongs in a method on the entity (e.g. `entity.Update(...)`, or a more specific method like `entity.Cancel(userId)`), not in the handler.
+- A handler reads several properties off an entity, computes something, then writes several properties back — that computation belongs in a named method on the entity (e.g. `entity.ChangeAmount(amount, userId)` or `entity.Cancel(userId)`), not in the handler.
 - The handler is the only place an invariant is checked — meaning the entity could be constructed or mutated elsewhere into an invalid state.
 
 The handler's job is orchestration: fetch the entity (via `IRepositorySpec` + a `Specification`), call one or more methods on it, persist, map to a DTO. The entity's job is protecting its own consistency and encoding what a valid state transition looks like.

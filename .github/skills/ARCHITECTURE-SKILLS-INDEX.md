@@ -41,9 +41,9 @@ You don't need to manually invoke individual skills. Use the unified agent and i
 - **Input**: Feature name/path, optional existing artifacts
 - **Process**: Trace handlers → domain → repos → events; extract flow diagrams, components, risks
 - **Output**: 
-  - `src/docs/<feature>/feature-e2e-analysis.md` (15 sections)
-  - `src/docs/<feature>/feature-diagrams.md` (5 Mermaid diagrams)
-  - `src/docs/<feature>/architecture-decision-log.md` (if new decisions found)
+  - `docs/<feature>/feature-e2e-analysis.md` (15 sections)
+  - `docs/<feature>/feature-diagrams.md` (5 Mermaid diagrams)
+  - `docs/<feature>/architecture-decision-log.md` (if new decisions found)
 - **Audience**: Engineers needing to understand current behavior, refactoring, auditing
 - **Time**: ~2–4 hours manual work per feature (skill does it in ~30 min with AI)
 
@@ -199,7 +199,7 @@ Features without existing docs may have lower confidence answers. The agent will
 To add new patterns or improve existing skills:
 
 1. Update the relevant `SKILL.md` file with new sections, examples, or quality gates
-2. Add concrete examples from the Monxa codebase
+2. Add concrete examples from this solution's own codebase
 3. Update the skills index and migration guide if structure changes
 4. Test with sample features to ensure guidance is actionable
 

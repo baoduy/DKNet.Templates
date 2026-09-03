@@ -96,4 +96,4 @@ Key mapping decisions:
 | `Initial_{EntityName}` | Create initial `{EntityTableName}` table |
 | `Add_{Field}_To_{EntityName}` | {Reason for the change} |
 
-> Keep this table updated when running `./add-migration.sh <Name>`.
+> Keep this table updated when running `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`.

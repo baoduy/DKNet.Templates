@@ -39,9 +39,11 @@ CORE_SKILLS=(
   dknet-domain-entity
   dknet-efcore-config
   dknet-endpoint-config
+  dknet-feature-lifecycle
   dknet-feature-documentation
   dknet-package-adoption
   dknet-project-structure
+  dknet-scaffold
   dknet-unit-test
 )
 
@@ -119,32 +121,41 @@ echo "=== 5. install-doc completeness ==="
 # Parse the "## AI Plugin" section of README.md: each **Channel** heading must be
 # followed by a non-empty fenced code block.
 AI_SECTION=$(awk '/^## AI Plugin/{flag=1; next} /^## /{flag=0} flag' README.md)
+# Single pass, no associative arrays -- macOS ships bash 3.2, which lacks `declare -A`.
+# Each channel is reported as soon as the next one starts (and the last at EOF), so
+# channels are checked in document order rather than in hash order.
 CHANNEL=""
+HAS_BODY=false
 IN_FENCE=false
-FENCE_BODY=""
-declare -A CHANNEL_BODY=()
+CHANNEL_COUNT=0
+
+report_channel() {
+  [[ -z "$1" ]] && return
+  if [[ "$2" == "true" ]]; then
+    pass "$1: instruction present"
+  else
+    fail "$1: advertised but has no install instruction (empty code fence) in README.md"
+  fi
+}
+
 while IFS= read -r line; do
   if [[ "$line" =~ ^\*\*(.+)\*\*$ ]]; then
+    report_channel "$CHANNEL" "$HAS_BODY"
     CHANNEL="${BASH_REMATCH[1]}"
-    CHANNEL_BODY["$CHANNEL"]=""
+    HAS_BODY=false
+    IN_FENCE=false
+    CHANNEL_COUNT=$((CHANNEL_COUNT + 1))
   elif [[ "$line" == '```'* ]]; then
     if $IN_FENCE; then IN_FENCE=false; else IN_FENCE=true; fi
-  elif $IN_FENCE && [[ -n "$CHANNEL" ]]; then
-    CHANNEL_BODY["$CHANNEL"]+="$line"$'\n'
+  elif $IN_FENCE && [[ -n "$CHANNEL" ]] && [[ -n "$(echo "$line" | tr -d '[:space:]')" ]]; then
+    HAS_BODY=true
   fi
 done <<< "$AI_SECTION"
+report_channel "$CHANNEL" "$HAS_BODY"
 
-if [[ ${#CHANNEL_BODY[@]} -eq 0 ]]; then
+if [[ $CHANNEL_COUNT -eq 0 ]]; then
   fail "no install channels found under '## AI Plugin' in README.md"
 fi
-for ch in "${!CHANNEL_BODY[@]}"; do
-  body="$(echo -n "${CHANNEL_BODY[$ch]}" | tr -d '[:space:]')"
-  if [[ -n "$body" ]]; then
-    pass "$ch: instruction present"
-  else
-    fail "$ch: advertised but has no install instruction (empty code fence) in README.md"
-  fi
-done
 
 echo
 if [[ $FAILURES -eq 0 ]]; then

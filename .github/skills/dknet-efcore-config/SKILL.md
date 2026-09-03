@@ -20,11 +20,15 @@ Create the persistence-layer configuration for a domain entity — mapper, stati
 
 1. **Entity class** (from dknet-domain-entity): full class with properties
 2. **Table name** (plural): e.g., `"PurchaseOrders"`, `"Products"`
-3. **Schema constant**: from `DomainSchemas` (e.g., `DomainSchemas.{Feature}`)
+3. **Schema**: a `DomainSchemas` constant, or an inline literal string (both samples in this template use a literal — `"manual_sample"` for `PurchaseOrder`, `"sample"` for `Product`)
 4. **Unique indexes**: which fields need unique constraints?
 5. **Column constraints**: max lengths, column types, required/optional
 6. **Static seed data**: any initial data rows needed?
 7. **Domain services to implement**: any `I{Service}` interfaces from Domains layer?
+
+Note: this layer is hand-written the same way for both a hand-written entity and a `[CrudCreate]`/
+`[CrudUpdate]`-declared one — no generator in this template touches `IEntityTypeConfiguration<T>`.
+`ProductConfigs` (for the generator-driven `Product`) is just as hand-written as `PurchaseOrderConfigs`.
 
 ---
 
@@ -35,14 +39,12 @@ Create the persistence-layer configuration for a domain entity — mapper, stati
 - Inherit from `DefaultEntityTypeConfiguration<TEntity>` (NOT raw `IEntityTypeConfiguration<T>`)
 - Class must be `internal sealed` — Scrutor auto-discovery requires this
 - Call `base.Configure(builder)` first — it configures base `AuditedEntity` fields (Id, CreatedBy, CreatedAt, etc.)
-- Mapper is auto-discovered by `UseAutoConfigModel([typeof(CoreDbContext).Assembly, ...])`
-- `builder.ToTable("{TableName}", "{schema}")` takes a plain string schema — both current samples pass a literal schema name (`"manual_sample"` for `PurchaseOrder`, `"sample"` for `Product`) rather than routing through a shared constant. `DomainSchemas.cs` still exists if you want a named constant for a schema shared by several entities, but it isn't required.
-- **This layer does not differ between the hand-written and generator-driven samples** — no generator in this template touches `IEntityTypeConfiguration`. `PurchaseOrderConfigs` and `ProductConfigs` are both plain hand-written mappers.
+- Mapper is auto-discovered by `UseAutoConfigModel([typeof(CoreDbContext).Assembly])` in `InfraSetup.cs`
 
 ### File Locations
 
 ```
-src/ApiEndpoints/Minimal.Infra/
+ApiEndpoints/Minimal.Infra/
 ├── Features/
 │   └── {Feature}/
 │       ├── Mappers/
@@ -75,7 +77,9 @@ Services are auto-registered when they meet ALL of:
 
 ### Step 1: Create the Mapper Class
 
-Create `src/ApiEndpoints/Minimal.Infra/Features/{Feature}/Mappers/{Entity}Configs.cs`:
+Create `ApiEndpoints/Minimal.Infra/Features/{Feature}/Mappers/{Entity}Configs.cs`. Both samples
+in this template hand-write this class the same way — nothing about `[CrudCreate]`/`[RaisesEvent]`
+changes this layer (see `PurchaseOrderConfigs` and `ProductConfigs`):
 
 ```csharp
 using Minimal.Domains.Features.{Feature}.Entities;
@@ -96,11 +100,11 @@ internal sealed class {Entity}Configs : DefaultEntityTypeConfiguration<{Entity}>
 
         // Property configurations
         builder.Property(p => p.{StringProp}).HasMaxLength({max}).IsRequired();
+        builder.Property(p => p.{DecimalProp}).HasPrecision(18, 2);
         builder.Property(p => p.{OptionalProp}).HasMaxLength({max}).IsRequired(false);
         builder.Property(p => p.{DateProp}).HasColumnType("Date");
 
-        // Table mapping with schema — a literal string is fine (see PurchaseOrderConfigs/ProductConfigs);
-        // reach for a DomainSchemas.cs constant only when several entities share one schema name.
+        // Table mapping — a DomainSchemas constant, or (as both samples do) an inline literal:
         builder.ToTable("{TableName}", "{schema}");
     }
 
@@ -108,10 +112,15 @@ internal sealed class {Entity}Configs : DefaultEntityTypeConfiguration<{Entity}>
 }
 ```
 
+`PurchaseOrderConfigs` maps to `ToTable("PurchaseOrders", "manual_sample")` with an index on
+`CustomerName`, `Amount` at `HasPrecision(18, 2)`, and `Status` stored `HasConversion<string>()`.
+`ProductConfigs` maps to `ToTable("Products", "sample")` with a **unique** index on `Name`
+(`HasIndex(p => p.Name).IsUnique()`) and the same `HasPrecision(18, 2)` on `Price`.
+
 ### Step 2: Configure Owned Types (if entity has value objects)
 
-If your entity has an owned value object (see **dknet-domain-entity** "Step 3: Create Owned Value Objects"), register it in
-`src/ApiEndpoints/Minimal.Infra/Contexts/OwnedDataContext.cs`:
+If your entity has an owned value object (a plain class with no independent identity — see
+`dknet-ddd-principles`), register it in `ApiEndpoints/Minimal.Infra/Contexts/OwnedDataContext.cs`:
 
 ```csharp
 // Inside OwnedDataContext, add to the existing ConfigureConventions or OnModelCreating:
@@ -121,9 +130,14 @@ builder.Entity<{Entity}>().OwnsOne(e => e.{OwnedProp}, owned =>
 });
 ```
 
+Neither `PurchaseOrder` nor `Product` currently has an owned type — both samples are flat entities.
+
 ### Step 3: Add Static Seed Data (optional)
 
-Create `src/ApiEndpoints/Minimal.Infra/Features/{Feature}/StaticData/{Entity}StaticData.cs`. This mirrors `PurchaseOrderStaticData` — the only static seed data either sample carries; `Product` has none (a deliberate scope choice, not a generator limitation, see `docs/samples/manual-vs-automated.md`):
+Create `ApiEndpoints/Minimal.Infra/Features/{Feature}/StaticData/{Entity}StaticData.cs`,
+mirroring `PurchaseOrderStaticData` — inherit `DataSeedingConfiguration<TEntity>` and override
+`GetDataAsync`, using the entity's `internal` rehydration constructor with fixed `Guid`s so seeding
+is idempotent across re-runs:
 
 ```csharp
 using Minimal.Domains.Features.{Feature}.Entities;
@@ -136,33 +150,30 @@ internal sealed class {Entity}StaticData : DataSeedingConfiguration<{Entity}>
     {
         return ValueTask.FromResult<ICollection<{Entity}>>(
         [
-            new {Entity}(
-                new Guid("{fixed-guid-1}"),
-                {seed field values},
-                SharedConsts.SystemAccount),
-            new {Entity}(
-                new Guid("{fixed-guid-2}"),
-                {seed field values},
-                SharedConsts.SystemAccount)
+            new {Entity}(new Guid("{fixed-guid-1}"), {seed field values}, SharedConsts.SystemAccount),
+            new {Entity}(new Guid("{fixed-guid-2}"), {seed field values}, SharedConsts.SystemAccount)
         ]);
     }
 }
 ```
 
-Seed rows use the entity's `internal` rehydration constructor (fixed `Guid`, no re-raised creation event) — see **dknet-domain-entity**. Auto-discovered by `UseAutoDataSeeding` — but only if it's wired into **both** places that build the model (see the gotcha below).
+`Product` has no static seed data — seeding is optional; skip this step for a feature that doesn't need reference rows.
 
-### The `UseAutoDataSeeding` gotcha: wire it into both host paths, or seeding silently never appears
+**Critical wiring gotcha — a real bug this template hit once, already fixed:** `UseAutoConfigModel` +
+`UseAutoDataSeeding` must be called in **both** places `CoreDbContext` gets built, or seeding silently
+never appears over HTTP:
 
-This is a real bug this template hit once, already fixed — but it's easy to reintroduce for a new feature. `UseAutoConfigModel` + `UseAutoDataSeeding` must be called on **both**:
+- `InfraSetup.AddInfraServices` — the DI-registered `CoreDbContext` the running app actually uses.
+- `InfraMigration.MigrateDb` — a **separate** `CoreDbContext` built for the startup migration path.
 
-- `InfraSetup.AddInfraServices` — the DI-registered `CoreDbContext` the running app actually queries
-- `InfraMigration.MigrateDb` — the separate `DbContext` built for the startup migration path
-
-`PurchaseOrderStaticData` was originally wired only into `InfraSetup`, so migrations applied cleanly and the table existed, but no rows ever appeared over HTTP — the migration path's own model builder never called `UseAutoDataSeeding`, so nothing populated the table on the path that actually runs at startup. The fix was adding the identical `.UseAutoDataSeeding([typeof(InfraSetup).Assembly])` call to `InfraMigration.MigrateDb` too. If you add a new `{Entity}StaticData` and rows don't show up after `dotnet run`, check both files before suspecting the seeding class itself.
+`PurchaseOrderStaticData` was correctly discovered by the DI-path context but never appeared in a
+real database, because `MigrateDb` built its own context without the same `.UseAutoDataSeeding(...)`
+call — the migration ran, the seed rows never got inserted. Fixed by adding the identical call to
+`InfraMigration.MigrateDb`. When adding new seed data, verify both call sites, not just one.
 
 ### Step 4: Implement Domain Service (if interface exists)
 
-Create `src/ApiEndpoints/Minimal.Infra/Services/{Service}.cs`:
+Create `ApiEndpoints/Minimal.Infra/Services/{Service}.cs`:
 
 ```csharp
 using Minimal.Domains.Services;
@@ -194,17 +205,17 @@ internal sealed class {Service} : I{Service}
 ### Step 5: Run Migration
 
 ```bash
-cd src/ApiEndpoints
-./add-migration.sh {MigrationName}
+cd ApiEndpoints
+dotnet ef migrations add {MigrationName} -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
 ```
 
-Verify the generated migration in `src/ApiEndpoints/Minimal.Infra/Migrations/`.
+Verify the generated migration in `ApiEndpoints/Minimal.Infra/Migrations/`.
 
 ---
 
-## Reference: PurchaseOrderConfigs and ProductConfigs (actual production code)
+## Reference: PurchaseOrder and Product (actual production code)
 
-Both mappers are plain hand-written `IEntityTypeConfiguration` classes — this layer is identical in shape whether the entity's events/CRUD are hand-written (`PurchaseOrder`) or generator-driven (`Product`):
+### Mappers (both hand-written)
 
 ```csharp
 // Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs
@@ -221,9 +232,7 @@ internal sealed class PurchaseOrderConfigs : DefaultEntityTypeConfiguration<Purc
         builder.ToTable("PurchaseOrders", "manual_sample");
     }
 }
-```
 
-```csharp
 // Minimal.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs
 internal sealed class ProductConfigs : DefaultEntityTypeConfiguration<Product>
 {
@@ -239,9 +248,24 @@ internal sealed class ProductConfigs : DefaultEntityTypeConfiguration<Product>
 }
 ```
 
-Note `PurchaseOrder.Status` (an enum) is stored as a string via `.HasConversion<string>()` — reach for that whenever an entity has an enum property you want readable in the database rather than stored as its underlying `int`.
+Note the two differences worth calling out: `PurchaseOrder`'s index on `CustomerName` is a plain
+(non-unique) index for query performance, while `Product`'s index on `Name` is unique — a real
+business constraint, not just an EF Core mapping habit. Also note `PurchaseOrder.Status` (an enum)
+is stored `HasConversion<string>()` rather than the EF Core default (`int`) — readable in the raw
+table without a lookup.
 
-Neither sample implements a domain service (no external ID generator or cross-aggregate lookup is needed by either) — Step 4 above is a generic template for when a future feature does need one. `IMembershipService`/`ISequenceServices`/`Sequences.cs` are pre-existing scaffolding for exactly that pattern; they're unused by both current samples, not something either one wires up.
+### Service Implementation
+
+Neither sample implements a domain service — Step 4 above is the generic template for when a feature
+needs one. `IMembershipService` / `SequenceService` / `Sequences` are pre-existing infra scaffolding
+for exactly that pattern, wired by neither `PurchaseOrder` nor `Product`. The real implementation is a
+one-line primary-constructor subclass, not a hand-written `NextValueAsync` body:
+
+```csharp
+// Minimal.Infra/Services/MembershipService.cs
+internal sealed class MembershipService(CoreDbContext dbContext)
+    : SequenceService(dbContext, Sequences.Membership), IMembershipService;
+```
 
 ---
 
@@ -252,13 +276,13 @@ Neither sample implements a domain service (no external ID generator or cross-ag
 - [ ] `base.Configure(builder)` is called FIRST in Configure method
 - [ ] All string properties have `HasMaxLength()`
 - [ ] Required/optional correctly set with `IsRequired()` / `IsRequired(false)`
-- [ ] Unique indexes added for business-key fields
-- [ ] `ToTable("{Name}", "{schema}")` set with a schema name
+- [ ] Unique indexes added for business-key fields (see `Product.Name`) — a plain index is enough for a field that's just a query filter (see `PurchaseOrder.CustomerName`)
+- [ ] `ToTable("{Name}", "{schema}")` set — a literal string (as both samples do) or a `DomainSchemas` constant, either is fine
+- [ ] If adding `IDataSeedingConfiguration<T>`, `UseAutoDataSeeding` is wired into **both** `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb` — check both call sites, not just one
 - [ ] File placed in `Minimal.Infra/Features/{Feature}/Mappers/`
 - [ ] Service implementations are `internal sealed` in `.Services` namespace
-- [ ] If seed data is added, `UseAutoDataSeeding` is wired into **both** `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb`
-- [ ] Migration generates cleanly: `./add-migration.sh {Name}`
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
+- [ ] Migration generates cleanly: `dotnet ef migrations add {Name} -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`
+- [ ] `dotnet build -c Release` passes
 
 ---
 
@@ -272,7 +296,7 @@ Neither sample implements a domain service (no external ID generator or cross-ag
 | Placing mapper outside `Mappers/` folder | Scrutor scans by namespace — must be in correct folder |
 | Missing `HasMaxLength` on strings | SQL Server defaults to `nvarchar(max)` — always constrain |
 | Service not `sealed` or wrong namespace | Must be `sealed` + in `.Services` or `.Repos` namespace |
-| Wiring `UseAutoDataSeeding` into only `InfraSetup` | Also add it to `InfraMigration.MigrateDb` — otherwise seed rows exist after migration but never appear over HTTP (this exact bug already happened once with `PurchaseOrderStaticData`) |
+| Wiring `UseAutoDataSeeding` into only `InfraSetup.AddInfraServices` | Also wire it into `InfraMigration.MigrateDb` — that path builds its own `CoreDbContext`; seed data silently never appears over HTTP otherwise (the exact bug `PurchaseOrderStaticData` hit before this was fixed) |
 
 ---
 

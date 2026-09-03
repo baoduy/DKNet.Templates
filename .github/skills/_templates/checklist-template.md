@@ -38,7 +38,7 @@ Review all items below. If any item fails, refer to the "Fix" column for remedia
 
 | #   | Requirement                    | Success Looks Like                                                       | Fix If Failed                                                    |
 | --- | ------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| 10  | Code compiles without warnings | Run `dotnet build src/DKNet.Templates.sln -c Release` with zero warnings | Fix warnings per instructions in [AGENTS.md](../../../AGENTS.md) |
+| 10  | Code compiles without warnings | Run `dotnet build -c Release` with zero warnings | Fix warnings per instructions in [AGENTS.md](../../../AGENTS.md) |
 | 11  | Tests pass                     | Run relevant skill tests; all pass ✅                                     | Review test failures; fix code or test as needed                 |
 
 ---

@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "What Minimal.AppHost provisions and injects when you run the Aspire host",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      760
+    ],
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Project the host starts"
+        },
+        "database": {
+          "label": "Container or database the host provisions"
+        },
+        "cloud": {
+          "label": "Aspire AppHost"
+        },
+        "external": {
+          "label": "Dependency you bring yourself"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 2,
+    "origin": [
+      270,
+      160
+    ],
+    "gapX": 200,
+    "gapY": 130,
+    "cellW": 250,
+    "cellH": 84
+  },
+  "components": [
+    {
+      "id": "apphost",
+      "type": "cloud",
+      "label": "Minimal.AppHost",
+      "sublabel": "DistributedApplication",
+      "tag": "dotnet run --project AppHost",
+      "row": 0,
+      "col": 0,
+      "size": [
+        250,
+        84
+      ]
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis container",
+      "sublabel": "AddRedis(\"Redis\")",
+      "row": 0,
+      "col": 1,
+      "size": [
+        250,
+        84
+      ]
+    },
+    {
+      "id": "api",
+      "type": "frontend",
+      "label": "Minimal.Api",
+      "sublabel": "AddProject<Minimal_Api>",
+      "row": 1,
+      "col": 0,
+      "size": [
+        250,
+        84
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL container",
+      "sublabel": "AddPostgres(\"Postgres\")",
+      "row": 1,
+      "col": 1,
+      "size": [
+        250,
+        84
+      ]
+    },
+    {
+      "id": "azurebus",
+      "type": "external",
+      "label": "Azure Service Bus",
+      "sublabel": "not provisioned here",
+      "tag": "bring your own namespace",
+      "row": 2,
+      "col": 0,
+      "size": [
+        250,
+        84
+      ]
+    },
+    {
+      "id": "appdb",
+      "type": "database",
+      "label": "AppDb database",
+      "sublabel": "AddDatabase(\"AppDb\")",
+      "row": 2,
+      "col": 1,
+      "size": [
+        250,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "apphost-redis",
+      "from": "apphost",
+      "to": "redis",
+      "label": "provisions a container",
+      "variant": "emphasis"
+    },
+    {
+      "id": "apphost-postgres",
+      "from": "apphost",
+      "to": "postgres",
+      "label": "provisions a container",
+      "variant": "emphasis"
+    },
+    {
+      "id": "postgres-appdb",
+      "from": "postgres",
+      "to": "appdb",
+      "label": "AddDatabase",
+      "labelDy": 24
+    },
+    {
+      "id": "apphost-api",
+      "from": "apphost",
+      "to": "api",
+      "label": "WithReference injects Redis and AppDb, WaitFor delays start",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "api-azurebus",
+      "from": "api",
+      "to": "azurebus",
+      "label": "ConnectionStrings:AzureBus, configured by you",
+      "variant": "dashed",
+      "labelDy": 24
+    }
+  ]
+}

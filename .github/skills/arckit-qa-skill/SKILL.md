@@ -44,15 +44,15 @@ Break down what the user is asking:
 ### 2. Load Artifacts in Priority Order
 Consult sources in order; stop when you have enough to answer:
 
-1. **src/docs/<feature>/feature-e2e-analysis.md** (if exists)
+1. **docs/<feature>/feature-e2e-analysis.md** (if exists)
    - Most comprehensive current-state documentation.
    - Contains flow, components, risks, recommendations.
 
-2. **src/docs/<feature>/feature-diagrams.md** (if exists)
+2. **docs/<feature>/feature-diagrams.md** (if exists)
    - Sequence, data flow, state transition, failure diagrams.
    - Visual reference for complex interactions.
 
-3. **src/docs/<feature>/architecture-decision-log.md** (if exists)
+3. **docs/<feature>/architecture-decision-log.md** (if exists)
    - Explicit design decisions and rationale.
    - Alternatives considered and why they were rejected.
 
@@ -111,7 +111,7 @@ Always return:
 
 ### 3. Supporting Evidence
 - Document citations: "Per feature-e2e-analysis.md §4 (End-to-End Flow), the handler calls..."
-- Code citations: "See Mx.Pgw.AppServices/Features/Charges/Actions/CreateChargeHandler.cs line 45..."
+- Code citations: "See Minimal.AppServices/ManualSample/V1/Actions/Create.cs line 45..."
 - Cross-references: "This design decision is explained in architecture-decision-log.md under 'Why Event-Driven Settlement'."
 
 ### 4. Gaps, Conflicts, or Confidence Limits
@@ -132,7 +132,7 @@ Always return:
 
 **Answer structure**:
 1. Direct: "Settlement ownership is decoupled by design to handle asynchronous payment provider updates independently."
-2. Evidence: "(1) Charge aggregate in Domains/Charge/Charge.cs emits ChargePaidEvent. (2) Features/Charges/EventHandlers/ChargePaidEventHandler.cs processes async. See architecture.md §8 (Async Reliability)."
+2. Evidence: "(1) PurchaseOrder aggregate in Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs emits PurchaseOrderCreatedEvent. (2) Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs consumes it. See architecture.md §8 (Async Reliability)."
 3. Rationale: "Sync would block charge creation on settlement latency; event-driven allows charge to complete fast while settlement happens in background."
 
 ### Pattern 2: "How Do Components Interact?"
@@ -141,7 +141,7 @@ Always return:
 **Answer structure**:
 1. Direct: "OrderCancellation publishes a CancelledEvent; Inventory subsystem subscribes and decrements reserved stock."
 2. Flow: "Handler → Domain.Cancel() → emits CancelledEvent → SaveChanges → IEventPublisher.PublishAsync() → RabbitMQ → Inventory listener."
-3. Evidence: feature diagrams (Sequence Diagram) + code: Charge.Cancel(), Charge+Events.cs, EventHandlers/CancelledEventHandler.cs.
+3. Evidence: feature diagrams (Sequence Diagram) + code: `PurchaseOrder.Cancel()`, `PurchaseOrderCreatedEvent.cs`, `<Feature>/V1/Events/*`.
 
 ### Pattern 3: "Where Does Responsibility Live?"
 **Q**: "Where is payment validation logic?"
@@ -185,8 +185,8 @@ Always return:
 2. **Direct Answer**: Payouts use fixed 3-retry strategy because payout providers (Durian, Launcx) don't guarantee idempotency. Exponential backoff could exceed provider payment windows.
 
 3. **Evidence**:
-   - Code: `Mx.Pgw.AppServices/Features/Payouts/Actions/SubmitPayoutHandler.cs` lines 78–92 (retry loop, 3 attempts max).
-   - Config: `Mx.Pgw.Share/Infra/External/PayoutRetryPolicy.cs` (defines RetryCount = 3, DelayMs = 1000).
+   - Code: `Minimal.AppServices/Payouts/V1/Actions/SubmitPayoutHandler.cs` lines 78–92 (retry loop, 3 attempts max).
+   - Config: `Minimal.Share/Infra/External/PayoutRetryPolicy.cs` (defines RetryCount = 3, DelayMs = 1000).
    - Docs: `specs/payout-submission/architecture.md` §8 (Reliability Strategy) explains the choice.
 
 4. **Gaps/Confidence**: High confidence. The architecture.md clearly documents this decision. **Confidence: High**.

@@ -10,6 +10,10 @@ production-ready .NET 10 microservices using vertical-slice DDD/CQRS.
 - [Template Feature List](template-features.md) — everything `dotnet new dknet-minimal` wires up
   before you write feature code.
 - [DKNet Package Inventory](dknet-packages.md) — the DKNet NuGet family, one package per capability.
+- [Configuration Reference](configuration-reference.md) — every `appsettings` key a generated
+  solution reads: meaning, default, effect, and the code path that reads it.
+- [Extension Points](extension-points.md) — where your own code attaches, and the boundaries the
+  architecture tests hold you to.
 
 ## Building a feature
 
@@ -21,6 +25,20 @@ production-ready .NET 10 microservices using vertical-slice DDD/CQRS.
   to paged projection.
 - [Generic List Endpoint](generic-list-endpoint.md) — the filter/search/order/page contract every
   generated CRUD list route exposes for free.
+
+## Diagrams
+
+Every diagram on these pages is committed twice under [`diagrams/`](diagrams): the typed JSON IR it
+was authored from, and the rendered `.svg` the Markdown embeds. Edit the IR, re-render, and commit
+both — never hand-edit the SVG.
+
+| Diagram | Shows | Referenced from |
+|---|---|---|
+| `templates-solution-layers` | Project layers and which way the references point | root `README.md`, [DDD guide](ddd-implementation-guide.md) |
+| `templates-request-pipeline` | Every stage a request crosses, and each short-circuit response | root `README.md`, [API pipeline](api-pipeline.md) |
+| `templates-domain-event-path` | An event from aggregate to handler, across the save boundary | [EF Core domain events](efcore-events.md) |
+| `templates-crud-generation` | Attributes in, generated requests/handlers/routes out | [CRUD attributes](crud-attributes.md) |
+| `templates-aspire-topology` | What the Aspire host provisions and injects | [Template features](template-features.md) |
 
 ## How the plumbing works
 

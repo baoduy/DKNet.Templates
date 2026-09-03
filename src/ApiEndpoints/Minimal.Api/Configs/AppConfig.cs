@@ -34,7 +34,7 @@ internal static class AppConfig
 
         if (features.EnableHttps)
         {
-            services.AddHttpsConfig();
+            services.AddHttpsConfig(configuration);
         }
 
         if (features.EnableRateLimit)
@@ -47,6 +47,10 @@ internal static class AppConfig
             services.AddAppVersioning();
         }
 
+        services.AddForwardedHeadersConfig(features, configuration)
+            .AddSecurityHeadersConfig(features)
+            .AddRequestBoundsConfig(features, configuration);
+
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
 
@@ -57,13 +61,12 @@ internal static class AppConfig
         {
             services.AddIdempotencyWithRedisStore(
                 redisConnectionString,
-                o => o.ConflictHandling = IdempotentConflictHandling.CachedResult);
+                o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
         }
         else
         {
-#pragma warning disable CS0618 // AddIdempotentKey() (non-generic) is obsolete; accepted fallback when Redis is not configured.
-            services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.CachedResult);
-#pragma warning restore CS0618
+            //InMemory store
+            services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
         }
 
         return services
@@ -75,12 +78,18 @@ internal static class AppConfig
 
     public static Task UseAppConfig(this WebApplication app, Action<WebApplication>? extra = null)
     {
-        app.UseAntiforgeryConfig()
+        // Forwarded headers and security headers run first: forwarded headers must rewrite RemoteIpAddress
+        // before anything (CORS, rate limiting) makes a decision based on it, and security headers must wrap
+        // everything downstream, including the global exception handler, for 200/404/500 responses alike (R5).
+        app.UseForwardedHeadersConfig()
+            .UseSecurityHeadersConfig()
+            .UseAntiforgeryConfig()
             .UseCrosConfig()
             .UseHttpsConfig()
             .UseHealthzConfig();
 
         app.UseRouting();
+        app.UseRequestBoundsConfig();
         app.UseRateLimitConfig();
 
         //This must be after UseRouting

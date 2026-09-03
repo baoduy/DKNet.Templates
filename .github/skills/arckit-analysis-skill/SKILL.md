@@ -43,7 +43,7 @@ Deeply analyze a live feature end-to-end to produce comprehensive, implementatio
 
 ### 2. Locate Entry Points and Trace Paths
 - **API layer**: Find minimal API endpoints or endpoint configs (Api/ApiEndpoints/).
-- **Command/Query layer**: Locate handlers under AppServices/Features/<Feature>/.
+- **Command/Query layer**: Locate handlers under `Minimal.AppServices/<Feature>/V1/Actions/` and `/Queries/`.
 - **Domain layer**: Find aggregate roots, domain events, specifications in Domains/.
 - **Infra layer**: Map repositories, EF Core configs, migrations, external clients.
 - **Event handlers**: Locate event handlers and their side effects.
@@ -136,7 +136,7 @@ For each major component (handler, service, repository, external client):
 
 ## Output Artifacts
 
-Create or update these files under `src/docs/<feature>/`:
+Create or update these files under `docs/<feature>/`:
 
 ### feature-e2e-analysis.md (15 Sections, ~3000–5000 words)
 
@@ -246,7 +246,7 @@ Find ApiEndpoint → Routes to handler request → Inject deps → OnHandle() me
 
 ### Finding Event Handlers
 ```
-grep -r "IEventHandler<YourEvent>" Mx.Pgw.AppServices/ → Found handlers under Features/*/EventHandlers/
+grep -r "IHandler<YourEvent>" Minimal.AppServices/ → Found consumers under <Feature>/V1/Events/
 ```
 
 ### Checking for N+1 Queries
@@ -276,7 +276,7 @@ If analyzing the "Charge Creation" feature:
 3. **Trace domain**: Domains/Charge/Charge.cs → aggregate methods called
 4. **Trace persistence**: Infractions/Configurations/ChargeConfiguration.cs, repos used
 5. **Find events**: Domain.Charge.Aggregate → AddEvent<ChargCreatedEvent>()
-6. **Find handlers**: Features/Charges/EventHandlers/*
+6. **Find handlers**: `<Feature>/V1/Events/*`
 7. **Check external calls**: Services injected, client calls, timeouts
 8. **Document orchestration**: diagram the full flow
 9. **Assess risks**: payment failures, duplicate requests, audit trail

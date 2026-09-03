@@ -13,14 +13,20 @@ Every request, query, and domain event in this template travels through `IMessag
 
 ```csharp
 public static IServiceCollection AddServiceBus(
-    this IServiceCollection service, IConfiguration configuration, Assembly serviceAssembly)
+    this IServiceCollection service,
+    IConfiguration configuration,
+    Assembly serviceAssembly,
+    FeatureOptions features)
 {
+    var busConnectionString = configuration.GetConnectionString(SharedConsts.AzureBusConnectionString)!;
+
     service.AddSlimBusEfCoreInterceptor<CoreDbContext>()
         .AddSlimMessageBus(mbb =>
         {
             mbb.AddJsonSerializer();
             mbb.AddMemoryBus(serviceAssembly);
-            if (!string.IsNullOrWhiteSpace(busConnectionString))
+
+            if (features.EnableServiceBus && !string.IsNullOrWhiteSpace(busConnectionString))
                 mbb.AddAzureBus(busConnectionString);
         });
     return service;
@@ -94,9 +100,10 @@ section for when to use it over a plain `mapper.Map<TDto>(entity)`.
 
 ## External forwarding — Azure Service Bus
 
-A second child bus, `"AzureBus"`, is added only when `ConnectionStrings:AzureBus` is a non-empty
-connection string. `AddServiceBus` checks this directly; the `FeatureManagement:EnableServiceBus`
-flag is not consulted here:
+A second child bus, `"AzureBus"`, is added only when **both** `FeatureManagement:EnableServiceBus`
+is `true` **and** `ConnectionStrings:AzureBus` is a non-empty connection string. `AddServiceBus`
+checks both in the same condition, shown above; either one missing and no `AzureBus` child bus is
+registered:
 
 ```csharp
 private static MessageBusBuilder AddAzureBus(this MessageBusBuilder builder, string connectionString)

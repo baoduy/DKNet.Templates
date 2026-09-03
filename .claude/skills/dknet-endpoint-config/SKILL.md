@@ -43,7 +43,13 @@ This template ships two worked examples of this layer, and either is a legitimat
 
 ### Auto-Wiring (`UseEndpointConfigs()`)
 
-`UseEndpointConfigs()` (called from `Program.cs`) scans the assembly for all `IEndpointConfig` implementations and creates route groups with `RequireAuthorization()` and API versioning via a `{version:apiVersion}` path segment — `PurchaseOrderV1Endpoint`'s `GroupEndpoint => "/purchase-orders"` becomes base route `/v1/purchase-orders`; `ProductV1Endpoint`'s `/products` becomes `/v1/products`.
+`UseEndpointConfigs()` (called from `Program.cs`) scans the assembly for all `IEndpointConfig` implementations and creates a route group per config with:
+
+- `RequireAuthorization()`, when auth is configured.
+- API versioning via a `{version:apiVersion}` path segment — `PurchaseOrderV1Endpoint`'s `GroupEndpoint => "/purchase-orders"` becomes base route `/v1/purchase-orders`; `ProductV1Endpoint`'s `/products` becomes `/v1/products`. A config that does not override `Version` defaults to 1. The segment is switchable via the `EnableVersioning` feature flag (default `true`, see `FeatureManagement` in `appsettings.json` and `Program.cs`); with it off, groups register with no version segment.
+- `Tag` auto-derived from `GroupEndpoint` unless the config overrides it.
+
+Acting-user population (`[FromClaim]`, via `AddContextualRequestPopulation`) and FluentValidation are wired **once at the composition root** in `Program.cs` — never per endpoint.
 
 ### Two Ways to Map Routes
 
@@ -86,7 +92,7 @@ Clients then send `X-Idempotency-Key: {Guid}`; a replayed key returns the origin
 ### File Location
 
 ```
-src/ApiEndpoints/Minimal.Api/
+ApiEndpoints/Minimal.Api/
 └── ApiEndpoints/
     └── {Feature}/
         └── {Entity}V{N}Endpoint.cs         ← One file per entity per version
@@ -100,7 +106,7 @@ src/ApiEndpoints/Minimal.Api/
 
 ### Step 1a: Hand-Mapped Endpoint (mirror `PurchaseOrderV1Endpoint`)
 
-Create `src/ApiEndpoints/Minimal.Api/ApiEndpoints/{Feature}/{Entity}V1Endpoint.cs`:
+Create `ApiEndpoints/Minimal.Api/ApiEndpoints/{Feature}/{Entity}V1Endpoint.cs`:
 
 ```csharp
 using DKNet.AspCore.Extensions.Responses;
@@ -218,7 +224,25 @@ There is no `using` for `Actions`/`Queries` namespaces because none exist for th
 generated `Map{Entity}Crud()` extension (in the `Minimal.AppServices.Crud` namespace, produced by the
 `[CrudCreate]`/`[CrudUpdate]` on the entity) registers every route itself.
 
-### Step 2: Add Custom Endpoints (if needed, hand-mapped shape only)
+### Step 2: Override Auth Policy or Tag (if needed)
+
+`IEndpointConfig` exposes four members — `Version`, `GroupEndpoint`, `AuthPolicy`, `Tag`. Neither
+shipped sample overrides the last two (both set only `Version` and `GroupEndpoint`), so reach for them
+only when you actually need a non-default policy or a tag that doesn't match the route:
+
+```csharp
+internal sealed class {Entity}V1Endpoint : IEndpointConfig
+{
+    public int Version => 1;
+    public string GroupEndpoint => "/{kebab-case-plural}";
+    public string? AuthPolicy => "AdminOnly";   // override the default policy
+    public string Tag => "Custom Tag";          // override the auto-derived tag
+
+    public void Map(RouteGroupBuilder group) { /* ... */ }
+}
+```
+
+### Step 3: Add Custom Endpoints (if needed, hand-mapped shape only)
 
 For a business action beyond basic CRUD — mirrors `PurchaseOrderV1Endpoint`'s
 `POST {id:guid}/cancel`:
@@ -265,7 +289,7 @@ way) or dropping to the hand-mapped shape entirely for that entity.
 - [ ] DTO type alias added if namespace conflicts: `using {Entity}Dto = ...`
 - [ ] All hand-mapped endpoints have `.WithDescription()` for OpenAPI docs
 - [ ] File placed under `Minimal.Api/ApiEndpoints/{Feature}/`
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
+- [ ] `dotnet build -c Release` passes
 - [ ] Swagger/Scalar UI shows endpoints correctly under versioned group
 
 ---
@@ -290,10 +314,10 @@ After creating the endpoint, verify the full vertical slice works:
 
 ```bash
 # Build
-dotnet build src/DKNet.Templates.sln -c Release
+dotnet build -c Release
 
 # Run API
-dotnet run --project src/ApiEndpoints/Minimal.Api
+dotnet run --project ApiEndpoints/Minimal.Api
 
 # Test via Scalar UI, or curl:
 curl -X GET https://localhost:5001/v1/{route}

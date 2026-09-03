@@ -92,7 +92,7 @@ carry a `[FromClaim]` property, because the generator forwards only
 ### File Locations
 
 ```
-src/ApiEndpoints/Minimal.AppServices/
+ApiEndpoints/Minimal.AppServices/
 ├── {Feature}/
 │   └── V{N}/
 │       ├── {Entity}Dto.cs                  ← Response DTO (hand-written record, or [GenerateDto])
@@ -135,7 +135,7 @@ global using MapsterMapper;
 
 ### Step 1: Create Response DTO
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/{Entity}Dto.cs`. Either shape is valid —
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/{Entity}Dto.cs`. Either shape is valid —
 pick hand-written when you want to control exactly which fields the API exposes (mirrors
 `PurchaseOrderDto`), or generated when "everything audited" is acceptable (mirrors `ProductDto`):
 
@@ -168,7 +168,7 @@ if you want an explicit allow-list instead of an implicit "everything" default.
 
 ### Step 2: Create Action — Create.cs
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Create.cs`, mirroring
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Create.cs`, mirroring
 `Minimal.AppServices/ManualSample/V1/Actions/Create.cs`:
 
 ```csharp
@@ -241,7 +241,7 @@ constructor already raises the created event itself (see `dknet-domain-entity`).
 
 ### Step 3: Create Action — Update.cs
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Update.cs`, mirroring
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Update.cs`, mirroring
 `Minimal.AppServices/ManualSample/V1/Actions/Update.cs`:
 
 ```csharp
@@ -363,7 +363,7 @@ The "already cancelled" guard lives in the **handler**, not on `Cancel()` itself
 
 ### Step 5: Create Action — Delete.cs
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Delete.cs`, mirroring
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Delete.cs`, mirroring
 `Minimal.AppServices/ManualSample/V1/Actions/Delete.cs`:
 
 ```csharp
@@ -405,9 +405,43 @@ internal sealed class Delete{Entity}CommandHandler(IRepositorySpec repository)
 }
 ```
 
+### Step 6: Create the Event Handler
+
+The event record itself lives with the entity in `Minimal.Domains` (see `PurchaseOrderCreatedEvent.cs` — a one-line `public sealed record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, decimal Amount);`), raised by `AddEvent(...)` in the constructor. The AppServices layer only owns the **consumer**:
+
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Events/{Entity}CreatedEventHandler.cs`:
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Minimal.Domains.Features.{Feature}.Entities;
+
+namespace Minimal.AppServices.{Feature}.V1.Events;
+
+/// <summary>
+/// Consumes <see cref="{Entity}CreatedEvent"/>, raised by hand from <see cref="{Entity}"/>'s constructor.
+/// </summary>
+internal sealed class {Entity}CreatedEventHandler(ILogger<{Entity}CreatedEventHandler> logger)
+    : Fluents.EventsConsumers.IHandler<{Entity}CreatedEvent>
+{
+    public Task OnHandle({Entity}CreatedEvent notification, CancellationToken cancellationToken)
+    {
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("{Entity}CreatedEvent received for {{Id}}.", notification.Id);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+```
+
+Mirror `Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs`.
+
+If the entity instead declares `[RaisesEvent(...)]` (the `Product` shape), the event record is generated for you and never appears as a source file — only the consumer above is still hand-written. The generator raises events; it does not consume them.
+
 ### Step 7: Create Query Specification
 
-Create `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Specs/SpecGet{Entity}.cs`, mirroring
+Create `ApiEndpoints/Minimal.AppServices/{Feature}/V1/Specs/SpecGet{Entity}.cs`, mirroring
 `Minimal.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs`:
 
 ```csharp
@@ -452,7 +486,7 @@ the `Fluents.Queries.IHandler<TQuery, TDto>` / `IPageHandler<TQuery, TDto>` shap
 
 ### Step 8: Add Entity to GlobalUsings (if frequently referenced)
 
-Edit `src/ApiEndpoints/Minimal.AppServices/GlobalUsings.cs`:
+Edit `ApiEndpoints/Minimal.AppServices/GlobalUsings.cs`:
 
 ```csharp
 global using Minimal.Domains.Features.{Feature}.Entities;
@@ -521,7 +555,7 @@ validation that must actually run.
 - [ ] Event handlers implement `Fluents.EventsConsumers.IHandler<T>`
 - [ ] Spec class is `internal sealed` extending `Specification<T>`
 - [ ] Namespace follows `Minimal.AppServices.{Feature}.V1.Actions`
-- [ ] `dotnet build src/DKNet.Templates.sln -c Release` passes
+- [ ] `dotnet build -c Release` passes
 
 ---
 
