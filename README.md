@@ -44,7 +44,7 @@ of its own.
 
 ### Request flow
 
-![Workflow diagram of the request pipeline: a request passes CORS and HSTS, then routing and the rate limiter, then authentication, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 429, 401 or 403, 400, and the 500 problem+json the global exception handler writes.](docs/diagrams/templates-request-pipeline.svg)
+![Workflow diagram of the request pipeline: a request passes the edge middleware that applies forwarded headers, security response headers and CORS, then routing with the request bounds and the rate limiter, then authentication with its default-deny fallback, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 413 for an oversized body, 429 or 504, 401 or 403, 400, and the 500 problem+json the global exception handler writes.](docs/diagrams/templates-request-pipeline.svg)
 
 1. An HTTP request hits a `Minimal.Api` Minimal API endpoint (`IEndpointConfig`).
 2. The request is validated (FluentValidation) and any `[FromClaim]` property is populated from the caller's claims — see [`docs/api-pipeline.md`](docs/api-pipeline.md).
@@ -66,6 +66,15 @@ config and seeder; an explicit max length on every mapped string; `HasConversion
 every mapped enum; Npgsql-only package references; and secure defaults in the base
 `appsettings.json`. Those fail the test run, not just review. Full list:
 [`docs/extension-points.md`](docs/extension-points.md#boundaries-your-code-must-respect).
+
+The HTTP surface ships hardened, not just documented: default-deny authorization, a status-only
+public health probe with the detailed report behind auth, security response headers on every
+response, stated request bounds (30 s / 1 MB / 10 s), forwarded caller information honoured only
+from proxies you list, an enumerated CORS method and header allow-list, a non-root container image,
+and a dependency audit that fails the build. Every one of them is on in the base `appsettings.json`
+and relaxable for local work by configuration alone — the `Development` overlay already does it.
+What each control enforces: [`docs/template-features.md`](docs/template-features.md#hardened-by-default).
+Every key, default and effect: [`docs/configuration-reference.md`](docs/configuration-reference.md).
 
 ---
 
