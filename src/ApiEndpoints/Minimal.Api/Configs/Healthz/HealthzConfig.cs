@@ -1,4 +1,6 @@
 using HealthChecks.UI.Client;
+using Minimal.Api.Configs.Auth;
+using Minimal.Infra.Contexts;
 
 namespace Minimal.Api.Configs.Healthz;
 
@@ -14,8 +16,11 @@ internal static class HealthzConfig
             return services;
         }
 
+        // AddDbContextCheck<DbContext>() (the base class) previously resolved nothing — only CoreDbContext is
+        // registered in DI (InfraSetup.AddInfraServices) — so this check threw on every call instead of ever
+        // reporting Unhealthy, hiding real DB-down states behind an unhandled exception.
         services.AddHealthChecks()
-            .AddDbContextCheck<DbContext>()
+            .AddDbContextCheck<CoreDbContext>()
             .AddCheck<HealthCheckHandler>(SharedConsts.ApiName);
         services.MarkConfigAdded(nameof(HealthzConfig));
         return services;
@@ -33,17 +38,42 @@ internal static class HealthzConfig
             return endpoints;
         }
 
-        var options = new HealthCheckOptions
+        // Public surface: status only, no check name/duration/description/exception text (R4) — anonymous by
+        // design, so it must never leak dependency detail to an unauthenticated caller.
+        var publicOptions = new HealthCheckOptions
+        {
+            AllowCachingResponses = false,
+            Predicate = _ => true,
+            ResponseWriter = WriteStatusOnlyResponse
+        };
+        endpoints.MapHealthChecks("/healthz", publicOptions).AllowAnonymous();
+        endpoints.MapHealthChecks("/", publicOptions).AllowAnonymous();
+
+        // Detailed surface: full per-check report, behind authorization only.
+        var detailOptions = new HealthCheckOptions
         {
             AllowCachingResponses = false,
             Predicate = _ => true,
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         };
-        endpoints.MapHealthChecks("/healthz", options);
-        endpoints.MapHealthChecks("/", options);
+        var detail = endpoints.MapHealthChecks("/healthz/detail", detailOptions);
+
+        // Only enforceable when AuthConfig actually wired UseAuthorization() — with RequireAuthorization off
+        // there is no authorization middleware to evaluate the requirement (same guard as SwaggerConfig).
+        if (endpoints.Services.IsConfigAdded(nameof(AuthConfig)))
+        {
+            detail.RequireAuthorization();
+        }
+
         Console.WriteLine("Healthz enabled.");
 
         return endpoints;
+    }
+
+    private static Task WriteStatusOnlyResponse(HttpContext context, HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        return context.Response.WriteAsync($$"""{"status":"{{report.Status}}"}""");
     }
 
     #endregion

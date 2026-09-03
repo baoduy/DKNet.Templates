@@ -8,6 +8,7 @@
         <ContainerRepository>baoduy/minimal-api</ContainerRepository>
         <ContainerImageTags>1.0.0;latest</ContainerImageTags>
         <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
+        <ContainerUser>$APP_UID</ContainerUser>
     </PropertyGroup>
 
     <ItemGroup>
@@ -27,6 +28,7 @@
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"/>
         <PackageReference Include="Microsoft.FeatureManagement.AspNetCore"/>
         <PackageReference Include="OpenTelemetry"/>
+        <PackageReference Include="OwaspHeaders.Core"/>
         <PackageReference Include="OpenTelemetry.Exporter.Console"/>
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
         <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>

@@ -1,4 +1,5 @@
 using Microsoft.OpenApi;
+using Minimal.Api.Configs.Auth;
 
 namespace Minimal.Api.Configs.Swagger;
 
@@ -18,14 +19,23 @@ internal static class SwaggerConfig
     {
         if (!app.Services.IsConfigAdded(nameof(SwaggerConfig))) return app;
 
-        app.MapOpenApi();
-        app.MapScalarApiReference("/docs", c =>
+        var openApi = app.MapOpenApi();
+        var docs = app.MapScalarApiReference("/docs", c =>
             c.WithTitle($"{SharedConsts.ApiName} API")
                 .WithTheme(ScalarTheme.Default)
                 //.WithOpenApiRoutePattern("{documentName}.json")
                 .AddPreferredSecuritySchemes("Bearer")
                 .AddHttpAuthentication("Bearer", b => b.Token = "bearer token")
         );
+
+        // Outside Development, the document and its UI require an authenticated caller — independent of
+        // EnableSwagger. Only enforceable when AuthConfig actually wired UseAuthorization(); with
+        // RequireAuthorization off there is no authorization middleware to evaluate the requirement.
+        if (!app.Environment.IsDevelopment() && app.Services.IsConfigAdded(nameof(AuthConfig)))
+        {
+            openApi.RequireAuthorization();
+            docs.RequireAuthorization();
+        }
 
         Console.WriteLine("Swagger enabled.");
         return app;

@@ -1,0 +1,26 @@
+name: Build
+
+'on':
+  pull_request:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore src/DKNet.Templates.sln
+
+      - name: Build
+        run: dotnet build src/DKNet.Templates.sln -c Release --no-restore

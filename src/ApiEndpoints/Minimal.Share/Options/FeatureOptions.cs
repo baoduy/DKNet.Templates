@@ -63,6 +63,25 @@ public class FeatureOptions
     public bool RunDbMigrationWhenAppStart { get; set; }
 
     /// <summary>
+    ///     Gets or sets a value indicating whether OWASP-recommended security response headers are added to every
+    ///     response. Default is true.
+    /// </summary>
+    public bool EnableSecurityHeaders { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether <c>X-Forwarded-For</c>/<c>X-Forwarded-Proto</c> are honoured
+    ///     from the proxies listed in <c>Security:TrustedProxies</c>. Default is true; with an empty trusted-proxy
+    ///     list, forwarded values are ignored regardless of this flag.
+    /// </summary>
+    public bool EnableForwardedHeaders { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether request lifetime, max body size and header-read timeout are
+    ///     enforced instead of inherited from Kestrel's own defaults. Default is true.
+    /// </summary>
+    public bool EnableRequestBounds { get; set; } = true;
+
+    /// <summary>
     ///     Gets the configuration section name for feature management.
     /// </summary>
     public static string Name => "FeatureManagement";
