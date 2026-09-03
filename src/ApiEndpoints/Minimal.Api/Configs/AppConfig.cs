@@ -57,13 +57,12 @@ internal static class AppConfig
         {
             services.AddIdempotencyWithRedisStore(
                 redisConnectionString,
-                o => o.ConflictHandling = IdempotentConflictHandling.CachedResult);
+                o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
         }
         else
         {
-#pragma warning disable CS0618 // AddIdempotentKey() (non-generic) is obsolete; accepted fallback when Redis is not configured.
-            services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.CachedResult);
-#pragma warning restore CS0618
+            //InMemory store
+            services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
         }
 
         return services
