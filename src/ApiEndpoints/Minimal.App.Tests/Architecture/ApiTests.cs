@@ -10,12 +10,12 @@ public class ApiTests
     public void AllApiClassesShouldBeInternal()
     {
         // Adjust the assembly name if needed
-        var types = Types.InAssembly(typeof(Program).Assembly);
+        var types = Types.InAssembly(typeof(Minimal.Api.Program).Assembly);
 
         var result = types
             .That()
             .AreClasses()
-            .And().DoNotHaveName(nameof(Program))
+            .And().DoNotHaveName(nameof(Minimal.Api.Program))
             .AndNotSystemGeneratedClasses()
             .Should()
             .NotBePublic()
@@ -30,7 +30,7 @@ public class ApiTests
     public void AllConfigsClassesShouldBeStaticAndExcludedFromCodeCoverage()
     {
         // Adjust the assembly name if needed
-        var types = Types.InAssembly(typeof(Program).Assembly);
+        var types = Types.InAssembly(typeof(Minimal.Api.Program).Assembly);
 
         var result = types
             .That()
@@ -50,7 +50,7 @@ public class ApiTests
     // public void AllEndPointClassesShouldBeInternalAndSealed()
     // {
     //     // Adjust the assembly name if needed
-    //     var types = Types.InAssembly(typeof(Program).Assembly);
+    //     var types = Types.InAssembly(typeof(Minimal.Api.Program).Assembly);
     //
     //     var result = types
     //         .That()
@@ -69,7 +69,7 @@ public class ApiTests
     public void AllConfigClassesShouldExcludeFromCodeCoverage()
     {
         // Adjust the assembly name if needed
-        var types = Types.InAssembly(typeof(Program).Assembly);
+        var types = Types.InAssembly(typeof(Minimal.Api.Program).Assembly);
 
         var result = types
             .That()
@@ -88,7 +88,7 @@ public class ApiTests
     [Fact]
     public void AllEndpointClassesShouldBeInternalAndSealed_ExceptAbstractClasses()
     {
-        var types = Types.InAssembly(typeof(Program).Assembly);
+        var types = Types.InAssembly(typeof(Minimal.Api.Program).Assembly);
 
         // Get all classes in ApiEndpoints namespace and sub-namespaces
         var endpointClasses = types

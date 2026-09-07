@@ -1,0 +1,143 @@
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Minimal.App.TestSupport;
+using Minimal.AppHost.SampleData;
+using Minimal.Infra.Extensions;
+using Testcontainers.PostgreSql;
+
+namespace Minimal.App.Tests.Integration.AppHost;
+
+/// <summary>
+/// Pins DRK-1135 §4's regression bound and §3's schema-absent invariant directly against
+/// <see cref="SampleDataGenerator.RunAsync"/> — the generation seam <c>AppHost.cs</c> calls from
+/// <c>AfterResourcesCreatedEvent</c>. <see cref="SampleDataGenerator"/> is internal to
+/// <c>Minimal.AppHost</c>; reachable here only via that project's test-only
+/// <c>InternalsVisibleTo(Minimal.App.Tests)</c> (mirrors every other project in this solution).
+/// </summary>
+public sealed class SampleDataGeneratorBoundsTests
+{
+    /// <summary>
+    /// The "10 seconds for 10 000 records" figure in DRK-1135 §4 is a requirement on the generator's
+    /// design (batched writes), not a promise about any one machine — a wall-clock assertion here would
+    /// flake on a slow CI runner or a cold container and, worse, would pass again once "flaked" into a
+    /// wider limit even after a real regression to one-row-per-round-trip. Instead this asserts the
+    /// structural property that a per-record <c>SaveChangesAsync</c> regression actually violates: the
+    /// number of SQL commands EF Core issues for 20 000 rows (10 000 products + 10 000 purchase orders)
+    /// stays in the tens (chunked batches of 1 000 plus a handful of guard/poll queries), never anywhere
+    /// near one-per-row. Counted via the process-wide EF Core <see cref="DiagnosticListener"/> feed
+    /// (<c>Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted</c>) — the only way to observe
+    /// commands issued by a <c>DbContext</c> <see cref="SampleDataGenerator"/> constructs internally,
+    /// with no seam to inject an interceptor from outside. The 1 000 ceiling leaves roughly 20x headroom
+    /// both below the ~20-30 commands this implementation actually issues and above whatever incidental
+    /// EF Core traffic other tests running in parallel in this process might add to the shared listener.
+    /// </summary>
+    [Fact]
+    public async Task GivenMigratedSchema_WhenGeneratingTenThousandRecordsPerEntity_ThenIssuesFarFewerDbCommandsThanRecordsWritten()
+    {
+        await using var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+        await postgres.StartAsync();
+        // Ephemeral containers can reuse a torn-down container's host port; clear Npgsql's
+        // connection pools so a fresh container is never handed a stale pooled physical connection.
+        Npgsql.NpgsqlConnection.ClearAllPools();
+        await InfraMigration.MigrateDb(postgres.GetConnectionString());
+
+        using var loggerFactory = LoggerFactory.Create(builder => { });
+        var logger = loggerFactory.CreateLogger("SampleDataGenerator");
+
+        using var commandCounter = new EfCoreCommandCounter();
+        using (commandCounter.Subscribe())
+        {
+            await SampleDataGenerator.RunAsync(postgres.GetConnectionString(), 10_000, logger, CancellationToken.None);
+        }
+
+        commandCounter.CommandCount.ShouldBeLessThan(1_000,
+            $"20 000 generated rows should take tens of batched SQL commands, not {commandCounter.CommandCount} — " +
+            "that count is the signature of a per-record round trip, exactly the regression this bound exists to catch.");
+    }
+
+    /// <summary>
+    /// DRK-1135 §3's hard invariant: with the API's startup migration disabled, the schema never exists,
+    /// and generation must still leave the host standing — <see cref="SampleDataGenerator.RunAsync"/>
+    /// "deliberately never fails the host" (see its own remarks) by catching and logging every failure.
+    /// Proven here by three assertions on one run: the call returns normally (an unhandled exception here
+    /// would be the crash this invariant forbids), the specific "schema is absent" warning is the log the
+    /// developer actually sees (not the generic catch-all failure message), and nothing was created —
+    /// checked structurally via <c>information_schema</c> rather than assumed, so a future change that
+    /// adds any DDL/EnsureCreated call to the generator would fail this test.
+    /// Runs against the generator's real 60 s schema-poll deadline (an internal, non-configurable
+    /// constant) — this test is slow by design, not flaky.
+    /// </summary>
+    [Fact]
+    public async Task GivenSchemaAbsent_WhenGenerating_ThenSkipsWithoutThrowingAndLogsTheCause()
+    {
+        await using var postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+        await postgres.StartAsync();
+        // Ephemeral containers can reuse a torn-down container's host port; clear Npgsql's
+        // connection pools so a fresh container is never handed a stale pooled physical connection.
+        Npgsql.NpgsqlConnection.ClearAllPools();
+        // Deliberately never migrated — the schema InfraMigration.MigrateDb would create never exists.
+
+        var logCapture = new TestLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logCapture));
+        var logger = loggerFactory.CreateLogger("SampleDataGenerator");
+
+        await SampleDataGenerator.RunAsync(postgres.GetConnectionString(), 100, logger, CancellationToken.None);
+
+        logCapture.Messages.ShouldContain(m =>
+            m.Contains("schema is absent", StringComparison.OrdinalIgnoreCase));
+
+        await using var connection = new Npgsql.NpgsqlConnection(postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT count(*) FROM information_schema.tables WHERE table_schema IN ('sample', 'manual_sample')";
+        var tableCount = (long)(await command.ExecuteScalarAsync())!;
+        tableCount.ShouldBe(0L, "generation must create nothing when the schema is absent, not merely skip inserts");
+    }
+
+    /// <summary>
+    /// Subscribes to every <see cref="DiagnosticListener"/> in the process and counts EF Core's
+    /// command-executed events — the only externally observable signal for a <c>DbContext</c> a callee
+    /// constructs and disposes internally, with no injectable interceptor seam.
+    /// </summary>
+    private sealed class EfCoreCommandCounter : IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object?>>, IDisposable
+    {
+        private const string EfCoreListenerName = "Microsoft.EntityFrameworkCore";
+        private const string CommandExecutedEventName = "Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted";
+        private readonly List<IDisposable> _listenerSubscriptions = [];
+        private int _commandCount;
+
+        public int CommandCount => _commandCount;
+
+        public IDisposable Subscribe() => DiagnosticListener.AllListeners.Subscribe(this);
+
+        public void OnNext(DiagnosticListener listener)
+        {
+            if (listener.Name == EfCoreListenerName)
+            {
+                _listenerSubscriptions.Add(listener.Subscribe(this));
+            }
+        }
+
+        public void OnNext(KeyValuePair<string, object?> value)
+        {
+            if (value.Key == CommandExecutedEventName)
+            {
+                Interlocked.Increment(ref _commandCount);
+            }
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnCompleted()
+        {
+        }
+
+        public void Dispose()
+        {
+            foreach (var subscription in _listenerSubscriptions) subscription.Dispose();
+            _listenerSubscriptions.Clear();
+        }
+    }
+}

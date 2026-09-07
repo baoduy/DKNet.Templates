@@ -25,6 +25,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- SampleDataGenerator is internal — every other project already exposes internals to the test
+             project the same way (Minimal.Infra/Minimal.Api/Minimal.Domains/Minimal.AppServices csproj).
+             Test-only visibility, no logic change. -->
+        <InternalsVisibleTo Include="Minimal.App.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Aspire.Hosting.Redis" />
         <PackageReference Include="Aspire.Hosting.PostgreSQL" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
