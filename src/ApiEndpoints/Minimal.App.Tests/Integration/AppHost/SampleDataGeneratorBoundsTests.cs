@@ -104,6 +104,36 @@ public sealed class SampleDataGeneratorBoundsTests
     }
 
     /// <summary>
+    /// This round added a dedicated <c>catch (OperationCanceledException)</c> ahead of the general handler
+    /// so a clean cancellation (e.g. host shutdown mid-generation) is never misreported as a generation
+    /// failure. The risk cutting the other way — a genuine failure being swallowed as "just a cancellation"
+    /// — is already ruled out: <see cref="GivenSchemaAbsent_WhenGenerating_ThenSkipsWithoutThrowingAndLogsTheCause"/>
+    /// and every retention/visibility test in this suite exercise real, non-cancellation exceptions and all
+    /// still assert the "failed and was skipped" line, which only the general <c>catch (Exception)</c> logs.
+    /// This test is the other half: prove an *actually cancelled* token takes the new branch instead — an
+    /// already-cancelled token makes <c>WaitForSchemaAsync</c>'s first <c>AnyAsync</c> throw before any
+    /// network I/O, so no container is needed.
+    /// </summary>
+    [Fact]
+    public async Task GivenAnAlreadyCancelledToken_WhenGenerating_ThenLogsCancelledNotFailed()
+    {
+        var logCapture = new TestLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logCapture));
+        var logger = loggerFactory.CreateLogger("SampleDataGenerator");
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await SampleDataGenerator.RunAsync(
+            "Host=unreachable;Database=none", 100, logger, cts.Token);
+
+        logCapture.Messages.ShouldContain(m =>
+            m.Contains("Sample-data generation cancelled", StringComparison.Ordinal));
+        logCapture.Messages.ShouldNotContain(m =>
+            m.Contains("Sample-data generation failed and was skipped", StringComparison.Ordinal),
+            "a clean cancellation must never be logged as a generation failure");
+    }
+
+    /// <summary>
     /// DRK-1135 §3's hard invariant: with the API's startup migration disabled, the schema never exists,
     /// and generation must still leave the host standing — <see cref="SampleDataGenerator.RunAsync"/>
     /// "deliberately never fails the host" (see its own remarks) by catching and logging every failure.
