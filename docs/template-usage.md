@@ -105,6 +105,12 @@ dotnet run --project <Name>.ApiEndpoints/<Name>.Api
 dotnet run --project <Name>.ApiEndpoints/<Name>.AppHost
 ```
 
+The Aspire path leaves you a populated database: the migration's three reference purchase orders,
+plus 10 000 generated products and 10 000 generated purchase orders, freshly randomised on every
+start. To start empty instead, set `"SampleData": { "RecordsPerEntity": 0 }` in
+`<Name>.ApiEndpoints/<Name>.AppHost/appsettings.json` — details in
+[`configuration-reference.md`](./configuration-reference.md#sampledata).
+
 ## Test
 
 ```bash

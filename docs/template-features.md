@@ -110,12 +110,34 @@ with.
 
 ![Architecture diagram: Minimal.AppHost provisions a Redis container and a PostgreSQL container, adds the AppDb database to the PostgreSQL resource, and starts Minimal.Api with WithReference injecting both connection strings and WaitFor delaying start until the containers are ready; Azure Service Bus sits outside the host as a namespace you bring and configure yourself.](diagrams/templates-aspire-topology.svg)
 
-`Minimal.AppHost/AppHost.cs` is thirteen lines and carries no business logic. It provisions the two
-containers, adds the `AppDb` database to the PostgreSQL resource, and starts the API with both
-connection strings injected. Azure Service Bus is deliberately **not** orchestrated here — the
+`Minimal.AppHost/AppHost.cs` carries no business logic. It provisions the two containers, adds the
+`AppDb` database to the PostgreSQL resource, starts the API with both connection strings injected,
+and subscribes the local sample-data generation described [below](#sample-data-on-start-up).
+Azure Service Bus is deliberately **not** orchestrated here — the
 commented-out `.WaitFor(bus)` marks where it would go if you added a resource for it. Running
 `dotnet run --project Minimal.Api` on its own skips all of it, so `ConnectionStrings:AppDb` and
 `ConnectionStrings:Redis` become yours to supply.
+
+### Sample data on start-up
+
+Once those resources are up, the host also populates the two sample entities — `Product` and
+`PurchaseOrder` — with **10 000 generated records each by default**, so paging, sorting and
+filtering have a realistic dataset with no manual step. The records are freshly randomised on every
+start, so consecutive runs do not present the same data, and they are synthetic throughout — no
+real personal data. They are attributed to `SharedConsts.SystemAccount` (`"System"`), the same
+account the three reference purchase orders carry; for `Product`, which implements `IOwnedBy`, that
+is also the `OwnedBy` value, which is what lets the
+[row-level ownership filter](auditing-and-data-ownership.md#row-level-ownership-filtering) show the
+generated rows to your own local (unauthenticated) requests. The three reference orders are
+untouched — generated data is additive — and no domain event is published for a generated record,
+so the logs and the dashboard stay readable.
+
+Volume is the single setting [`SampleData:RecordsPerEntity`](configuration-reference.md#sampledata)
+on the host, where `0` skips generation and leaves you an empty database. Generation needs the
+schema `RunDbMigrationWhenAppStart` creates and skips itself — host start unaffected — when there
+is none, and it never tops up a database that already holds sample rows. It lives in
+`Minimal.AppHost/SampleData/SampleDataGenerator.cs` alone, so a solution deployed from this template
+carries no data generator, no extra endpoint and no extra credential.
 
 ## FeatureManagement flags
 
