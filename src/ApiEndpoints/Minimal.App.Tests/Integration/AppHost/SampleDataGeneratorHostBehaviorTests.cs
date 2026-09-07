@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Minimal.App.TestSupport;
 using Minimal.AppHost.SampleData;
 using Minimal.AppServices.AutomatedSample.V1;
 using Minimal.Domains.Features.AutomatedSample.Entities;
@@ -23,9 +24,15 @@ public sealed class SampleDataGeneratorHostBehaviorTests(SampleDataApiFixture fi
     public async Task GeneratedProducts_AreVisibleToAnUnauthenticatedCallerThroughTheOwnershipFilter_AndPublishNoDomainNotification()
     {
         const int recordsPerEntity = 30;
-        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        var generatorLog = new TestLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(generatorLog));
         await SampleDataGenerator.RunAsync(
             fixture.ConnectionString, recordsPerEntity, loggerFactory.CreateLogger("SampleDataGenerator"), CancellationToken.None);
+
+        // "30 items came back" already fails distinctly if generation crashed (it would return 0), but the
+        // log line rules out silently getting the right count for the wrong reason (e.g. from a prior run).
+        generatorLog.Messages.ShouldNotContain(m =>
+            m.Contains("Sample-data generation failed and was skipped", StringComparison.Ordinal));
 
         // Visibility: rows can exist and still be invisible under row-level isolation — an unauthenticated
         // local request resolves to ownership key "System" (PrincipalProvider), the same key the generator

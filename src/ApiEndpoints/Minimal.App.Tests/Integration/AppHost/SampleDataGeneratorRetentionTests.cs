@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Minimal.App.TestSupport;
 using Minimal.AppHost.SampleData;
 using Minimal.Domains.Features.AutomatedSample.Entities;
 using Minimal.Domains.Features.ManualSample.Entities;
@@ -45,8 +46,18 @@ public sealed class SampleDataGeneratorRetentionTests
             await db.SaveChangesAsync();
         }
 
-        using var loggerFactory = LoggerFactory.Create(builder => { });
+        // A capturing logger, not an empty one: "count stayed at 1" alone would also hold if generation
+        // crashed outright before ever reaching the retention check (exactly what DRK-1146 was) — the log
+        // line is the only signal that distinguishes "the guard fired" from "nothing ran at all".
+        var logCapture = new TestLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logCapture));
         await SampleDataGenerator.RunAsync(connectionString, 50, loggerFactory.CreateLogger("SampleDataGenerator"), CancellationToken.None);
+
+        logCapture.Messages.ShouldContain(m =>
+            m.Contains("Skipping product generation: existing rows found", StringComparison.Ordinal));
+        logCapture.Messages.ShouldNotContain(m =>
+            m.Contains("Sample-data generation failed and was skipped", StringComparison.Ordinal),
+            "a swallowed exception must never be mistaken for the retention guard firing");
 
         await using var verifyDb = NewCoreDbContext(connectionString);
         var products = await verifyDb.Set<Product>().IgnoreQueryFilters().ToListAsync();
@@ -69,17 +80,31 @@ public sealed class SampleDataGeneratorRetentionTests
         // Seeds exactly the 3 PurchaseOrderStaticData reference orders — the count the ">3" threshold is defined against.
         await InfraMigration.MigrateDb(connectionString);
 
-        using var loggerFactory = LoggerFactory.Create(builder => { });
+        var logCapture = new TestLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logCapture));
         var logger = loggerFactory.CreateLogger("SampleDataGenerator");
 
         // First run: 3 existing rows is not > 3, so generation proceeds and adds 50 more.
         await SampleDataGenerator.RunAsync(connectionString, 50, logger, CancellationToken.None);
         var afterFirstRun = await GetOrderIdsAsync(connectionString);
         afterFirstRun.Count.ShouldBe(53);
+        logCapture.Messages.ShouldNotContain(m =>
+            m.Contains("Sample-data generation failed and was skipped", StringComparison.Ordinal));
 
         // Second run against the same (retained) database: 53 existing rows is > 3, so it must skip entirely.
+        // A capturing logger, not an empty one: "count stayed at 53" alone would also hold if this second
+        // call crashed outright before reaching the retention check — the log line is what distinguishes
+        // "the guard fired" from "nothing ran at all" (exactly the gap DRK-1146's silent model-build failure
+        // exposed).
+        logCapture.Clear();
         await SampleDataGenerator.RunAsync(connectionString, 50, logger, CancellationToken.None);
         var afterSecondRun = await GetOrderIdsAsync(connectionString);
+
+        logCapture.Messages.ShouldContain(m =>
+            m.Contains("Skipping purchase-order generation: existing rows found", StringComparison.Ordinal));
+        logCapture.Messages.ShouldNotContain(m =>
+            m.Contains("Sample-data generation failed and was skipped", StringComparison.Ordinal),
+            "a swallowed exception must never be mistaken for the retention guard firing");
 
         afterSecondRun.Count.ShouldBe(53, "the retained-database guard must stop accumulation on a second run");
         afterSecondRun.ShouldBe(afterFirstRun, ignoreOrder: true,
