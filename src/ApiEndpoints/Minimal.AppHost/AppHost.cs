@@ -24,10 +24,15 @@ var recordsPerEntity = builder.Configuration.GetValue("SampleData:RecordsPerEnti
 
 builder.Eventing.Subscribe<AfterResourcesCreatedEvent>(async (@event, cancellationToken) =>
 {
-    var connectionString = await apDb.Resource.ConnectionStringExpression.GetValueAsync(cancellationToken);
-    if (string.IsNullOrEmpty(connectionString)) return;
-
     var logger = @event.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SampleDataGenerator");
+
+    var connectionString = await apDb.Resource.ConnectionStringExpression.GetValueAsync(cancellationToken);
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        logger.LogWarning("Sample-data generation skipped: no connection string was resolved for the AppDb resource.");
+        return;
+    }
+
     await SampleDataGenerator.RunAsync(connectionString, recordsPerEntity, logger, cancellationToken);
 });
 

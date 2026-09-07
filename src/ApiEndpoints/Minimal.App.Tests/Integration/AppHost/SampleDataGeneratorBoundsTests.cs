@@ -1,7 +1,12 @@
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Minimal.App.TestSupport;
 using Minimal.AppHost.SampleData;
+using Minimal.Domains.Features.AutomatedSample.Entities;
+using Minimal.Domains.Features.ManualSample.Entities;
+using Minimal.Domains.Share;
+using Minimal.Infra.Contexts;
 using Minimal.Infra.Extensions;
 using Testcontainers.PostgreSql;
 
@@ -41,7 +46,11 @@ public sealed class SampleDataGeneratorBoundsTests
         Npgsql.NpgsqlConnection.ClearAllPools();
         await InfraMigration.MigrateDb(postgres.GetConnectionString());
 
-        using var loggerFactory = LoggerFactory.Create(builder => { });
+        // A capturing logger, not an empty one: a run that dies after two commands would still satisfy
+        // the command-count assertion below — the log line is what proves the run actually completed
+        // rather than silently failing (SampleDataGenerator.RunAsync swallows every exception by design).
+        var logCapture = new TestLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logCapture));
         var logger = loggerFactory.CreateLogger("SampleDataGenerator");
 
         using var commandCounter = new EfCoreCommandCounter();
@@ -53,6 +62,45 @@ public sealed class SampleDataGeneratorBoundsTests
         commandCounter.CommandCount.ShouldBeLessThan(1_000,
             $"20 000 generated rows should take tens of batched SQL commands, not {commandCounter.CommandCount} — " +
             "that count is the signature of a per-record round trip, exactly the regression this bound exists to catch.");
+
+        logCapture.Messages.ShouldNotContain(m =>
+            m.Contains("Sample-data generation failed and was skipped", StringComparison.Ordinal),
+            "a swallowed exception must never be mistaken for a completed run at this volume");
+
+        await using var verifyDb = new CoreDbContext(
+            new DbContextOptionsBuilder<CoreDbContext>()
+                .UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(Sequences).Assembly])
+                .UseNpgsql(postgres.GetConnectionString())
+                .Options);
+        var productCount = await verifyDb.Set<Product>().IgnoreQueryFilters().CountAsync();
+        var orderCount = await verifyDb.Set<PurchaseOrder>().IgnoreQueryFilters().CountAsync();
+
+        productCount.ShouldBe(10_000, "every requested product row must actually be written, not just cheaply counted in commands");
+        orderCount.ShouldBe(10_003, "10 000 generated orders plus the 3 static reference orders the migration seeds");
+    }
+
+    /// <summary>
+    /// DRK-1135 §5's on/off-switch scenario: <c>recordsPerEntity &lt;= 0</c> is the documented way to get an
+    /// empty database, and the guard returns before any <c>DbContext</c> is even constructed — so this needs
+    /// no container.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GivenRecordsPerEntityIsZeroOrNegative_WhenGenerating_ThenLogsDisabledAndWritesNothing(int recordsPerEntity)
+    {
+        var logCapture = new TestLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logCapture));
+        var logger = loggerFactory.CreateLogger("SampleDataGenerator");
+
+        await SampleDataGenerator.RunAsync(
+            "Host=unreachable;Database=none", recordsPerEntity, logger, CancellationToken.None);
+
+        logCapture.Messages.ShouldContain(m =>
+            m.Contains("Sample-data generation disabled", StringComparison.Ordinal));
+        logCapture.Messages.ShouldNotContain(m =>
+            m.Contains("Sample-data generation failed and was skipped", StringComparison.Ordinal),
+            "the disabled guard must return before ever touching the database");
     }
 
     /// <summary>

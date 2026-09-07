@@ -53,11 +53,15 @@ internal static class SampleDataGenerator
                     .Options);
             db.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            if (!await WaitForSchemaAsync(db, cancellationToken))
+            var (schemaReady, schemaPollFailure) = await WaitForSchemaAsync(db, logger, cancellationToken);
+            if (!schemaReady)
             {
                 logger.LogWarning(
-                    "Sample-data generation skipped: database schema is absent — the API's startup " +
-                    "migration (FeatureManagement:RunDbMigrationWhenAppStart) is disabled.");
+                    "Sample-data generation skipped: database schema is absent after a {DeadlineSeconds}s wait — " +
+                    "either the API's startup migration (FeatureManagement:RunDbMigrationWhenAppStart) is disabled, " +
+                    "or the schema query kept failing for another reason. Last observed failure: {LastPollFailure}",
+                    SchemaWaitDeadline.TotalSeconds,
+                    schemaPollFailure?.Message ?? "none — the query never returned before the deadline");
                 return;
             }
 
@@ -68,6 +72,10 @@ internal static class SampleDataGenerator
                 "Sample-data generation complete: {Products} products, {Orders} purchase orders written in {ElapsedMs} ms.",
                 productsWritten, ordersWritten, stopwatch.ElapsedMilliseconds);
         }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("Sample-data generation cancelled.");
+        }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Sample-data generation failed and was skipped.");
@@ -76,28 +84,45 @@ internal static class SampleDataGenerator
 
     /// <summary>
     /// Polls until the migration-created <c>sample."Products"</c> table is queryable, or the deadline passes.
-    /// A query failure (container still booting, schema not migrated yet) is treated as "not ready", not an error.
+    /// A query failure (container still booting, schema not migrated yet) is treated as "not ready", not an
+    /// error — but the last such failure is kept (not discarded) so the caller can tell a genuinely absent
+    /// schema apart from, say, a bad password or an unreachable host, and the wait itself is logged once so
+    /// it is visible in the logs a developer is already reading instead of a full silent minute.
     /// </summary>
-    private static async Task<bool> WaitForSchemaAsync(SampleDataDbContext db, CancellationToken cancellationToken)
+    private static async Task<(bool Ready, Exception? LastFailure)> WaitForSchemaAsync(
+        SampleDataDbContext db, ILogger logger, CancellationToken cancellationToken)
     {
         var deadline = DateTimeOffset.UtcNow + SchemaWaitDeadline;
+        Exception? lastFailure = null;
+        var loggedWaiting = false;
 
         while (DateTimeOffset.UtcNow < deadline)
         {
             try
             {
                 await db.Set<Product>().AnyAsync(cancellationToken);
-                return true;
+                return (true, null);
             }
-            catch
+            catch (OperationCanceledException)
             {
-                // Not ready yet — Postgres may still be booting, or the schema hasn't been migrated.
+                throw;
+            }
+            catch (Exception ex)
+            {
+                lastFailure = ex;
+                if (!loggedWaiting)
+                {
+                    loggedWaiting = true;
+                    logger.LogInformation(
+                        "Sample-data generation is waiting for the database schema to become queryable (up to {DeadlineSeconds}s)...",
+                        SchemaWaitDeadline.TotalSeconds);
+                }
             }
 
             await Task.Delay(SchemaPollInterval, cancellationToken);
         }
 
-        return false;
+        return (false, lastFailure);
     }
 
     private static async Task<int> GenerateProductsAsync(

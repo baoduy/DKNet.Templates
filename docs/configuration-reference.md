@@ -231,8 +231,10 @@ on, and no presence in, a deployed service.
 Two of its edges are worth knowing before you change it. Generation writes into the schema the
 API's startup migration creates, so with
 [`FeatureManagement:RunDbMigrationWhenAppStart`](template-features.md#featuremanagement-flags) off
-there is no schema to write into: generation is skipped, the host still starts normally, and a
-warning in the host's logs names that flag as the reason. And generation never accumulates into a
+there is no schema to write into: generation polls for up to 60 seconds waiting for that schema —
+the host process itself starts immediately and is unaffected, only sample-data generation waits —
+then gives up, and a warning in the host's logs names that flag, alongside the last poll failure
+observed, as the likely reason. And generation never accumulates into a
 database that already holds sample rows — products are skipped if the table holds any row, purchase
 orders if it holds more than the three the migration seeds, so a database you chose to retain is
 skipped rather than topped up and no row you created by hand is ever deleted or modified.

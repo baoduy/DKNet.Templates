@@ -134,8 +134,10 @@ so the logs and the dashboard stay readable.
 
 Volume is the single setting [`SampleData:RecordsPerEntity`](configuration-reference.md#sampledata)
 on the host, where `0` skips generation and leaves you an empty database. Generation needs the
-schema `RunDbMigrationWhenAppStart` creates and skips itself — host start unaffected — when there
-is none, and it never tops up a database that already holds sample rows. It lives in
+schema `RunDbMigrationWhenAppStart` creates; when it is absent, generation polls for up to 60
+seconds before giving up and skipping itself — the host process itself starts immediately and is
+unaffected, only generation waits — and it never tops up a database that already holds sample rows.
+It lives in
 `Minimal.AppHost/SampleData/SampleDataGenerator.cs` alone, so a solution deployed from this template
 carries no data generator, no extra endpoint and no extra credential.
 
