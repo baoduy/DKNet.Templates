@@ -1,4 +1,5 @@
 using Bogus;
+using DKNet.EfCore.DataAuthorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Minimal.Domains.Features.AutomatedSample.Entities;
@@ -202,12 +203,18 @@ internal static class SampleDataGenerator
     #endregion
 
     /// <summary>
-    /// Bare EF Core context used only to write sample data outside DI: it does not implement
-    /// <c>IDataOwnerDbContext</c> and is never given <c>UseAutoDataSeeding</c>, so no data-owner read filter
-    /// applies to its writes and no domain-event hook is registered against it — generated rows publish no
-    /// notification and are never invisible to the row-level filter.
+    /// Bare EF Core context used only to write sample data outside DI. It is never given
+    /// <c>UseAutoDataSeeding</c>, so no domain-event hook is registered against it — generated rows publish
+    /// no notification. It implements <c>IDataOwnerDbContext</c> with <c>IsUnrestrictedAccess</c> so that
+    /// <see cref="DKNet.EfCore.DataAuthorization"/>'s global query filter — auto-attached to any scanned
+    /// <see cref="IOwnedBy"/> entity such as <c>Product</c>, for any DbContext — sees every row instead of
+    /// throwing for a context that can't supply real accessible keys.
     /// </summary>
-    private sealed class SampleDataDbContext(DbContextOptions<SampleDataDbContext> options) : DbContext(options)
+    private sealed class SampleDataDbContext(DbContextOptions<SampleDataDbContext> options)
+        : DbContext(options), IDataOwnerDbContext
     {
+        public IEnumerable<string> AccessibleKeys => [];
+
+        public bool IsUnrestrictedAccess => true;
     }
 }
