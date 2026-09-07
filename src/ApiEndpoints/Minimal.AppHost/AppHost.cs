@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Minimal.AppHost.SampleData;
 using Projects;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -15,5 +19,16 @@ builder.AddProject<Minimal_Api>("Api")
     //.WaitFor(bus)
     .WaitFor(cache)
     .WaitFor(apDb);
+
+var recordsPerEntity = builder.Configuration.GetValue("SampleData:RecordsPerEntity", 10000);
+
+builder.Eventing.Subscribe<AfterResourcesCreatedEvent>(async (@event, cancellationToken) =>
+{
+    var connectionString = await apDb.Resource.ConnectionStringExpression.GetValueAsync(cancellationToken);
+    if (string.IsNullOrEmpty(connectionString)) return;
+
+    var logger = @event.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SampleDataGenerator");
+    await SampleDataGenerator.RunAsync(connectionString, recordsPerEntity, logger, cancellationToken);
+});
 
 await builder.Build().RunAsync();
