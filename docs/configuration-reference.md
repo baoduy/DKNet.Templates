@@ -216,6 +216,32 @@ tracing and metrics instrumentation, with a console exporter in `DEBUG` builds o
 
 Both exporter keys are additive: set both and both exporters run.
 
+## `SampleData`
+
+The one section on this page that is **not** an API key. It lives in
+`Minimal.AppHost/appsettings.json` — the Aspire application host's own configuration — and is read
+by `Minimal.AppHost/AppHost.cs`. The deployed API never reads it: the application host orchestrates
+a local development environment and is not part of what gets published, so this key has no effect
+on, and no presence in, a deployed service.
+
+| Key | Type | Shipped default | Effect | Read by |
+|---|---|---|---|---|
+| `SampleData:RecordsPerEntity` | int | `10000` | How many records to generate per sample entity (`Product` and `PurchaseOrder`) once the application host has started its resources. `0` — or any negative value — skips generation entirely, without even opening a database connection, and leaves the database exactly as the migration left it. That is how you get an empty database to test empty-state behaviour; there is no separate on/off flag, the volume *is* the switch. | `Minimal.AppHost/AppHost.cs`, which passes it to `Minimal.AppHost/SampleData/SampleDataGenerator.cs` |
+
+Two of its edges are worth knowing before you change it. Generation writes into the schema the
+API's startup migration creates, so with
+[`FeatureManagement:RunDbMigrationWhenAppStart`](template-features.md#featuremanagement-flags) off
+there is no schema to write into: generation polls for up to 60 seconds waiting for that schema —
+the host process itself starts immediately and is unaffected, only sample-data generation waits —
+then gives up, and a warning in the host's logs names that flag, alongside the last poll failure
+observed, as the likely reason. And generation never accumulates into a
+database that already holds sample rows — products are skipped if the table holds any row, purchase
+orders if it holds more than the three the migration seeds, so a database you chose to retain is
+skipped rather than topped up and no row you created by hand is ever deleted or modified.
+
+What generation produces is described in
+[`template-features.md`](template-features.md#aspire-topology).
+
 ## Framework-owned keys
 
 | Key | Shipped default | Effect |
