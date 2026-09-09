@@ -354,9 +354,11 @@ Returns a paginated list of purchase orders.
 | `customerName` | string | — | Filter by customer name |
 
 > The `pageSize` default above belongs to this hand-written query. A slice on the generated
-> `MapGetList` route documents a different contract: `pageNumber`/`pageSize` defaulting 1/1000
-> with a ceiling of 1000, plus `fromDate`/`toDate` last-activity bounds. Use
-> `templates/api-reference-template.md` for those.
+> `MapGetList` route documents a different contract: `pageNumber`/`pageSize` defaulting 1/20 with
+> a hard-coded ceiling of 100 on `DKNet.AspCore.Extensions` `10.1.19`, becoming 1/1000 with a
+> configurable ceiling of 1000 plus `fromDate`/`toDate` last-activity bounds in a release after
+> `10.1.19`. State whichever holds for the version the project pins, and use
+> `templates/api-reference-template.md` for those slices.
 
 **Response** `200 OK`
 

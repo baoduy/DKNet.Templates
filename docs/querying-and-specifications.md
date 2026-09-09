@@ -146,9 +146,11 @@ two cases: the caller omitted the query parameter, which falls back to
 still fail validation instead of silently falling back to the default.
 
 `DefaultPageSize = 20` and the `1..100` validator bound above are **this hand-written query's own
-choices**, not the package's. The generated route has an entirely separate contract — default and
-ceiling `1000`, clamped rather than rejected, plus `fromDate`/`toDate` activity bounds — see
-[Generic List Endpoint](generic-list-endpoint.md#query-parameters).
+choices**, not the package's — the coincidence with the package's own `10.1.19` figures is not a
+dependency, and this query keeps these values whatever the package does. The generated route has an
+entirely separate contract: it *clamps* an out-of-range page size rather than rejecting it, and a
+release after the pinned `10.1.19` moves its default and ceiling to `1000` and adds `fromDate`/`toDate`
+activity bounds — see [Generic List Endpoint](generic-list-endpoint.md#package-version).
 
 ### Paging and projection to DTOs
 

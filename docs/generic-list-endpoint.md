@@ -52,22 +52,29 @@ See [The DTO is the boundary](#the-dto-is-the-boundary) below.
 | Parameter    | Type          | Default | Notes                                                              |
 |--------------|---------------|---------|--------------------------------------------------------------------|
 | `pageNumber` | `int`         | `1`     | 1-based. A value `< 1` is silently clamped to `1`.                 |
-| `pageSize`   | `int`         | `1000`  | A value `< 1` falls back to `1000`. Max **1000** — larger is clamped down, not rejected. Both figures are host-configurable — see [Configuring the defaults](#configuring-the-defaults). |
+| `pageSize`   | `int`         | `1000`  | A value `< 1` falls back to `1000`. Max **1000** — larger is clamped down, not rejected. Both figures are host-configurable — see [Configuring the defaults](#configuring-the-defaults). **Unreleased** — on the pinned `10.1.19` the default is `20`, the ceiling `100`, neither configurable ([Package version](#package-version)). |
 | `filter`     | repeatable    | none    | `field:operation:value`. Repeat the param to AND multiple conditions. Max **20**. |
 | `search`     | `string`      | none    | Free-text OR across all string DTO fields. Min **2** characters.   |
 | `orderBy`    | `string`      | none    | A single DTO field name to sort by.                                |
 | `desc`       | `bool`        | `false` | Reverses the `orderBy` direction.                                  |
-| `fromDate`   | ISO-8601      | none    | Inclusive lower bound on when a record was last active. See [Recent-activity window](#recent-activity-window-fromdate--todate). |
-| `toDate`     | ISO-8601      | none    | Inclusive upper bound on when a record was last active. Omitting both bounds does **not** mean "all history" — see the same section. |
+| `fromDate`   | ISO-8601      | none    | Inclusive lower bound on when a record was last active. *Unreleased — does not exist on the pinned `10.1.19`; see [Recent-activity window](#recent-activity-window-fromdate--todate).* |
+| `toDate`     | ISO-8601      | none    | Inclusive upper bound on when a record was last active. Omitting both bounds does **not** mean "all history" — see the same section. *Unreleased, as above.* |
 
 Paging is always applied. Filter, search, and order are each optional and independent; when present
 they are ANDed together (search is one OR-group, then ANDed with the filter predicate). Over records
 that carry audit timestamps a recent-activity window is also always applied — the `fromDate`/`toDate`
 you named, or a default one if you named neither — and it is ANDed with everything else.
 
-> **Package version.** Every default and limit on this page describes `DKNet.AspCore.Extensions` **≥ the
-> release carrying DRK-1162**. This template still pins `10.1.19`, where the `pageSize` default is `20`,
-> the ceiling is a hard-coded `100`, and `fromDate`/`toDate` do not exist — see
+### Package version
+
+> The page-size figures and the date bounds on this page describe a **`DKNet.AspCore.Extensions`
+> release after `10.1.19`** — the one delivering DRK-1160. Everything else (page numbering, the filter
+> and search rules, ordering, the response envelope) is unchanged and true of the pinned version. This template still pins `10.1.19`
+> (`src/Directory.Packages.props`), where the `pageSize` default is a hard-coded `20`, the ceiling a
+> hard-coded `100` with no `ListQueryOptions` to configure, and `fromDate`/`toDate` do not exist at
+> all. Until the pin is bumped, those are the figures a caller actually gets — the template's own
+> `ProductList.feature` proves the `100` ceiling with a green scenario. Every value below marked
+> *unreleased* is subject to this note; see also
 > [Recent-activity window](#recent-activity-window-fromdate--todate).
 
 ## Filtering
@@ -164,8 +171,8 @@ so a search hits any of those. (Every searched field must map to a real column �
 
 ## Recent-activity window (`fromDate` / `toDate`)
 
-> **Version prerequisite.** `fromDate`/`toDate` are the contract of the *next* `DKNet.AspCore.Extensions`
-> release — the one carrying DRK-1162. This template currently pins **`10.1.19`**
+> **Version prerequisite.** `fromDate`/`toDate` are the contract of a `DKNet.AspCore.Extensions`
+> release *after* `10.1.19` — the one delivering DRK-1160. This template currently pins **`10.1.19`**
 > (`src/Directory.Packages.props`), which does not carry them: against that version the two parameters
 > are unknown query-string keys, silently ignored, and a listing stays unbounded in time. Bump the
 > package before relying on anything in this section.
@@ -173,8 +180,9 @@ so a search hits any of those. (Every searched field must map to a real column �
 > The same caveat covers the paging figures above and in [Configuring the defaults](#configuring-the-defaults):
 > on `10.1.19` the `pageSize` default is `20`, the ceiling is a hard-coded `100` with no
 > `ListQueryOptions` to configure, and the clamped range in
-> [Error behavior](#error-behavior) is therefore `1..100`. Every figure on this page describes
-> `DKNet.AspCore.Extensions` ≥ the release carrying DRK-1162.
+> [Error behavior](#error-behavior) is therefore `1..100`. Those page-size figures and these date
+> bounds are the only parts of this page that need the bump — see
+> [Package version](#package-version).
 
 `fromDate` and `toDate` are inclusive ISO-8601 bounds on when a record was **last active**. A record is
 in range when *either* the moment it was created *or* the moment it was last updated falls inside the
@@ -203,6 +211,10 @@ The automated sample's `Product` is an `AggregateRoot` and therefore audited
 every product ever created.
 
 ## Configuring the defaults
+
+> **Unreleased.** `ListQueryOptions` does not exist in the pinned `10.1.19` — its page-size figures are
+> hard-coded `private const`s with no configuration surface at all. Everything in this section arrives
+> with the release after `10.1.19`; see [Package version](#package-version).
 
 The page size and the window length are host settings on `ListQueryOptions`, bound from the
 `DKNet:ListQuery` configuration section:
@@ -250,7 +262,8 @@ silently-ignored parameter:
 - a `fromDate` later than the `toDate` — an impossible activity window.
 
 Out-of-range **paging** is the one exception: `pageNumber < 1` and `pageSize` outside `1..1000` are
-clamped, not rejected.
+clamped, not rejected. The `1000` is the unreleased ceiling: on the pinned `10.1.19` the clamped range
+is `1..100` — see [Package version](#package-version).
 
 ## The DTO is the boundary
 
