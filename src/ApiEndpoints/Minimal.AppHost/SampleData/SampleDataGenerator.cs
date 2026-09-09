@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Bogus;
 using DKNet.EfCore.DataAuthorization;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ namespace Minimal.AppHost.SampleData;
 /// Populates the two sample entities with randomised dev data after the AppHost's resources are up.
 /// Deliberately never fails the host — every failure is caught, logged, and swallowed.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class SampleDataGenerator
 {
     #region Constants
