@@ -1,5 +1,9 @@
 using OwaspHeaders.Core;
+using OwaspHeaders.Core.Enums;
 using OwaspHeaders.Core.Extensions;
+using OwaspHeaders.Core.Helpers;
+using OwaspHeaders.Core.Models;
+using Minimal.Api.Configs.Swagger;
 
 namespace Minimal.Api.Configs;
 
@@ -34,31 +38,72 @@ internal static class SecurityHeadersConfig
             return app;
         }
 
-        // HttpsConfig (HttpsConfig.cs) owns Strict-Transport-Security — UseHsts() deliberately not called here
-        // to avoid emitting it twice.
-        var config = SecureHeadersMiddlewareBuilder
-            .CreateBuilder()
-            .UseXFrameOptions()
-            .UseContentTypeOptions()
-            .UseDefaultContentSecurityPolicy()
-            .UsePermittedCrossDomainPolicies()
-            .UseReferrerPolicy()
-            .UseCacheControl()
-            .UseXssProtection()
-            .UseCrossOriginResourcePolicy()
-            .Build();
+        var headerWriter = CreateWriter(StrictConfig());
 
-        var headerWriter = new SecureHeadersMiddleware(_ => Task.CompletedTask, config);
+        // Scalar's documentation page passes the OpenAPI document's URL to its bundle from an inline
+        // <script type="module">, which script-src 'self' blocks: the page then loads but never calls
+        // initialize(), rendering empty without ever requesting /openapi/v1.json. Only this one path gets
+        // 'unsafe-inline' back, and only while the documentation is actually mapped — every other response,
+        // the OpenAPI document included, keeps the strict policy.
+        var docsHeaderWriter = app.Services.IsConfigAdded(nameof(SwaggerConfig))
+            ? CreateWriter(DocsConfig())
+            : null;
 
         app.Use(async (context, next) =>
         {
-            context.Response.OnStarting(() => headerWriter.InvokeAsync(context));
+            var writer = docsHeaderWriter is not null &&
+                         context.Request.Path.StartsWithSegments(SwaggerConfig.DocsPath,
+                             StringComparison.OrdinalIgnoreCase)
+                ? docsHeaderWriter
+                : headerWriter;
+
+            context.Response.OnStarting(() => writer.InvokeAsync(context));
             await next();
         });
 
         Console.WriteLine("Security Headers enabled.");
         return app;
     }
+
+    private static SecureHeadersMiddleware CreateWriter(SecureHeadersMiddlewareConfiguration config) =>
+        new(_ => Task.CompletedTask, config);
+
+    private static SecureHeadersMiddlewareConfiguration StrictConfig() =>
+        BaseConfig().UseDefaultContentSecurityPolicy().Build();
+
+    private static SecureHeadersMiddlewareConfiguration DocsConfig()
+    {
+        var config = BaseConfig().UseContentSecurityPolicy();
+
+        // Mirrors UseDefaultContentSecurityPolicy()'s script-src/object-src 'self', with 'unsafe-inline'
+        // added to script-src for Scalar's inline bootstrap.
+        config.ContentSecurityPolicyConfiguration.ScriptSrc =
+        [
+            ContentSecurityPolicyHelpers.CreateSelfDirective(),
+            new ContentSecurityPolicyElement
+            {
+                CommandType = CspCommandType.Directive,
+                DirectiveOrUri = "unsafe-inline"
+            }
+        ];
+        config.ContentSecurityPolicyConfiguration.ObjectSrc =
+            [ContentSecurityPolicyHelpers.CreateSelfDirective()];
+
+        return config.Build();
+    }
+
+    // HttpsConfig (HttpsConfig.cs) owns Strict-Transport-Security — UseHsts() deliberately not called here
+    // to avoid emitting it twice.
+    private static SecureHeadersMiddlewareConfiguration BaseConfig() =>
+        SecureHeadersMiddlewareBuilder
+            .CreateBuilder()
+            .UseXFrameOptions()
+            .UseContentTypeOptions()
+            .UsePermittedCrossDomainPolicies()
+            .UseReferrerPolicy()
+            .UseCacheControl()
+            .UseXssProtection()
+            .UseCrossOriginResourcePolicy();
 
     #endregion
 }

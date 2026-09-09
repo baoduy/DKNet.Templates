@@ -107,6 +107,23 @@ public sealed class OpenApiDocumentRegressionTests(SwaggerOnApiFixture fixture) 
         idParameter.GetProperty("schema").GetProperty("format").GetString().ShouldBe("uuid");
     }
 
+    /// <summary>
+    /// The health probes are mapped by <c>MapHealthChecks</c>, a raw request-delegate pipeline ApiExplorer never
+    /// reports, so they reach the document only through <c>SwaggerConfig</c>'s hand-written path items — pinned
+    /// here because nothing else fails when that hand-written description drifts from the mapped routes.
+    /// </summary>
+    [Fact]
+    public async Task Document_HealthzPaths_ArePublishedWithBothProbeResponses()
+    {
+        using var doc = await FetchDocumentAsync();
+        var paths = doc.RootElement.GetProperty("paths");
+
+        paths.GetProperty("/healthz").EnumerateObject().Select(m => m.Name).ShouldBe(["get"]);
+        paths.GetProperty("/healthz/detail").EnumerateObject().Select(m => m.Name).ShouldBe(["get"]);
+        paths.GetProperty("/healthz").GetProperty("get").GetProperty("responses")
+            .EnumerateObject().Select(r => r.Name).Order().ShouldBe(["200", "503"]);
+    }
+
     private async Task<JsonDocument> FetchDocumentAsync()
     {
         var client = fixture.CreateClient();
