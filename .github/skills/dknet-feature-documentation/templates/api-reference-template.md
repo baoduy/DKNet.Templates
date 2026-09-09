@@ -31,7 +31,9 @@ Returns a paginated list of {entities}.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `pageNumber` | int | 1 | Page number (1-based) |
-| `pageSize` | int | 20 | Items per page (max 100) |
+| `pageSize` | int | 1000 | Items per page (max 1000, clamped not rejected) |
+| `fromDate` | ISO-8601 | — | Inclusive lower bound on last activity; omit both bounds and audited records default to the last 3 months |
+| `toDate` | ISO-8601 | — | Inclusive upper bound on last activity |
 | `search` | string | — | Filter by name or key fields |
 | `sortBy` | string | `CreatedAt` | Field to sort by |
 | `sortDirection` | string | `desc` | `asc` or `desc` |
@@ -51,7 +53,7 @@ Returns a paginated list of {entities}.
     }
   ],
   "pageNumber": 1,
-  "pageSize": 20,
+  "pageSize": 1000,
   "totalCount": 100,
   "totalPages": 5
 }

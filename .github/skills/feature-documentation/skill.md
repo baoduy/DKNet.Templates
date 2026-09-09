@@ -353,6 +353,11 @@ Returns a paginated list of purchase orders.
 | `pageSize` | int | 20 | Items per page |
 | `customerName` | string | — | Filter by customer name |
 
+> The `pageSize` default above belongs to this hand-written query. A slice on the generated
+> `MapGetList` route documents a different contract: `pageNumber`/`pageSize` defaulting 1/1000
+> with a ceiling of 1000, plus `fromDate`/`toDate` last-activity bounds. Use
+> `templates/api-reference-template.md` for those.
+
 **Response** `200 OK`
 
 ```json
