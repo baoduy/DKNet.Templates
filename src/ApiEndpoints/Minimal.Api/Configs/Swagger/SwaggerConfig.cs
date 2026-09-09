@@ -1,5 +1,6 @@
 using Microsoft.OpenApi;
 using Minimal.Api.Configs.Auth;
+using Minimal.Api.Configs.Healthz;
 
 namespace Minimal.Api.Configs.Swagger;
 
@@ -8,6 +9,9 @@ namespace Minimal.Api.Configs.Swagger;
 internal static class SwaggerConfig
 {
     #region Fields
+
+    /// <summary>Route the interactive documentation UI is mapped at; SecurityHeadersConfig relaxes its CSP.</summary>
+    public const string DocsPath = "/docs";
 
     private static readonly string[] ExcludeFromPublic = ["internal", "static"];
 
@@ -20,7 +24,7 @@ internal static class SwaggerConfig
         if (!app.Services.IsConfigAdded(nameof(SwaggerConfig))) return app;
 
         var openApi = app.MapOpenApi();
-        var docs = app.MapScalarApiReference("/docs", c =>
+        var docs = app.MapScalarApiReference(DocsPath, c =>
             c.WithTitle($"{SharedConsts.ApiName} API")
                 .WithTheme(ScalarTheme.Default)
                 //.WithOpenApiRoutePattern("{documentName}.json")
@@ -40,6 +44,63 @@ internal static class SwaggerConfig
         Console.WriteLine("Swagger enabled.");
         return app;
     }
+
+    /// <summary>
+    ///     <c>MapHealthChecks</c> registers a raw <see cref="RequestDelegate" /> pipeline, so ApiExplorer never
+    ///     sees the health routes (no <c>MethodInfo</c> metadata) and no endpoint convention —
+    ///     <c>WithName</c>/<c>WithTags</c>/<c>WithGroupName</c> — can put them in the document. They are described
+    ///     here by hand and must be kept in step with <see cref="HealthzConfig.UseHealthzConfig" />. The same
+    ///     public probe is also mapped at "/", left undocumented on purpose to keep the root out of the API surface.
+    /// </summary>
+    private static void AddHealthzPaths(OpenApiDocument doc)
+    {
+        doc.Paths["/healthz"] = HealthPath(doc,
+            "Liveness probe",
+            "Aggregated health status only — no per-check detail. Anonymous.",
+            new OpenApiSchema
+            {
+                Type = JsonSchemaType.Object,
+                Properties = new Dictionary<string, IOpenApiSchema>
+                {
+                    ["status"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                }
+            });
+
+        doc.Paths["/healthz/detail"] = HealthPath(doc,
+            "Health report",
+            "Full per-check report. Requires an authenticated caller when authorization is enabled.",
+            new OpenApiSchema { Type = JsonSchemaType.Object });
+    }
+
+    private static OpenApiPathItem HealthPath(
+        OpenApiDocument doc,
+        string summary,
+        string description,
+        IOpenApiSchema schema) =>
+        new()
+        {
+            Operations = new Dictionary<HttpMethod, OpenApiOperation>
+            {
+                [HttpMethod.Get] = new()
+                {
+                    Summary = summary,
+                    Description = description,
+                    Tags = new HashSet<OpenApiTagReference> { new("Health", doc) },
+                    Responses = new OpenApiResponses
+                    {
+                        ["200"] = new OpenApiResponse
+                        {
+                            Description = "Healthy or Degraded.",
+                            Content = new Dictionary<string, OpenApiMediaType>
+                            {
+                                ["application/json"] = new() { Schema = schema }
+                            }
+                        },
+                        ["503"] = new OpenApiResponse { Description = "Unhealthy." }
+                    }
+                }
+            }
+        };
 
     #endregion
 
@@ -66,7 +127,7 @@ internal static class SwaggerConfig
                             description.RelativePath!.Contains(s, StringComparison.OrdinalIgnoreCase));
                     };
 
-                    c.AddDocumentTransformer((doc, _, _) =>
+                    c.AddDocumentTransformer((doc, ctx, _) =>
                     {
                         doc.Info.Title = $"{SharedConsts.ApiName} API {name} Version";
                         //doc.Servers!.AddRange();
@@ -80,6 +141,12 @@ internal static class SwaggerConfig
                         }
 
                         doc.Paths = paths;
+
+                        if (ctx.ApplicationServices.IsConfigAdded(nameof(HealthzConfig)))
+                        {
+                            AddHealthzPaths(doc);
+                        }
+
                         return Task.CompletedTask;
                     });
                 });

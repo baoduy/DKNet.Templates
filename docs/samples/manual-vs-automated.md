@@ -220,8 +220,10 @@ That second reason, not tidiness, is why `LastModifiedBy`/`LastModifiedOn` are e
 The generic routes are all-or-nothing:
 
 - **List** is *not* the gap it once was: the generic route ships a uniform
-  `filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` contract resolved against the DTO, with
-  a page-size ceiling of 100 — see [Generic List Endpoint](../generic-list-endpoint.md). What it
+  `filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` contract resolved against the DTO, with a
+  page-size default of 1000 and a configurable ceiling of 1000, plus `fromDate`/`toDate` last-activity
+  bounds that window a bare listing over audited records to the last three months — see
+  [Generic List Endpoint](../generic-list-endpoint.md) for the full contract. What it
   cannot express is a *bespoke* predicate: anything beyond the built-in operations, or a filter over
   a field the DTO deliberately hides, still means a hand-written query (the manual
   `ListPurchaseOrdersQuery` and its `CustomerName` filter).

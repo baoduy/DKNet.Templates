@@ -31,10 +31,17 @@ Returns a paginated list of {entities}.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `pageNumber` | int | 1 | Page number (1-based) |
-| `pageSize` | int | 20 | Items per page (max 100) |
+| `pageSize` | int | 1000 | Items per page (max 1000, clamped not rejected) |
 | `search` | string | — | Filter by name or key fields |
 | `sortBy` | string | `CreatedAt` | Field to sort by |
 | `sortDirection` | string | `desc` | `asc` or `desc` |
+| `fromDate` | ISO-8601 | — | Inclusive lower bound on when a record was last active |
+| `toDate` | ISO-8601 | — | Inclusive upper bound on when a record was last active. Naming neither bound windows an audited listing to the last three months, not all history |
+
+> The paging values above are the built-in defaults of `DKNet.AspCore.Extensions`' `MapGetList`, and a
+> host can override them through `ListQueryOptions` (section `DKNet:ListQuery`). Check them against
+> what your project configures. The full contract is `docs/generic-list-endpoint.md` in the
+> DKNet.Templates repository.
 
 **Response** `200 OK`
 
@@ -51,9 +58,9 @@ Returns a paginated list of {entities}.
     }
   ],
   "pageNumber": 1,
-  "pageSize": 20,
+  "pageSize": 10,
   "totalCount": 100,
-  "totalPages": 5
+  "totalPages": 10
 }
 ```
 

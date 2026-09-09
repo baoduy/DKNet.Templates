@@ -124,7 +124,7 @@ Define:
 - **Request DTOs**: immutable records, validation rules.
 - **Response DTOs**: naming (Dto, ActionsDto), serialization contracts.
 - **Error format**: error codes, messages, details.
-- **Pagination**: if applicable, use `DKNet.AspCore.Extensions`' `MapGetList` (pageNumber/pageSize, defaults 1/20, ceiling 100).
+- **Pagination**: if applicable, use `DKNet.AspCore.Extensions`' `MapGetList` (pageNumber/pageSize, defaults 1/1000, ceiling 1000, configurable via `ListQueryOptions` in section `DKNet:ListQuery`, plus `fromDate`/`toDate` last-activity bounds defaulting to the last 3 months over audited records).
 - **Versioning**: v1, v2 routes or backwards-compatible?
 - **OpenAPI**: what tags, summaries, descriptions?
 

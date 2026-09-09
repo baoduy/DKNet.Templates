@@ -145,6 +145,12 @@ two cases: the caller omitted the query parameter, which falls back to
 `DefaultPageIndex`/`DefaultPageSize`, and an explicit out-of-range value like `pageSize=0`, which must
 still fail validation instead of silently falling back to the default.
 
+`DefaultPageSize = 20` and the `1..100` validator bound above are **this hand-written query's own
+choices**, not the package's, and this query keeps these values whatever the package does. The
+generated route has an entirely separate contract: it *clamps* an out-of-range page size rather than
+rejecting it, its own default and ceiling are `1000`, and it adds `fromDate`/`toDate` activity bounds
+— see [Generic List Endpoint](generic-list-endpoint.md).
+
 ### Paging and projection to DTOs
 
 Paging itself comes from `DKNet.EfCore.Specifications.Extensions`: calling

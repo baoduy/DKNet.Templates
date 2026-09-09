@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
 
@@ -15,7 +16,15 @@ namespace Minimal.App.Tests.Integration.Support;
 /// </summary>
 public abstract class RealProcessApiFixtureBase : IAsyncLifetime
 {
+    private readonly ConcurrentQueue<string> _output = new();
     private Process? _process;
+
+    /// <summary>
+    ///     Everything the child <c>Minimal.Api</c> process wrote to stdout/stderr. Redirected streams MUST be
+    ///     drained — an undrained pipe blocks the child once its buffer fills — and it is the only place a
+    ///     Production-environment 500's actual exception is visible, since the response body carries no detail.
+    /// </summary>
+    public string ProcessOutput => string.Join(Environment.NewLine, _output);
 
     public HttpClient RealClient { get; private set; } = null!;
 
@@ -41,6 +50,19 @@ public abstract class RealProcessApiFixtureBase : IAsyncLifetime
             RedirectStandardError = true,
             WorkingDirectory = AppContext.BaseDirectory
         };
+        // ProcessStartInfo.Environment is pre-populated from THIS process's environment, and the in-memory
+        // fixtures (AuthOnApiFixture, PerHostFeatureStateTests, HstsApiFixture, ...) set hierarchical config keys
+        // process-wide via Environment.SetEnvironmentVariable. xUnit runs those collections in parallel with this
+        // one, so whichever is mid-flight when this child starts would leak its override into the child host —
+        // e.g. a leaked FeatureManagement__RequireAuthorization=false lets an anonymous request reach the handler
+        // and 500 on the empty connection string. Strip every hierarchical key so "no override supplied" is true.
+        foreach (var key in startInfo.Environment.Keys
+                     .Where(k => k.Contains("__", StringComparison.Ordinal))
+                     .ToList())
+        {
+            startInfo.Environment.Remove(key);
+        }
+
         startInfo.Environment["ASPNETCORE_URLS"] = $"http://{Host}:{Port}";
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = EnvironmentName;
         foreach (var (key, value) in EnvironmentOverrides)
@@ -49,9 +71,21 @@ public abstract class RealProcessApiFixtureBase : IAsyncLifetime
         }
 
         _process = Process.Start(startInfo) ?? throw new InvalidOperationException("failed to start Minimal.Api process.");
+        _process.OutputDataReceived += CaptureLine;
+        _process.ErrorDataReceived += CaptureLine;
+        _process.BeginOutputReadLine();
+        _process.BeginErrorReadLine();
 
         RealClient = new HttpClient { BaseAddress = new Uri($"http://{Host}:{Port}"), Timeout = TimeSpan.FromSeconds(30) };
         await WaitUntilReadyAsync();
+    }
+
+    private void CaptureLine(object sender, DataReceivedEventArgs e)
+    {
+        if (e.Data is not null)
+        {
+            _output.Enqueue(e.Data);
+        }
     }
 
     private async Task WaitUntilReadyAsync()
@@ -70,7 +104,8 @@ public abstract class RealProcessApiFixtureBase : IAsyncLifetime
             }
         }
 
-        throw new TimeoutException("Minimal.Api process did not become ready within 30s.");
+        throw new TimeoutException(
+            $"Minimal.Api process did not become ready within 30s.{Environment.NewLine}{ProcessOutput}");
     }
 
     private static int GetFreeTcpPort()
