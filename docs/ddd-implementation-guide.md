@@ -219,8 +219,10 @@ supports "no filter at all" as a valid call shape.
 map to `DKNet.AspCore.Extensions`'s generic `MapGetById<TEntity,TKey,TDto>`/`MapGetList`/
 `MapDeleteById`, which query directly against `IEntity<TKey>` with no per-entity spec at all. The
 generated list route is not unfiltered, though: it exposes a uniform
-`filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` query surface resolved against the DTO —
-the full contract is [`generic-list-endpoint.md`](generic-list-endpoint.md). What it cannot do is
+`filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` query surface resolved against the DTO, and
+a release after the pinned `10.1.19` extends it with `fromDate`/`toDate` bounds that limit a bare call
+over audited records to the last three months of activity — the full contract, and which figures belong
+to which package version, is [`generic-list-endpoint.md`](generic-list-endpoint.md). What it cannot do is
 express a *bespoke* predicate the way a hand-written spec can.
 
 ## 6. DTO and Mapster wiring — `Minimal.AppServices/<Feature>/V1/<Feature>Dto.cs`
