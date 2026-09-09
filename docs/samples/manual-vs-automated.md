@@ -221,11 +221,9 @@ The generic routes are all-or-nothing:
 
 - **List** is *not* the gap it once was: the generic route ships a uniform
   `filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` contract resolved against the DTO, with a
-  page-size default of 20 and a ceiling of 100 on the `10.1.19` package this template pins. A release
-  after `10.1.19` raises both to 1000 and adds `fromDate`/`toDate` last-activity bounds that window a
-  bare listing over audited records to the last three months — see
-  [Generic List Endpoint](../generic-list-endpoint.md#package-version) for which figures apply to which
-  version. What it
+  page-size default of 1000 and a configurable ceiling of 1000, plus `fromDate`/`toDate` last-activity
+  bounds that window a bare listing over audited records to the last three months — see
+  [Generic List Endpoint](../generic-list-endpoint.md) for the full contract. What it
   cannot express is a *bespoke* predicate: anything beyond the built-in operations, or a filter over
   a field the DTO deliberately hides, still means a hand-written query (the manual
   `ListPurchaseOrdersQuery` and its `CustomerName` filter).

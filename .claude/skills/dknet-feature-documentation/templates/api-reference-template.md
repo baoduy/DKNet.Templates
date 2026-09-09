@@ -31,18 +31,17 @@ Returns a paginated list of {entities}.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `pageNumber` | int | 1 | Page number (1-based) |
-| `pageSize` | int | 20 | Items per page (max 100, clamped not rejected) |
+| `pageSize` | int | 1000 | Items per page (max 1000, clamped not rejected) |
 | `search` | string | — | Filter by name or key fields |
 | `sortBy` | string | `CreatedAt` | Field to sort by |
 | `sortDirection` | string | `desc` | `asc` or `desc` |
+| `fromDate` | ISO-8601 | — | Inclusive lower bound on when a record was last active |
+| `toDate` | ISO-8601 | — | Inclusive upper bound on when a record was last active. Naming neither bound windows an audited listing to the last three months, not all history |
 
-> **Check the figures against the package version your project pins.** The paging values above are
-> those of `DKNet.AspCore.Extensions` `10.1.19` (default `20`, hard-coded ceiling `100`). A release
-> after `10.1.19` raises both the default and the ceiling to `1000`, makes them configurable through
-> `ListQueryOptions` (section `DKNet:ListQuery`), and adds `fromDate`/`toDate` — inclusive bounds on
-> when a record was last active, defaulting to the last three months over audited records. On a
-> project that has bumped, update the row and add those two parameters; the full contract is
-> `docs/generic-list-endpoint.md` in the DKNet.Templates repository.
+> The paging values above are the built-in defaults of `DKNet.AspCore.Extensions`' `MapGetList`, and a
+> host can override them through `ListQueryOptions` (section `DKNet:ListQuery`). Check them against
+> what your project configures. The full contract is `docs/generic-list-endpoint.md` in the
+> DKNet.Templates repository.
 
 **Response** `200 OK`
 
@@ -59,9 +58,9 @@ Returns a paginated list of {entities}.
     }
   ],
   "pageNumber": 1,
-  "pageSize": 20,
+  "pageSize": 10,
   "totalCount": 100,
-  "totalPages": 5
+  "totalPages": 10
 }
 ```
 
