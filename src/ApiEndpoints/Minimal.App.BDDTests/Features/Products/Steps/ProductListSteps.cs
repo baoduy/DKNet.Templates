@@ -37,7 +37,22 @@ public sealed class ProductListSteps(HttpClient client, ScenarioState state)
         state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
     }
 
+    [When(@"I list products with a fromDate (\d+) hours in the past")]
+    public async Task WhenIListProductsWithAFromDateHoursInThePast(int hours) =>
+        await WhenIListProductsWithQuery($"?fromDate={RelativeIso(-hours)}");
+
+    [When(@"I list products with a toDate (\d+) hours in the past")]
+    public async Task WhenIListProductsWithAToDateHoursInThePast(int hours) =>
+        await WhenIListProductsWithQuery($"?toDate={RelativeIso(-hours)}");
+
+    [When(@"I list products with a fromDate (\d+) hours in the future and a toDate (\d+) hours in the past")]
+    public async Task WhenIListProductsWithAnImpossibleWindow(int fromHours, int toHours) =>
+        await WhenIListProductsWithQuery($"?fromDate={RelativeIso(fromHours)}&toDate={RelativeIso(-toHours)}");
+
     #endregion
+
+    private static string RelativeIso(int hoursOffset) =>
+        Uri.EscapeDataString(DateTimeOffset.UtcNow.AddHours(hoursOffset).ToString("O", CultureInfo.InvariantCulture));
 
     #region Then
 

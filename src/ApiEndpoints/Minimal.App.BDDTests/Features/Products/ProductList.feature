@@ -39,11 +39,12 @@ Feature: Product list query contract (filter · search · order · page)
     And the paged response "hasPreviousPage" is "true"
 
   Scenario: pageSize above the max is clamped, not rejected
-    # WHY: pageSize is capped at 100 by silent clamp (not a 400) — a future change to reject instead
-    # would break existing callers that over-ask.
-    When I list products with query "?pageSize=1000"
+    # WHY: pageSize is capped at 1000 (DKNet.AspCore.Extensions 10.1.20 ListQueryOptions.MaxPageSize) by
+    # silent clamp (not a 400) — a future change to reject instead would break existing callers that
+    # over-ask.
+    When I list products with query "?pageSize=99999"
     Then the response status is 200
-    And the paged response "pageSize" is "100"
+    And the paged response "pageSize" is "1000"
 
   # --- Ordering ----------------------------------------------------------------------------------
 
@@ -110,4 +111,28 @@ Feature: Product list query contract (filter · search · order · page)
     # ownership key must be unqueryable over HTTP. If a future change widened the query surface to the raw
     # entity, this would start returning 200 and leak a filter on a hidden column — this scenario fails loud.
     When I list products with query "?filter=ownedBy:Equal:someone"
+    Then the response status is 400
+
+  # --- Recent-activity window (fromDate / toDate, DKNet.AspCore.Extensions 10.1.20) ---------------
+
+  Scenario: A fromDate at or below the records' creation moment returns them
+    # WHY: fromDate is an inclusive lower bound on last-activity — a window opening before the
+    # Background products were seeded must still return all of them.
+    When I list products with a fromDate 1 hours in the past
+    Then the response status is 200
+    And the list contains exactly 4 products
+    And the paged response "totalItemCount" is "4"
+
+  Scenario: A toDate below the records' creation moment excludes them
+    # WHY: toDate is an inclusive upper bound — a window that closes before the Background products
+    # were seeded must exclude every one of them, reporting an empty page rather than a 404.
+    When I list products with a toDate 1 hours in the past
+    Then the response status is 200
+    And the list contains exactly 0 products
+    And the paged response "totalItemCount" is "0"
+
+  Scenario: An impossible window is refused
+    # WHY: fromDate later than toDate can never match anything — the package rejects it outright (400)
+    # rather than silently returning an empty page.
+    When I list products with a fromDate 1 hours in the future and a toDate 1 hours in the past
     Then the response status is 400
