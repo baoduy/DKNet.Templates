@@ -65,6 +65,11 @@ they are ANDed together (search is one OR-group, then ANDed with the filter pred
 that carry audit timestamps a recent-activity window is also always applied — the `fromDate`/`toDate`
 you named, or a default one if you named neither — and it is ANDed with everything else.
 
+> **Package version.** Every default and limit on this page describes `DKNet.AspCore.Extensions` **≥ the
+> release carrying DRK-1162**. This template still pins `10.1.19`, where the `pageSize` default is `20`,
+> the ceiling is a hard-coded `100`, and `fromDate`/`toDate` do not exist — see
+> [Recent-activity window](#recent-activity-window-fromdate--todate).
+
 ## Filtering
 
 Each `filter` value is a colon-delimited triple parsed into a `ListFilter(Field, Operation, Value)`.
@@ -160,10 +165,16 @@ so a search hits any of those. (Every searched field must map to a real column �
 ## Recent-activity window (`fromDate` / `toDate`)
 
 > **Version prerequisite.** `fromDate`/`toDate` are the contract of the *next* `DKNet.AspCore.Extensions`
-> release. This template currently pins **`10.1.19`** (`src/Directory.Packages.props`), which does not
-> carry them: against that version the two parameters are unknown query-string keys, silently ignored,
-> and a listing stays unbounded in time. Bump the package before relying on anything in this section.
-> The `pageSize` figures above need no such caveat — they are already true of `10.1.19`.
+> release — the one carrying DRK-1162. This template currently pins **`10.1.19`**
+> (`src/Directory.Packages.props`), which does not carry them: against that version the two parameters
+> are unknown query-string keys, silently ignored, and a listing stays unbounded in time. Bump the
+> package before relying on anything in this section.
+>
+> The same caveat covers the paging figures above and in [Configuring the defaults](#configuring-the-defaults):
+> on `10.1.19` the `pageSize` default is `20`, the ceiling is a hard-coded `100` with no
+> `ListQueryOptions` to configure, and the clamped range in
+> [Error behavior](#error-behavior) is therefore `1..100`. Every figure on this page describes
+> `DKNet.AspCore.Extensions` ≥ the release carrying DRK-1162.
 
 `fromDate` and `toDate` are inclusive ISO-8601 bounds on when a record was **last active**. A record is
 in range when *either* the moment it was created *or* the moment it was last updated falls inside the
