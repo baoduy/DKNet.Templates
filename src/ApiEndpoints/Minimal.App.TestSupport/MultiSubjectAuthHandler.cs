@@ -28,6 +28,9 @@ public sealed class MultiSubjectAuthHandler(
     /// <summary>Maps to an <c>oid</c> claim when present — takes precedence over <see cref="SubjectHeaderName"/>.</summary>
     public const string ObjectIdHeaderName = "X-Test-Oid";
 
+    /// <summary>Comma-separated roles, mapped to one <see cref="ClaimTypes.Role"/> claim per entry.</summary>
+    public const string RolesHeaderName = "X-Test-Roles";
+
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var claims = new List<Claim> { new(ClaimTypes.Name, "multi-subject-caller") };
@@ -40,6 +43,15 @@ public sealed class MultiSubjectAuthHandler(
         if (Request.Headers.TryGetValue(SubjectHeaderName, out var subject) && !string.IsNullOrEmpty(subject))
         {
             claims.Add(new Claim(ClaimTypes.NameIdentifier, subject!));
+        }
+
+        if (Request.Headers.TryGetValue(RolesHeaderName, out var roles) && !string.IsNullOrEmpty(roles))
+        {
+            foreach (var role in roles.ToString()
+                         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
         }
 
         var identity = new ClaimsIdentity(claims, SchemeName);

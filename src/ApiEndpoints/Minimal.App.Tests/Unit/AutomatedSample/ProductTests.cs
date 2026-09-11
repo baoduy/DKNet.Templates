@@ -39,7 +39,7 @@ public class ProductTests
         // generator reads, not the generated output itself.
         var ctor = typeof(Product)
             .GetConstructors(BindingFlags.Public | BindingFlags.Instance)
-            .Single(c => c.GetParameters().Length == 2);
+            .Single(c => c.GetParameters().Length == 4);
 
         var nameParam = ctor.GetParameters().Single(p => p.Name == "name");
         nameParam.GetCustomAttribute<RequiredAttribute>().ShouldNotBeNull();

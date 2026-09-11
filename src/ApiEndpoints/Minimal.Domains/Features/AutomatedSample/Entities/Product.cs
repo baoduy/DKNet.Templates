@@ -33,11 +33,19 @@ public class Product : AggregateRoot, IOwnedBy
     /// </summary>
     /// <param name="name">The product name. Unique.</param>
     /// <param name="price">The unit price. Must be positive.</param>
+    /// <param name="supplierCostPrice">The supplier's confidential cost price, if disclosed. Optional.</param>
+    /// <param name="supplierReferenceCode">The supplier's reference code, if disclosed. Optional.</param>
     [CrudCreate]
-    public Product([Required, StringLength(150)] string name, [Range(0.01, double.MaxValue)] decimal price)
+    public Product(
+        [Required, StringLength(150)] string name,
+        [Range(0.01, double.MaxValue)] decimal price,
+        decimal? supplierCostPrice = null,
+        [StringLength(50)] string? supplierReferenceCode = null)
     {
         Name = name;
         Price = price;
+        SupplierCostPrice = supplierCostPrice;
+        SupplierReferenceCode = supplierReferenceCode;
     }
 
     /// <inheritdoc />
@@ -60,6 +68,22 @@ public class Product : AggregateRoot, IOwnedBy
 
     /// <summary>Gets the ownership key of the caller who created this product — stamped by <c>DataOwnerHook</c>.</summary>
     public string OwnedBy { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Gets the supplier's confidential cost price for this product, when disclosed. Declared
+    /// <see cref="SensitiveDataAttribute"/> with the "pricing" role — the JSON response omits this property
+    /// entirely for any caller who does not hold that role.
+    /// </summary>
+    [SensitiveData("pricing")]
+    public decimal? SupplierCostPrice { get; private set; }
+
+    /// <summary>
+    /// Gets the supplier's reference code for this product, when disclosed. Declared
+    /// <see cref="SensitiveDataAttribute"/> with no role named — the JSON response omits this property for an
+    /// unauthenticated caller, but any authenticated caller receives it.
+    /// </summary>
+    [SensitiveData]
+    public string? SupplierReferenceCode { get; private set; }
 
     #endregion
 

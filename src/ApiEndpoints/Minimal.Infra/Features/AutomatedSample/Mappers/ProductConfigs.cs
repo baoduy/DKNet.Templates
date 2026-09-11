@@ -14,6 +14,8 @@ internal sealed class ProductConfigs : DefaultEntityTypeConfiguration<Product>
         builder.HasIndex(p => p.Name).IsUnique();
         builder.Property(p => p.Price).HasPrecision(18, 2);
         builder.Property(p => p.OwnedBy).HasMaxLength(500).IsRequired();
+        builder.Property(p => p.SupplierCostPrice).HasPrecision(18, 2);
+        builder.Property(p => p.SupplierReferenceCode).HasMaxLength(50);
         builder.ToTable("Products", "sample");
     }
 
