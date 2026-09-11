@@ -16,7 +16,9 @@ namespace Minimal.Domains.Features.AutomatedSample.Entities;
 /// no acting-user parameter — that would make the acting user caller-settable.
 /// A <c>[CrudAction]</c> method publishes a POST at the by-id route plus a segment, returning 200 with the
 /// entity DTO. <see cref="Approve"/> overrides the segment (<c>approval</c>) while keeping the default POST
-/// verb; <see cref="Discontinue"/> keeps the default method-derived segment but overrides the verb to PUT.
+/// verb; <see cref="Discontinue"/> keeps the default method-derived segment but overrides the verb to PUT;
+/// <see cref="AssignSupplierReference"/> overrides both the segment (<c>supplier-reference</c>) and the verb
+/// (PUT).
 /// Implements <see cref="IOwnedBy"/> so <c>DataOwnerAuthQuery</c>'s global read filter (row-level isolation)
 /// applies to it; <c>DataOwnerHook</c> stamps <see cref="OwnedBy"/> from the same ownership key as
 /// <c>CreatedBy</c> on insert.

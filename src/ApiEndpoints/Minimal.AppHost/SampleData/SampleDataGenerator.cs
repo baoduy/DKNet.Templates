@@ -24,6 +24,17 @@ internal static class SampleDataGenerator
     private const int StaticPurchaseOrderSeedCount = 3;
 
     private const int ChunkSize = 1000;
+
+    /// <summary>
+    /// Name and reference code of the single seeded product that demonstrates both role-gated
+    /// <c>[SensitiveData]</c> properties (<c>SupplierCostPrice</c>, <c>SupplierReferenceCode</c>) together —
+    /// every other generated product carries neither. Fixed and grep-distinct so a developer calling
+    /// <c>GET /v1/products</c> against the Aspire AppHost can find it on sight.
+    /// </summary>
+    internal const string DemonstrationProductName = "DRK-1198-Demo-Product-With-Supplier-Data";
+
+    internal const decimal DemonstrationProductSupplierCostPrice = 42.50m;
+    internal const string DemonstrationProductSupplierReferenceCode = "DRK-1198-DEMO-SUPPLIER-REF";
     private static readonly TimeSpan SchemaWaitDeadline = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan SchemaPollInterval = TimeSpan.FromSeconds(1);
 
@@ -138,29 +149,39 @@ internal static class SampleDataGenerator
         }
 
         var faker = new Faker();
-        var usedNames = new HashSet<string>(StringComparer.Ordinal);
+        var usedNames = new HashSet<string>(StringComparer.Ordinal) { DemonstrationProductName };
         var now = DateTimeOffset.UtcNow;
 
-        foreach (var chunkSize in ChunkSizes(count))
+        var demonstrationProduct = new Product(
+            DemonstrationProductName, faker.Random.Decimal(0.01m, 10_000m), DemonstrationProductSupplierCostPrice);
+        demonstrationProduct.AssignSupplierReference(DemonstrationProductSupplierReferenceCode);
+        db.Add(demonstrationProduct);
+        StampAuditProperties(db, demonstrationProduct, now);
+        await db.SaveChangesAsync(cancellationToken);
+        db.ChangeTracker.Clear();
+
+        foreach (var chunkSize in ChunkSizes(count - 1))
         {
             var products = new List<Product>(chunkSize);
             for (var i = 0; i < chunkSize; i++)
                 products.Add(new Product(NextUniqueProductName(faker, usedNames), faker.Random.Decimal(0.01m, 10_000m)));
 
             db.AddRange(products);
-            foreach (var product in products)
-            {
-                var entry = db.Entry(product);
-                entry.Property(nameof(Product.CreatedBy)).CurrentValue = SharedConsts.SystemAccount;
-                entry.Property(nameof(Product.CreatedOn)).CurrentValue = now;
-                entry.Property(nameof(Product.OwnedBy)).CurrentValue = SharedConsts.SystemAccount;
-            }
+            foreach (var product in products) StampAuditProperties(db, product, now);
 
             await db.SaveChangesAsync(cancellationToken);
             db.ChangeTracker.Clear();
         }
 
         return count;
+    }
+
+    private static void StampAuditProperties(SampleDataDbContext db, Product product, DateTimeOffset now)
+    {
+        var entry = db.Entry(product);
+        entry.Property(nameof(Product.CreatedBy)).CurrentValue = SharedConsts.SystemAccount;
+        entry.Property(nameof(Product.CreatedOn)).CurrentValue = now;
+        entry.Property(nameof(Product.OwnedBy)).CurrentValue = SharedConsts.SystemAccount;
     }
 
     private static async Task<int> GeneratePurchaseOrdersAsync(
