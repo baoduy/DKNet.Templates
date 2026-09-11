@@ -45,6 +45,11 @@ into that sequence — the table is the authority on what runs when. Two consequ
   caller's address before CORS or the rate limiter reads it; the second must sit upstream of the
   exception handler, or an unhandled `500` would answer without security headers.
 
+**Role-aware sensitive-property filtering** is absent from the table for the same reason: it is not
+a middleware but a `JsonSerializerOptions` modifier, so it runs after row 15, while the handler's
+result is serialized — see
+[Role-aware sensitive-property filtering](#role-aware-sensitive-property-filtering) below.
+
 **API versioning** is absent from the table because it is not a middleware. It shapes the route
 template when the group is registered — see [API versioning](#api-versioning) below.
 
@@ -212,6 +217,124 @@ it explicitly (see `CreatePurchaseOrderCommandHandler.OnHandle`'s `IsNullOrEmpty
 check). Pinned by `AuthorizationOff_CreateIsAttributedToSystemAccount` and
 `AuthenticatedCallerWithNoNameClaim_CreateIsRefused_NeverAttributedToSystemAccount` in
 `Minimal.App.Tests/Integration/EndpointConfig/PurchaseOrderStampingAndVersioningTests.cs`.
+
+## Role-aware sensitive-property filtering
+
+`[FromClaim]` decides what a caller may *send*. This decides what a caller may *see*: a property
+declared `[SensitiveData(...)]` on an entity, and carried onto the generated DTO (see
+[`docs/crud-attributes.md`](crud-attributes.md#declaring-a-sensitive-property)), is **omitted from
+the JSON payload** unless the caller holds one of the roles the declaration names.
+
+It happens at the very end of the request, while the response is serialized, and it is **opt-in per
+`JsonSerializerOptions` instance**. Nothing is filtered until the host turns it on — which is two
+pieces of code in `Minimal.Api`.
+
+### 1. The principal accessor
+
+`DKNet.EfCore.*` references no `Microsoft.AspNetCore.*` package, so the library cannot read
+`HttpContext` itself. `ISensitiveDataPrincipalAccessor` is the seam it offers instead, and the host
+implements it — `Minimal.Api/Configs/Handlers/HttpContextSensitiveDataPrincipalAccessor.cs`:
+
+```csharp
+using DKNet.EfCore.Extensions.Serialization;
+
+internal sealed class HttpContextSensitiveDataPrincipalAccessor(IHttpContextAccessor httpContextAccessor)
+    : ISensitiveDataPrincipalAccessor
+{
+    public ClaimsPrincipal? Current => httpContextAccessor.HttpContext?.User;
+}
+```
+
+A singleton is correct here: it holds no state of its own, and `IHttpContextAccessor` — already
+registered by `ServiceConfigs.AddAllAppServices` — resolves the current request's `HttpContext` from
+an `AsyncLocal` on every read.
+
+### 2. The start-up opt-in
+
+Registered in `Minimal.Api/Configs/ServiceConfigs.cs`, alongside the `ConfigureHttpJsonOptions` call
+that already sets this template's naming policy and converters. Minimal APIs serialize with
+`Microsoft.AspNetCore.Http.Json.JsonOptions`, and the opt-in needs the container to resolve the
+accessor, so it goes in as an `IConfigureOptions<JsonOptions>`:
+
+```csharp
+services.AddSingleton<ISensitiveDataPrincipalAccessor, HttpContextSensitiveDataPrincipalAccessor>();
+
+services.AddSingleton<IConfigureOptions<JsonOptions>>(sp =>
+    new ConfigureOptions<JsonOptions>(o =>
+        o.SerializerOptions.UseRoleAwareSensitiveData(
+            sp.GetRequiredService<ISensitiveDataPrincipalAccessor>())));
+```
+
+`UseRoleAwareSensitiveData` composes with whatever resolver, naming policy and converters the
+options already carry — it layers a per-property `ShouldSerialize` on top rather than replacing
+them, and a model with no sensitive property serializes byte-for-byte as it did before.
+
+**This must run at start-up.** `System.Text.Json` freezes a `JsonSerializerOptions` on first use, and
+a frozen instance rejects the resolver change with `InvalidOperationException` — so the call belongs
+in service registration, never in an endpoint filter or a request handler.
+
+### What the caller sees
+
+`GET /v1/products/{id}` for an authenticated caller **in the `pricing` role** (audit fields
+`id`/`createdBy`/`createdOn`/`updatedBy`/`updatedOn` elided for length):
+
+```json
+{
+  "name": "Espresso Machine",
+  "price": 899.00,
+  "supplierCostPrice": 412.50,
+  "supplierReferenceCode": "SUP-88231",
+  "isDiscontinued": false
+}
+```
+
+The same row, for an authenticated caller **holding no roles**:
+
+```json
+{
+  "name": "Espresso Machine",
+  "price": 899.00,
+  "supplierReferenceCode": "SUP-88231",
+  "isDiscontinued": false
+}
+```
+
+`supplierCostPrice` is **absent** — not `null`, not `"***"`. Nothing in the payload hints that a
+property was withheld, and a client deserializing into a type with a nullable property simply sees
+`null` because nothing was assigned. `supplierReferenceCode` survives because its declaration names
+no role and this caller is authenticated.
+
+Because this template sets `DefaultIgnoreCondition = WhenWritingNull` on the same options
+(`SharedConsts.JsonSerializerOptions`), a nullable property that is simply unset is absent too — so
+a caller cannot tell "withheld from you" from "never recorded". That is the intended shape, not a
+leak to close.
+
+### The decision rules
+
+| Caller | `[SensitiveData]` | `[SensitiveData("pricing")]` |
+|---|---|---|
+| No principal (`Current` is `null`) | withheld | withheld |
+| Not authenticated | withheld | withheld |
+| Authenticated, no roles | **sent** | withheld |
+| Authenticated, in `pricing` | **sent** | **sent** |
+| Authenticated, in some other role only | **sent** | withheld |
+
+It **fails closed**: with no caller identity, or an unauthenticated one, the property is withheld
+whichever roles were named — the role-less form included. The check runs per property, per
+serialization, reading the accessor as the payload is written, so two callers on the same endpoint
+through the same options instance are judged independently and nothing is cached.
+
+Two consequences worth planning for in this template:
+
+- **`FeatureManagement:RequireAuthorization` is `false` in `appsettings.Development.json` and
+  `appsettings.Testing.json`**, so no authentication middleware runs there and `HttpContext.User` is
+  unauthenticated. A local `dotnet run` and both test suites therefore see *every* sensitive property
+  withheld, the role-less one included. That is the fail-closed rule working, not a
+  misconfiguration — a test that needs the full payload has to authenticate the caller.
+- **Only the opted-in options instance filters.** Anything serializing a DTO through a different
+  `JsonSerializerOptions` — a background job, an outbox message, your own `ILogger` output — is
+  unfiltered. Filtering is also response-side only: it never touches request deserialization or
+  model binding.
 
 ## FluentValidation auto-validation
 
