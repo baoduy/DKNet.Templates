@@ -31,10 +31,10 @@ internal static class SampleDataGenerator
     /// every other generated product carries neither. Fixed and grep-distinct so a developer calling
     /// <c>GET /v1/products</c> against the Aspire AppHost can find it on sight.
     /// </summary>
-    internal const string DemonstrationProductName = "DRK-1198-Demo-Product-With-Supplier-Data";
+    internal const string DemonstrationProductName = "Demo-Product-With-Supplier-Data";
 
     internal const decimal DemonstrationProductSupplierCostPrice = 42.50m;
-    internal const string DemonstrationProductSupplierReferenceCode = "DRK-1198-DEMO-SUPPLIER-REF";
+    internal const string DemonstrationProductSupplierReferenceCode = "DEMO-SUPPLIER-REF";
     private static readonly TimeSpan SchemaWaitDeadline = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan SchemaPollInterval = TimeSpan.FromSeconds(1);
 
