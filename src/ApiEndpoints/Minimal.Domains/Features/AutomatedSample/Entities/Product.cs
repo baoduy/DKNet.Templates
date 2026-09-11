@@ -34,18 +34,15 @@ public class Product : AggregateRoot, IOwnedBy
     /// <param name="name">The product name. Unique.</param>
     /// <param name="price">The unit price. Must be positive.</param>
     /// <param name="supplierCostPrice">The supplier's confidential cost price, if disclosed. Optional.</param>
-    /// <param name="supplierReferenceCode">The supplier's reference code, if disclosed. Optional.</param>
     [CrudCreate]
     public Product(
         [Required, StringLength(150)] string name,
         [Range(0.01, double.MaxValue)] decimal price,
-        decimal? supplierCostPrice = null,
-        [StringLength(50)] string? supplierReferenceCode = null)
+        decimal? supplierCostPrice = null)
     {
         Name = name;
         Price = price;
         SupplierCostPrice = supplierCostPrice;
-        SupplierReferenceCode = supplierReferenceCode;
     }
 
     /// <inheritdoc />
@@ -108,6 +105,15 @@ public class Product : AggregateRoot, IOwnedBy
     /// </summary>
     [CrudAction(Verb = CrudActionVerb.Put)]
     public void Discontinue() => IsDiscontinued = true;
+
+    /// <summary>
+    /// Assigns the supplier reference code. Deliberately its own action, not a create-request field: a supplier
+    /// reference is assigned by procurement after the product exists, never chosen by the client creating it.
+    /// </summary>
+    /// <param name="supplierReferenceCode">The supplier's reference code.</param>
+    [CrudAction("supplier-reference", Verb = CrudActionVerb.Put)]
+    public void AssignSupplierReference([Required, StringLength(50)] string supplierReferenceCode) =>
+        SupplierReferenceCode = supplierReferenceCode;
 
     #endregion
 }

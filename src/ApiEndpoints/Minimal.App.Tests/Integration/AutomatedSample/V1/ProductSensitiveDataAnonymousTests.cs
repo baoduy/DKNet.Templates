@@ -51,7 +51,8 @@ public sealed class ProductSensitiveDataAnonymousTests(ApiFixture fixture) : ICl
         using var scope = apiFixture.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
 
-        var product = new Product(name, ProductPrice, SupplierCostPrice, SupplierReferenceCode);
+        var product = new Product(name, ProductPrice, SupplierCostPrice);
+        product.AssignSupplierReference(SupplierReferenceCode);
         dbContext.Add(product);
         var entry = dbContext.Entry(product);
         entry.Property(nameof(Product.CreatedBy)).CurrentValue = SharedConsts.SystemAccount;

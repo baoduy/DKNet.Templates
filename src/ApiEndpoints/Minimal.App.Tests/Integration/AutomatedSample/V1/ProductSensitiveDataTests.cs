@@ -111,24 +111,49 @@ public sealed class ProductSensitiveDataTests(AuthOnMultiSubjectApiFixture fixtu
         json.RootElement.GetProperty("supplierCostPrice").GetDecimal().ShouldBe(SupplierCostPrice);
     }
 
+    [Fact]
+    public async Task EmptyRolesHeader_BehavesTheSameAsNoRolesHeaderAtAll_ReceivesReferenceCodeButNotCostPrice()
+    {
+        await fixture.ResetDatabaseAsync();
+        var client = fixture.CreateClient();
+        var productId = await CreateProductAsync(client, SharedSubject, name: ProductName);
+
+        // X-Test-Roles present but empty — a distinct wire shape from the header being absent entirely.
+        using var json = await GetProductJsonAsync(client, productId, SharedSubject, roles: "");
+
+        json.RootElement.TryGetProperty("supplierCostPrice", out _).ShouldBeFalse();
+        json.RootElement.GetProperty("supplierReferenceCode").GetString().ShouldBe(SupplierReferenceCode);
+    }
+
+    /// <summary>
+    /// Creates a product via <c>POST /v1/products</c> (which now only ever accepts the pre-existing
+    /// <c>name</c>/<c>price</c> plus the optional <c>supplierCostPrice</c> — a reference is never
+    /// caller-settable at create time), then assigns its supplier reference code through the dedicated
+    /// <c>PUT /v1/products/{id}/supplier-reference</c> action — a real request, not a DB write, so every
+    /// demonstration product actually carries a non-null reference code the R2 assertions can prove against.
+    /// </summary>
     private static async Task<Guid> CreateProductAsync(HttpClient client, string subject, string name)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/products")
+        using var createRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/products")
         {
-            Content = JsonContent.Create(new
-            {
-                name,
-                price = ProductPrice,
-                supplierCostPrice = SupplierCostPrice,
-                supplierReferenceCode = SupplierReferenceCode
-            })
+            Content = JsonContent.Create(new { name, price = ProductPrice, supplierCostPrice = SupplierCostPrice })
         };
-        request.Headers.Add(MultiSubjectAuthHandler.SubjectHeaderName, subject);
+        createRequest.Headers.Add(MultiSubjectAuthHandler.SubjectHeaderName, subject);
 
-        using var response = await client.SendAsync(request);
-        response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        return body.RootElement.GetProperty("id").GetGuid();
+        using var createResponse = await client.SendAsync(createRequest);
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var body = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var productId = body.RootElement.GetProperty("id").GetGuid();
+
+        using var assignRequest = new HttpRequestMessage(HttpMethod.Put, $"/v1/products/{productId}/supplier-reference")
+        {
+            Content = JsonContent.Create(new { supplierReferenceCode = SupplierReferenceCode })
+        };
+        assignRequest.Headers.Add(MultiSubjectAuthHandler.SubjectHeaderName, subject);
+        using var assignResponse = await client.SendAsync(assignRequest);
+        assignResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        return productId;
     }
 
     private static async Task<JsonDocument> GetProductJsonAsync(
