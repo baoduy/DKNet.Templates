@@ -1,9 +1,11 @@
+using DKNet.EfCore.Abstractions.Events;
 using DKNet.EfCore.Extensions.Configurations;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using NetArchTest.Rules;
 using Minimal.Infra.Contexts;
 using Minimal.Infra.Extensions;
+using Minimal.Infra.Services;
 using SlimMessageBus;
 
 namespace Minimal.App.Tests.Architecture;
@@ -11,6 +13,27 @@ namespace Minimal.App.Tests.Architecture;
 public class InfraTests
 {
     #region Methods
+
+    /// <summary>
+    /// DRK-1219 R2: <c>UseAutoDataSeeding</c>'s post-migration hook resolves <see cref="EventPublisher"/> —
+    /// which needs a real <c>IMessageBus</c> to construct — from the same design-time provider
+    /// <see cref="DbContextFactory"/> builds. Before the fix, this provider had no bus registered, so
+    /// resolving <see cref="IEventPublisher"/> threw a missing-service exception and
+    /// <c>dotnet ef database update</c> died while running seeding.
+    /// </summary>
+    [Fact]
+    public void DesignTimeServiceProvider_CanActivateEventPublisher()
+    {
+        var serviceProvider = DbContextFactory.BuildServiceProvider([]);
+        using var disposable = serviceProvider as IDisposable;
+
+        var bus = serviceProvider.GetRequiredService<IMessageBus>();
+        var publisher = serviceProvider.GetRequiredService<IEventPublisher>();
+
+        bus.ShouldNotBeNull();
+        publisher.ShouldNotBeNull();
+        publisher.ShouldBeOfType<EventPublisher>();
+    }
 
     [Fact]
     public void AllEfConfigClassesShouldBeInternalAndSealed()
