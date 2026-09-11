@@ -108,7 +108,7 @@ dotnet run --project <Name>.ApiEndpoints/<Name>.AppHost
 The Aspire path leaves you a populated database: the migration's three reference purchase orders,
 plus 10 000 generated products and 10 000 generated purchase orders, freshly randomised on every
 start — with one deliberate exception. Exactly one of those products is fixed, not random:
-`DRK-1198-Demo-Product-With-Supplier-Data` is the only row carrying both role-gated `[SensitiveData]`
+`Demo-Product-With-Supplier-Data` is the only row carrying both role-gated `[SensitiveData]`
 properties, so the response filtering is visible from a running host
 ([`docs/samples/automated-products/README.md`](./samples/automated-products/README.md#platform-capabilities-it-carries)).
 It counts toward the requested total rather than adding to it.

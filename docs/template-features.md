@@ -124,7 +124,11 @@ Once those resources are up, the host also populates the two sample entities —
 `PurchaseOrder` — with **10 000 generated records each by default**, so paging, sorting and
 filtering have a realistic dataset with no manual step. The records are freshly randomised on every
 start, so consecutive runs do not present the same data, and they are synthetic throughout — no
-real personal data. They are attributed to `SharedConsts.SystemAccount` (`"System"`), the same
+real personal data. Exactly one product is the deliberate exception: a fixed
+[demonstration row](samples/automated-products/README.md#platform-capabilities-it-carries) carrying
+both role-gated `[SensitiveData]` properties, so response filtering is visible on a host you just
+started — it counts toward the 10 000 rather than adding to it. They are attributed to
+`SharedConsts.SystemAccount` (`"System"`), the same
 account the three reference purchase orders carry; for `Product`, which implements `IOwnedBy`, that
 is also the `OwnedBy` value, which is what lets the
 [row-level ownership filter](auditing-and-data-ownership.md#row-level-ownership-filtering) show the
