@@ -104,6 +104,49 @@ group.MapProductCrud(o => o.Exclude(CrudOp.Delete));
 `Action` are all-or-nothing — there is no per-method exclusion. Nothing is excluded by default, and
 the shipped `ProductV1Endpoint` passes no options.
 
+## Declaring a sensitive property
+
+`[SensitiveData]` (`DKNet.EfCore.Abstractions`) is the one attribute on this page that does not
+generate anything. It marks a property whose value not every caller may read, and the `Product`
+entity carries two declarations:
+
+```csharp
+[SensitiveData("pricing")] public decimal? SupplierCostPrice { get; private set; }
+[SensitiveData]            public string? SupplierReferenceCode { get; private set; }
+```
+
+- **`[SensitiveData("pricing")]`** — only an authenticated caller for whom `IsInRole("pricing")` is
+  true receives `supplierCostPrice`. Name several roles (`[SensitiveData("pricing", "audit")]`) and
+  holding any one of them is enough.
+- **`[SensitiveData]` with no role** — any *authenticated* caller receives `supplierReferenceCode`.
+  Naming no role does not mean "everyone": an unauthenticated caller is still refused.
+
+### The attribute travels onto the generated DTO
+
+You never re-declare it on `ProductDto`. `DKNet.EfCore.DtoGenerator` copies `[SensitiveData]`, roles
+and all, from the entity property onto the matching property of the generated record — so
+`obj/Generated/.../ProductDto.g.cs` carries `SupplierCostPrice` and `SupplierReferenceCode` with
+their attributes already on them.
+
+That is the point of declaring it on the entity. There is no second response model for privileged
+callers, no per-audience Mapster profile, and no `if (user.IsInRole(...))` branch in a handler — the
+one declaration reaches every generated response model that includes the property.
+
+Excluding the property instead (`Exclude` on `[GenerateDto]`, above) is the blunter tool: it removes
+the property from the DTO for everyone, privileged callers included.
+
+### Declaring is not enforcing
+
+On its own the attribute changes nothing about an API response — `[SensitiveData("pricing")]`
+behaves exactly like an undecorated property until the host opts its response serializer in. That
+opt-in is one start-up registration in `Minimal.Api`, described in
+[`docs/api-pipeline.md`](api-pipeline.md#role-aware-sensitive-property-filtering).
+
+The same declaration is also what `DKNet.EfCore.AuditLogs` reads to redact the value in a captured
+audit entry (for every reader — audit redaction ignores the role names). That package is not wired
+by this template today, see [`docs/dknet-packages.md`](dknet-packages.md); the point is that a
+property is declared sensitive once and both consumers honour it.
+
 ## Domain actions with `[CrudAction]`
 
 `[CrudCreate]` and `[CrudUpdate]` cover "make one" and "change the value the caller sends". A
