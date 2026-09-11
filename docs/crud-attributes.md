@@ -19,15 +19,22 @@ generated shape.
 public class Product : AggregateRoot, IOwnedBy
 {
     [CrudCreate]
-    public Product([Required, StringLength(150)] string name, [Range(0.01, double.MaxValue)] decimal price)
+    public Product(
+        [Required, StringLength(150)] string name,
+        [Range(0.01, double.MaxValue)] decimal price,
+        decimal? supplierCostPrice = null)
     {
         Name = name;
         Price = price;
+        SupplierCostPrice = supplierCostPrice;
     }
 
     public string Name { get; private set; } = null!;
     public decimal Price { get; private set; }
     public bool IsDiscontinued { get; private set; }
+
+    [SensitiveData("pricing")] public decimal? SupplierCostPrice { get; private set; }
+    [SensitiveData] public string? SupplierReferenceCode { get; private set; }
 
     // Stamped by DataOwnerHook from the same ownership key as CreatedBy; makes the row subject to
     // DataOwnerAuthQuery's global read filter.
@@ -41,6 +48,10 @@ public class Product : AggregateRoot, IOwnedBy
 
     [CrudAction(Verb = CrudActionVerb.Put)]
     public void Discontinue() => IsDiscontinued = true;
+
+    [CrudAction("supplier-reference", Verb = CrudActionVerb.Put)]
+    public void AssignSupplierReference([Required, StringLength(50)] string supplierReferenceCode)
+        => SupplierReferenceCode = supplierReferenceCode;
 }
 ```
 
@@ -56,7 +67,8 @@ public class Product : AggregateRoot, IOwnedBy
   fields.
 - **`[CrudAction]` on a method** — the same parameter-list rule once more, but it publishes a
   *domain action* instead of an update: a `POST` (by default) at the entity's by-id route plus one
-  extra segment. `Approve` and `Discontinue` above are the sample's two.
+  extra segment. `Approve`, `Discontinue` and `AssignSupplierReference` above are the sample's
+  three.
   [Full walkthrough below](#domain-actions-with-crudaction).
 - **`[GenerateDto(typeof(Product))]`** — `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`:
 
@@ -85,9 +97,10 @@ entity, under `obj/Generated/` (not committed to source control — inspect the 
 build):
 
 - The request records: `CreateProductRequest`, `ChangePriceProductRequest`,
-  `ApproveProductRequest`, `DiscontinueProductRequest`.
+  `ApproveProductRequest`, `DiscontinueProductRequest`, `AssignSupplierReferenceProductRequest`.
 - Their handlers, in the `Minimal.AppServices.Crud` namespace: `CreateProductHandler`,
-  `ChangePriceProductHandler`, `ApproveProductHandler`, `DiscontinueProductHandler`.
+  `ChangePriceProductHandler`, `ApproveProductHandler`, `DiscontinueProductHandler`,
+  `AssignSupplierReferenceProductHandler`.
 - The route registrations, via `ProductCrudEndpointExtensions.MapProductCrud()`.
 
 It never generates the `IEntityTypeConfiguration<T>` mapping, or any event *consumer* (see
@@ -103,6 +116,58 @@ group.MapProductCrud(o => o.Exclude(CrudOp.Delete));
 `CrudOp` has six members: `GetById`, `GetList`, `Create`, `Update`, `Delete`, `Action`. `Update` and
 `Action` are all-or-nothing — there is no per-method exclusion. Nothing is excluded by default, and
 the shipped `ProductV1Endpoint` passes no options.
+
+## Declaring a sensitive property
+
+`[SensitiveData]` (`DKNet.EfCore.Abstractions`) is the one attribute on this page that does not
+generate anything. It marks a property whose value not every caller may read, and the `Product`
+entity carries two declarations:
+
+```csharp
+[SensitiveData("pricing")] public decimal? SupplierCostPrice { get; private set; }
+[SensitiveData]            public string? SupplierReferenceCode { get; private set; }
+```
+
+- **`[SensitiveData("pricing")]`** — only an authenticated caller for whom `IsInRole("pricing")` is
+  true receives `supplierCostPrice`. Name several roles (`[SensitiveData("pricing", "audit")]`) and
+  holding any one of them is enough.
+- **`[SensitiveData]` with no role** — any *authenticated* caller receives `supplierReferenceCode`.
+  Naming no role does not mean "everyone": an unauthenticated caller is still refused.
+
+The two properties are *written* by different routes, deliberately. `supplierCostPrice` is an
+optional trailing parameter of the `[CrudCreate]` constructor, so it can be supplied — or left out —
+when the product is created. `supplierReferenceCode` cannot be sent at create time at all: it is
+assigned afterwards through its own `[CrudAction]`, `AssignSupplierReference`, which publishes
+`PUT /v1/products/{id}/supplier-reference`. A supplier reference is allocated by procurement once
+the product exists, not chosen by whoever files the product, and a named action says that where an
+optional create field would not. Read access is the same for both — that is what `[SensitiveData]`
+governs; write access is whatever the declaring member allows.
+
+### The attribute travels onto the generated DTO
+
+You never re-declare it on `ProductDto`. `DKNet.EfCore.DtoGenerator` copies `[SensitiveData]`, roles
+and all, from the entity property onto the matching property of the generated record — so
+`obj/Generated/.../ProductDto.g.cs` carries `SupplierCostPrice` and `SupplierReferenceCode` with
+their attributes already on them.
+
+That is the point of declaring it on the entity. There is no second response model for privileged
+callers, no per-audience Mapster profile, and no `if (user.IsInRole(...))` branch in a handler — the
+one declaration reaches every generated response model that includes the property.
+
+Excluding the property instead (`Exclude` on `[GenerateDto]`, above) is the blunter tool: it removes
+the property from the DTO for everyone, privileged callers included.
+
+### Declaring is not enforcing
+
+On its own the attribute changes nothing about an API response — `[SensitiveData("pricing")]`
+behaves exactly like an undecorated property until the host opts its response serializer in. That
+opt-in is one start-up registration in `Minimal.Api`, described in
+[`docs/api-pipeline.md`](api-pipeline.md#role-aware-sensitive-property-filtering).
+
+The same declaration is also what `DKNet.EfCore.AuditLogs` reads to redact the value in a captured
+audit entry (for every reader — audit redaction ignores the role names). That package is not wired
+by this template today, see [`docs/dknet-packages.md`](dknet-packages.md); the point is that a
+property is declared sensitive once and both consumers honour it.
 
 ## Domain actions with `[CrudAction]`
 

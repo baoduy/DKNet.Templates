@@ -1,4 +1,6 @@
+using DKNet.EfCore.Extensions.Serialization;
 using Minimal.Infra.Contexts;
+using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 namespace Minimal.Api.Configs;
 
@@ -14,6 +16,7 @@ internal static class ServiceConfigs
     {
         services
             .AddSingleton<IHttpContextAccessor, HttpContextAccessor>()
+            .AddSingleton<ISensitiveDataPrincipalAccessor, HttpContextSensitiveDataPrincipalAccessor>()
             .AddScoped<IPrincipalProvider, PrincipalProvider>()
             // Also wires DKNet's DataOwnerHook onto CoreDbContext: it stamps CreatedBy/CreatedOn from
             // IDataOwnerProvider on save, never from a request property — a generated create request can
@@ -50,6 +53,14 @@ internal static class ServiceConfigs
                 op.SerializerOptions.Converters.Add(converter);
             }
         });
+
+        // ConfigureHttpJsonOptions above has no service-provider access, so the role-aware sensitive-data
+        // opt-in (needs ISensitiveDataPrincipalAccessor from DI) goes through this factory registration
+        // instead — same JsonOptions instance, applied once at start-up, per the DKNet doc's recipe.
+        services.AddSingleton<IConfigureOptions<JsonOptions>>(sp =>
+            new ConfigureOptions<JsonOptions>(op =>
+                op.SerializerOptions.UseRoleAwareSensitiveData(
+                    sp.GetRequiredService<ISensitiveDataPrincipalAccessor>())));
 
         return services;
     }
