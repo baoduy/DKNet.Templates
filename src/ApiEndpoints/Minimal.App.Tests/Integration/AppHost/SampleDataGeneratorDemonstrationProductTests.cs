@@ -47,6 +47,7 @@ public sealed class SampleDataGeneratorDemonstrationProductTests
             .ToList();
         withBothSensitiveValues.Count.ShouldBe(1,
             "exactly one seeded product must demonstrate both role-gated sensitive properties together");
+        withBothSensitiveValues[0].SupplierCostPrice.ShouldBe(SampleDataGenerator.DemonstrationProductSupplierCostPrice);
         withBothSensitiveValues[0].SupplierReferenceCode.ShouldBe(SampleDataGenerator.DemonstrationProductSupplierReferenceCode);
     }
 
@@ -73,7 +74,7 @@ public sealed class SampleDataGeneratorDemonstrationProductTests
 
         products.Count.ShouldBe(1);
         products[0].Name.ShouldBe(SampleDataGenerator.DemonstrationProductName);
-        products[0].SupplierCostPrice.ShouldNotBeNull();
+        products[0].SupplierCostPrice.ShouldBe(SampleDataGenerator.DemonstrationProductSupplierCostPrice);
         products[0].SupplierReferenceCode.ShouldBe(SampleDataGenerator.DemonstrationProductSupplierReferenceCode);
     }
 }
