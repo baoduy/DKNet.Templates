@@ -8,7 +8,13 @@ name: Build
 
 jobs:
   build:
+    name: Build and test (${{ matrix.configuration }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
 
     steps:
       - name: Checkout
@@ -23,4 +29,21 @@ jobs:
         run: dotnet restore src/DKNet.Templates.sln
 
       - name: Build
-        run: dotnet build src/DKNet.Templates.sln -c Release --no-restore
+        run: dotnet build src/DKNet.Templates.sln -c ${{ matrix.configuration }} --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test src/DKNet.Templates.sln
+          -c ${{ matrix.configuration }}
+          --no-build
+          --settings src/coverage.runsettings
+          --collect:"XPlat Code Coverage"
+          --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.configuration }}
+          path: "**/TestResults/**"
+          if-no-files-found: ignore
