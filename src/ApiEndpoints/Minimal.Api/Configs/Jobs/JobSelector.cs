@@ -27,6 +27,23 @@ internal static class JobSelector
 {
     public static JobSelection Select(IReadOnlyList<string> args, IReadOnlyCollection<string> knownJobNames)
     {
-        throw new NotImplementedException();
+        string? requestedJobName = null;
+        for (var i = 0; i < args.Count; i++)
+        {
+            var arg = args[i];
+            if (arg.StartsWith('-'))
+            {
+                i++; // the option's value (if any) — never itself a job-name candidate
+                continue;
+            }
+
+            requestedJobName = arg;
+            break;
+        }
+
+        var isRecognized = requestedJobName is not null &&
+            knownJobNames.Any(name => string.Equals(name, requestedJobName, StringComparison.OrdinalIgnoreCase));
+
+        return new JobSelection(requestedJobName, isRecognized, knownJobNames.ToArray());
     }
 }
