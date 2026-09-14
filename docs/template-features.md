@@ -28,7 +28,7 @@ you change a flag — never turn a security switch off in the base file.
 | **Redis** | Distributed cache backing store and (when configured) the idempotency-key store. | `ConnectionStrings:Redis`; wiring in `Minimal.Api/Configs/CacheConfig.cs` and `AppConfig.cs` |
 | **PostgreSQL (Npgsql)** | The only supported EF Core provider — connection, migrations table, retry-on-failure, split queries. | `ConnectionStrings:AppDb`; `Minimal.Infra/Extensions/InfraSetup.cs` |
 | **FluentValidation** | Automatic `400` responses for invalid requests — handlers never call `Validate()` themselves. | Add an `AbstractValidator<TRequest>` next to the action; wiring in `Minimal.Api/Configs/FluentValidationConfig.cs` |
-| **OpenTelemetry** | ASP.NET Core + HttpClient tracing/metrics; console exporter in DEBUG, OTLP or Azure Monitor otherwise. | `FeatureManagement:EnableOpenTelemetry`, `OTEL_EXPORTER_OTLP_ENDPOINT` / `AzureMonitor:ConnectionString`; `Minimal.Api/Configs/LogConfigs.cs` |
+| **OpenTelemetry** | ASP.NET Core + HttpClient tracing/metrics; console exporter in a `Development` environment (whichever configuration the build was compiled as), OTLP or Azure Monitor otherwise. | `FeatureManagement:EnableOpenTelemetry`, `OTEL_EXPORTER_OTLP_ENDPOINT` / `AzureMonitor:ConnectionString`; `Minimal.Api/Configs/LogConfigs.cs` |
 | **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, plus a `ConnectionStrings:AzureAppConfig` entry — **not** the `AzureAppConfiguration` name the base file ships, which nothing reads; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs`. Every key: [`configuration-reference.md`](configuration-reference.md#azureappconfig) |
 | **JWT bearer auth** | Standard bearer-token auth, plus a sample scope policy and an `IClaimsTransformation` to replace with your own. The shipped `Authentication:Schemes:Bearer` values are placeholders wired to the `--TenantId` and `--ApiAudience` template parameters — replace them before enabling authorization. `ValidAudiences` deliberately lists only the API's own audience, so tokens issued for any other resource are rejected. Authorization is **default-deny**: a fallback policy requires an authenticated user on every endpoint that does not declare itself anonymous, so a route published outside a configured group is not reachable by accident. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
@@ -167,6 +167,10 @@ through to the column on its left.
 | `EnableVersioning` | `true` | `true` | — | — |
 | `RequireAuthorization` | `false` | **`true`** | `false` | `false` |
 | `RunDbMigrationWhenAppStart` | `false` | `false` | `true` | — |
+
+`RunDbMigrationWhenAppStart` migrates in-process before serving, in every environment and in either
+build configuration. It is the single-process route; the multi-replica route is to launch the same
+image as the `migration` job — [launch mode](template-usage.md#launch-mode-serve-or-run-a-job).
 
 `RequireAuthorization`, `EnableHttps`, `EnableRateLimit`, `EnableSecurityHeaders`,
 `EnableForwardedHeaders` and `EnableRequestBounds` are the secure-by-default set: a scaffolded

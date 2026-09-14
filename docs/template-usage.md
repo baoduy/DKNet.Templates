@@ -22,6 +22,9 @@ dotnet new install DKNet.Minimal.Template --nuget-source "https://nuget.pkg.gith
 dotnet new dknet-minimal -n MyCompany.MyService
 ```
 
+A dotted name is supported: `dotnet new dknet-minimal -n DKNet.Accounts` produces a solution that
+builds and tests green with no hand edits.
+
 ## Scaffold-time parameters
 
 Every parameter below is declared in `src/.template.config/template.json`. Each one carries a
@@ -116,6 +119,117 @@ It counts toward the requested total rather than adding to it.
 To start empty instead, set `"SampleData": { "RecordsPerEntity": 0 }` in
 `<Name>.ApiEndpoints/<Name>.AppHost/appsettings.json` — details in
 [`configuration-reference.md`](./configuration-reference.md#sampledata).
+
+## Launch mode: serve, or run a job
+
+One image, one entry point. What the process does is decided by its command-line arguments alone —
+no environment name, no configuration key and no build configuration takes part in that decision.
+
+| Arguments | What the process does |
+|---|---|
+| none | Serves requests, as it always has. |
+| a registered job name — `migration` is the one that ships | Runs that job and exits: `0` when it succeeded, non-zero when it failed. No HTTP listener is bound, and no message-bus connection is opened. |
+| an argument that is not a registered job name | Exits non-zero without ever serving, naming the jobs it does recognise. |
+
+The job name is the first argument that is neither an option nor the value of one, matched
+case-insensitively against the registry in `<Name>.Api/Configs/Jobs/JobRegistry.cs`. An argument
+beginning with `-` is an option; when it does not carry its own value with `=`, the argument right
+after it is that option's value and is never a job-name candidate. So:
+
+| Arguments | Job name |
+|---|---|
+| `--urls http://0.0.0.0:8080` | none — serves |
+| `--urls http://0.0.0.0:8080 migration` | `migration` |
+| `--urls=http://0.0.0.0:8080 migration` | `migration` — the option carries its own value, so it consumes nothing |
+| `--some-flag migration` | none — a valueless flag is indistinguishable from `--key value`, so `migration` is read as its value. Pass flags in the `--some-flag=true` form, or put the job name first. |
+
+A job resolves its configuration from exactly the same sources the serving path does, Azure App
+Configuration included — job dispatch happens after those sources are added and before any service
+is registered.
+
+![Workflow diagram of the launch decision: process arguments reach job-name selection, which takes the first argument that is neither an option nor the value of one; with no job name the service builds the web host, optionally runs the in-process migration gated on RunDbMigrationWhenAppStart, and serves requests; a registered job name runs that job — the shipped migration job migrates and seeds without binding a listener or opening a message bus — and exits 0, or exits non-zero when the migration fails; an unrecognised job name never starts serving and exits non-zero naming the jobs it knows.](diagrams/templates-launch-mode.svg)
+
+```bash
+# serves
+dotnet run --project <Name>.ApiEndpoints/<Name>.Api
+
+# migrates the database, then exits
+dotnet run --project <Name>.ApiEndpoints/<Name>.Api -- migration
+```
+
+Adding a second job is one entry in that registry and nothing else — no new branch in the start-up
+path, no second project, no second image. See
+[`extension-points.md`](./extension-points.md#launch-time-jobs).
+
+### On Kubernetes
+
+The published container's entry point is the application itself, so a container `args` list arrives
+as the process arguments. That is the whole deployment shape: one image referenced twice, a `Job`
+that passes `migration` and a `Deployment` that passes nothing. Port 8080 below is the ASP.NET Core
+container default that `ContainerBaseImage` carries; override it with `ASPNETCORE_HTTP_PORTS`.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: myservice-migration
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: <your-registry>/myservice-api:<tag>
+          args: ["migration"]          # runs the migration job, then exits
+          env:
+            - name: ConnectionStrings__AppDb
+              valueFrom:
+                secretKeyRef: { name: myservice-db, key: connection-string }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myservice-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: myservice-api }
+  template:
+    metadata:
+      labels: { app: myservice-api }
+    spec:
+      containers:
+        - name: api
+          image: <your-registry>/myservice-api:<tag>   # same image, no args — serves
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+          env:
+            - name: ConnectionStrings__AppDb
+              valueFrom:
+                secretKeyRef: { name: myservice-db, key: connection-string }
+```
+
+The job's exit status is what the cluster acts on: a failed migration fails the `Job` rather than
+leaving a pod that came up and quietly serves an un-migrated schema. Sequence the two however your
+tooling prefers — a Helm pre-upgrade hook, an Argo CD sync wave, or simply applying the `Job` and
+waiting for it before the `Deployment` rollout.
+
+### `FeatureManagement:RunDbMigrationWhenAppStart`
+
+The other way to migrate. With the flag on, a serving process migrates the database in-process
+before it starts serving — in every environment and in both `Debug` and `Release` builds, with no
+argument passed. It ships off, and on in the `Development` overlay
+([flag table](./template-features.md#featuremanagement-flags)).
+
+> Earlier versions honoured this flag in `Debug` builds only; a `Release` build ignored it and
+> migrated solely on the `migration` argument. It now means the same thing everywhere.
+
+Treat it as a single-process convenience — local work, one-replica deployments, the Aspire host.
+Wherever more than one replica starts at once, every replica would race the others through the same
+migration: leave the flag off and run the `migration` job instead.
 
 ## Test
 

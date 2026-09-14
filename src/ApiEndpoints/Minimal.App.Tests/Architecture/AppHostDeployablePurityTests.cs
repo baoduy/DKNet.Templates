@@ -16,7 +16,7 @@ namespace Minimal.App.Tests.Architecture;
 public sealed class AppHostDeployablePurityTests
 {
     [Fact]
-    public void OnlyMinimalAppHostCsproj_ShouldReferenceTheBogusPackage()
+    public void OnlyAppHostCsproj_ShouldReferenceTheBogusPackage()
     {
         var srcDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
         var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);

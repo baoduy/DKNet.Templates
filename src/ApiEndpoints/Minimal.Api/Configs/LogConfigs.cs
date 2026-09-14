@@ -27,24 +27,31 @@ internal static class LogConfigs
             logging.IncludeScopes = true;
         });
 
+        // Console export is decided by the environment the service runs in, never by build configuration (R8):
+        // a Release build run locally with Development still shows console traces/metrics, and a deployed
+        // (non-Development) environment never exports either, regardless of configuration.
+        var isConsoleExportEnvironment = builder.Environment.IsDevelopment();
+
         var otelBuilder = builder.Services.AddOpenTelemetry()
             .WithTracing(tracing =>
             {
                 tracing
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation();
-#if DEBUG
-                tracing.AddConsoleExporter();
-#endif
+                if (isConsoleExportEnvironment)
+                {
+                    tracing.AddConsoleExporter();
+                }
             })
             .WithMetrics(metrics =>
             {
                 metrics
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation();
-#if DEBUG
-                metrics.AddConsoleExporter();
-#endif
+                if (isConsoleExportEnvironment)
+                {
+                    metrics.AddConsoleExporter();
+                }
             });
 
         if (!string.IsNullOrWhiteSpace(builder.Configuration.GetValue<string>("OTEL_EXPORTER_OTLP_ENDPOINT")))

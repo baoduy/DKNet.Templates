@@ -18,28 +18,11 @@ public class AuthPlaceholderConfigTests
     private static string SrcDir => Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "../../../../.."));
 
-    private static IEnumerable<(string Path, JsonElement Bearer)> BearerSectionsInAppSettings()
-    {
-        // Guard shipped source config only — skip bin/obj so stale build-output copies
-        // (e.g. orphaned net9.0 artifacts) don't produce false failures.
-        var files = Directory.GetFiles(SrcDir, "appsettings*.json", SearchOption.AllDirectories)
-            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(seg =>
-                seg.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
-                seg.Equals("obj", StringComparison.OrdinalIgnoreCase)))
-            .ToArray();
-        files.ShouldNotBeEmpty();
-
-        foreach (var file in files)
-        {
-            using var doc = JsonDocument.Parse(File.ReadAllText(file));
-            if (doc.RootElement.TryGetProperty("Authentication", out var auth) &&
-                auth.TryGetProperty("Schemes", out var schemes) &&
-                schemes.TryGetProperty("Bearer", out var bearer))
-            {
-                yield return (file, bearer.Clone());
-            }
-        }
-    }
+    // Guard shipped source config only — skip bin/obj so stale build-output copies (e.g. orphaned
+    // net9.0 artifacts) don't produce false failures. Shared with the relocated template.json-symbol
+    // check in Architecture/TemplateRepo (DRK-1257 §3 row 4).
+    private static IEnumerable<(string Path, JsonElement Bearer)> BearerSectionsInAppSettings() =>
+        AppSettingsScanner.BearerSectionsInAppSettings(SrcDir);
 
     [Fact]
     public void AppSettings_ValidAudiences_ShouldNeverTargetMicrosoftComHost()
@@ -88,28 +71,5 @@ public class AuthPlaceholderConfigTests
         offenders.ShouldBeEmpty(
             "MetadataAddress/ValidIssuer must carry only the placeholder tenant guid, found real tenant(s): " +
             string.Join(", ", offenders));
-    }
-
-    [Fact]
-    public void TemplateJson_TenantIdAndApiAudienceSymbols_ShouldMatchAppSettingsPlaceholders()
-    {
-        var templateJsonPath = Path.Combine(SrcDir, ".template.config", "template.json");
-        File.Exists(templateJsonPath).ShouldBeTrue();
-
-        using var templateDoc = JsonDocument.Parse(File.ReadAllText(templateJsonPath));
-        var symbols = templateDoc.RootElement.GetProperty("symbols");
-
-        var tenantIdReplaces = symbols.GetProperty("TenantId").GetProperty("replaces").GetString();
-        var apiAudienceReplaces = symbols.GetProperty("ApiAudience").GetProperty("replaces").GetString();
-
-        tenantIdReplaces.ShouldNotBeNullOrWhiteSpace();
-        apiAudienceReplaces.ShouldNotBeNullOrWhiteSpace();
-
-        var result = EntraPlaceholderGuard.Check(BearerSectionsInAppSettings(), tenantIdReplaces!, apiAudienceReplaces!);
-
-        result.Offenders.ShouldBeEmpty(
-            "template.json symbols no longer match shipped Entra config: " + string.Join(", ", result.Offenders));
-        result.EntraSectionsChecked.ShouldBeGreaterThanOrEqualTo(1,
-            "expected at least one Entra-shaped appsettings*.json Bearer section");
     }
 }

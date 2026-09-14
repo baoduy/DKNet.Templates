@@ -104,6 +104,28 @@ public class PackageArchitectureTests
     }
 
     [Fact]
+    public void JobDispatch_ShouldRunAfterTheConfigurationSourcesAreAdded()
+    {
+        // A launched job resolves its settings from the same configuration sources the serving path does —
+        // Azure App Configuration included — so dispatch has to sit after AddAzureAppConfig, and still ahead
+        // of any service registration or host build (R4).
+        var sourcePath = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory,
+                "../../../../../ApiEndpoints/Minimal.Api/Program.cs"));
+
+        File.Exists(sourcePath).ShouldBeTrue();
+        var source = File.ReadAllText(sourcePath);
+
+        var azureAppConfigAt = source.IndexOf("AddAzureAppConfig", StringComparison.Ordinal);
+        var dispatchAt = source.IndexOf("JobSelector.Select", StringComparison.Ordinal);
+        var servicesAt = source.IndexOf("builder.Services", StringComparison.Ordinal);
+
+        azureAppConfigAt.ShouldBeGreaterThan(-1);
+        dispatchAt.ShouldBeGreaterThan(azureAppConfigAt);
+        servicesAt.ShouldBeGreaterThan(dispatchAt);
+    }
+
+    [Fact]
     public void AllDKNetPackageReferences_ShouldResolveToOneRelease()
     {
         var srcDir = Path.GetFullPath(
