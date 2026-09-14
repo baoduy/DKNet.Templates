@@ -87,8 +87,8 @@
       "col": 1,
       "type": "backend",
       "label": "Job name selection",
-      "sublabel": "first argument not starting with '-'",
-      "tag": "arguments alone decide, never configuration",
+      "sublabel": "neither an option nor the value of one",
+      "tag": "first one wins; configuration never decides",
       "width": 168
     },
     {

@@ -362,16 +362,16 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="132" y="132" class="t-muted" font-size="8" text-anchor="middle">container args, dotnet run</text>
         </g>
 
-        <g id="node-selector" data-node-id="selector" data-node-label="Job name selection" tabindex="0" role="button" aria-label="Focus Job name selection, first argument not starting with '-', Entry point › Launch" aria-pressed="false" data-node-kind="backend" data-node-sublabel="first argument not starting with '-'" data-node-tag="arguments alone decide, never configuration" data-node-context="Entry point › Launch">
-          <title>Job name selection · first argument not starting with '-' · Entry point › Launch · arguments alone decide, never configuration</title>
+        <g id="node-selector" data-node-id="selector" data-node-label="Job name selection" tabindex="0" role="button" aria-label="Focus Job name selection, neither an option nor the value of one, Entry point › Launch" aria-pressed="false" data-node-kind="backend" data-node-sublabel="neither an option nor the value of one" data-node-tag="first one wins; configuration never decides" data-node-context="Entry point › Launch">
+          <title>Job name selection · neither an option nor the value of one · Entry point › Launch · first one wins; configuration never decides</title>
           <rect x="244" y="86" width="168" height="68" rx="6" class="c-mask"/>
           <rect x="244" y="86" width="168" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(250 92) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" x="328" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Job name selection</text>
-          <text x="328" y="124" class="t-muted" font-size="7.4" text-anchor="middle">first argument not starting with '-'</text>
-        <text x="328" y="142" class="t-backend" font-size="6.2" text-anchor="middle">arguments alone decide, never configuration</text>
+          <text x="328" y="124" class="t-muted" font-size="7" text-anchor="middle">neither an option nor the value of one</text>
+        <text x="328" y="142" class="t-backend" font-size="6.2" text-anchor="middle">first one wins; configuration never decides</text>
         </g>
 
         <g id="node-serve" data-node-id="serve" data-node-label="No job name" tabindex="0" role="button" aria-label="Focus No job name, builds the web host, Serves requests › Decide" aria-pressed="false" data-node-kind="backend" data-node-sublabel="builds the web host" data-node-context="Serves requests › Decide">

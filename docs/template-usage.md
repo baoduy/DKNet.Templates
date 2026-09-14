@@ -147,7 +147,7 @@ A job resolves its configuration from exactly the same sources the serving path 
 Configuration included — job dispatch happens after those sources are added and before any service
 is registered.
 
-![Workflow diagram of the launch decision: process arguments reach job-name selection, which takes the first argument not starting with a dash; with no job name the service builds the web host, optionally runs the in-process migration gated on RunDbMigrationWhenAppStart, and serves requests; a registered job name runs that job — the shipped migration job migrates and seeds without binding a listener or opening a message bus — and exits 0, or exits non-zero when the migration fails; an unrecognised job name never starts serving and exits non-zero naming the jobs it knows.](diagrams/templates-launch-mode.svg)
+![Workflow diagram of the launch decision: process arguments reach job-name selection, which takes the first argument that is neither an option nor the value of one; with no job name the service builds the web host, optionally runs the in-process migration gated on RunDbMigrationWhenAppStart, and serves requests; a registered job name runs that job — the shipped migration job migrates and seeds without binding a listener or opening a message bus — and exits 0, or exits non-zero when the migration fails; an unrecognised job name never starts serving and exits non-zero naming the jobs it knows.](diagrams/templates-launch-mode.svg)
 
 ```bash
 # serves
