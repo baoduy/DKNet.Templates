@@ -20,8 +20,9 @@ internal sealed record JobSelection(string? RequestedJobName, bool IsRecognized,
 
 /// <summary>
 ///     Selects the job name from process arguments per R2: the first argument that is not an option (an option
-///     begins with '-'). A "--key value" pair's value belongs to that option and is never itself a job-name
-///     candidate — only a bare non-option argument can be one.
+///     begins with '-') and is not the value of the option before it. A "--key value" pair's value belongs to
+///     that option and is never itself a job-name candidate; a "--key=value" option carries its own value, so
+///     the argument after it is still a job-name candidate.
 /// </summary>
 internal static class JobSelector
 {
@@ -33,7 +34,13 @@ internal static class JobSelector
             var arg = args[i];
             if (arg.StartsWith('-'))
             {
-                i++; // the option's value (if any) — never itself a job-name candidate
+                // "--key=value" already carries its value; only the separated "--key value" form takes the
+                // next argument, and that value is never itself a job-name candidate.
+                if (!arg.Contains('=', StringComparison.Ordinal))
+                {
+                    i++;
+                }
+
                 continue;
             }
 

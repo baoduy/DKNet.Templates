@@ -131,10 +131,21 @@ no environment name, no configuration key and no build configuration takes part 
 | a registered job name — `migration` is the one that ships | Runs that job and exits: `0` when it succeeded, non-zero when it failed. No HTTP listener is bound, and no message-bus connection is opened. |
 | an argument that is not a registered job name | Exits non-zero without ever serving, naming the jobs it does recognise. |
 
-The job name is the first argument that does not begin with `-`, matched case-insensitively against
-the registry in `<Name>.Api/Configs/Jobs/JobRegistry.cs`. An option's value is never mistaken for
-one, so `--urls http://0.0.0.0:8080` still serves and `--urls http://0.0.0.0:8080 migration` still
-runs the migration job.
+The job name is the first argument that is neither an option nor the value of one, matched
+case-insensitively against the registry in `<Name>.Api/Configs/Jobs/JobRegistry.cs`. An argument
+beginning with `-` is an option; when it does not carry its own value with `=`, the argument right
+after it is that option's value and is never a job-name candidate. So:
+
+| Arguments | Job name |
+|---|---|
+| `--urls http://0.0.0.0:8080` | none — serves |
+| `--urls http://0.0.0.0:8080 migration` | `migration` |
+| `--urls=http://0.0.0.0:8080 migration` | `migration` — the option carries its own value, so it consumes nothing |
+| `--some-flag migration` | none — a valueless flag is indistinguishable from `--key value`, so `migration` is read as its value. Pass flags in the `--some-flag=true` form, or put the job name first. |
+
+A job resolves its configuration from exactly the same sources the serving path does, Azure App
+Configuration included — job dispatch happens after those sources are added and before any service
+is registered.
 
 ![Workflow diagram of the launch decision: process arguments reach job-name selection, which takes the first argument not starting with a dash; with no job name the service builds the web host, optionally runs the in-process migration gated on RunDbMigrationWhenAppStart, and serves requests; a registered job name runs that job — the shipped migration job migrates and seeds without binding a listener or opening a message bus — and exits 0, or exits non-zero when the migration fails; an unrecognised job name never starts serving and exits non-zero naming the jobs it knows.](diagrams/templates-launch-mode.svg)
 

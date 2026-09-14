@@ -5,9 +5,17 @@ using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Rebind features after potentially loading from Azure App Configuration
+var feature = builder.Configuration.GetSection(FeatureOptions.Name).Get<FeatureOptions>() ?? new FeatureOptions();
+
+// Configuration sources first, so a job resolves its settings (the connection string included) from exactly the
+// same sources the in-process start-up migration does — Azure App Configuration included.
+builder.AddLogConfig(feature)
+    .AddAzureAppConfig(feature);
+
 // The service decides what to do from its process arguments alone (R1) — no environment check, no configuration
-// value. Selected and dispatched before anything that could serve traffic or connect to the message bus (§3 row
-// 2), so a job run loads only what the job needs (R4).
+// value. Dispatched before any service registration and before anything that could serve traffic or connect to
+// the message bus (§3 row 2), so a job run loads only what the job needs (R4).
 var jobSelection = JobSelector.Select(args, JobRegistry.Jobs.Keys.ToArray());
 if (jobSelection.HasJobName)
 {
@@ -21,12 +29,7 @@ if (jobSelection.HasJobName)
     return await JobRegistry.Jobs[jobSelection.RequestedJobName!](builder.Configuration);
 }
 
-// Rebind features after potentially loading from Azure App Configuration
-var feature = builder.Configuration.GetSection(FeatureOptions.Name).Get<FeatureOptions>() ?? new FeatureOptions();
-
-builder.AddLogConfig(feature)
-    .AddAzureAppConfig(feature)
-    .AddFluentValidationConfig();
+builder.AddFluentValidationConfig();
 
 //Run migration (when configured to) and continue to serve.
 await builder.RunMigrationAsync(feature);
