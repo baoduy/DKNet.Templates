@@ -203,10 +203,18 @@ rather than made here.
 ## Telemetry
 
 `Minimal.Api/Configs/LogConfigs.cs` runs before anything else in `Program.cs`. When
-`FeatureManagement:EnableOpenTelemetry` is `false` (the shipped default) it adds a console logger
-in `DEBUG` builds and returns — no tracing, no metrics, no exporter. When `true` it clears the
-logging providers, adds the OpenTelemetry logger, and registers ASP.NET Core plus `HttpClient`
-tracing and metrics instrumentation, with a console exporter in `DEBUG` builds only.
+`FeatureManagement:EnableOpenTelemetry` is `false` (the shipped default) it returns without
+registering any telemetry — no tracing, no metrics, no exporter — and the service keeps logging
+through the ASP.NET Core pipeline under `Logging:LogLevel:*`. When `true` it clears the logging
+providers, adds the OpenTelemetry logger, and registers ASP.NET Core plus `HttpClient` tracing and
+metrics instrumentation.
+
+The console exporter follows the **environment the service runs in**, not the configuration it was
+built in. With telemetry enabled and `ASPNETCORE_ENVIRONMENT=Development`, traces and metrics are
+written to the console from a `Release` build exactly as from a `Debug` one; under `Production`
+neither build writes any to the console, so a deployed service exports only to the OTLP or Azure
+Monitor destinations below. Application logging is not affected either way — the same records at
+the same levels come out of a `Debug` and a `Release` build of the same service.
 
 | Key | Type | Shipped default | Effect | Read by |
 |---|---|---|---|---|

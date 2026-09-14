@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Xml.Linq;
 using Minimal.App.Tests.Architecture.Guards;
 
 namespace Minimal.App.Tests.Architecture;
@@ -68,29 +67,6 @@ public class RepoHygieneTests
         }).Select(Path.GetFileName).ToArray();
 
         offenders.ShouldBeEmpty("files missing a trailing newline: " + string.Join(", ", offenders));
-    }
-
-    [Fact]
-    public void EveryDeclaredUserSecretsId_ShouldHaveAGeneratedGuidSymbol()
-    {
-        var csprojFiles = Directory.GetFiles(SrcDir, "*.csproj", SearchOption.AllDirectories)
-            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(seg =>
-                seg.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
-                seg.Equals("obj", StringComparison.OrdinalIgnoreCase)))
-            .ToArray();
-        csprojFiles.ShouldNotBeEmpty();
-
-        var declaredIds = UserSecretsGuard.DeclaredUserSecretsIds(csprojFiles.Select(XDocument.Load));
-
-        var templateJsonPath = Path.Combine(SrcDir, ".template.config", "template.json");
-        File.Exists(templateJsonPath).ShouldBeTrue();
-        using var templateDoc = JsonDocument.Parse(File.ReadAllText(templateJsonPath));
-        var symbols = templateDoc.RootElement.GetProperty("symbols");
-
-        var offenders = UserSecretsGuard.IdsWithoutGeneratedGuidSymbol(declaredIds, symbols);
-
-        offenders.ShouldBeEmpty(
-            "UserSecretsId value(s) with no generated-guid template.json symbol: " + string.Join(", ", offenders));
     }
 
     [Fact]

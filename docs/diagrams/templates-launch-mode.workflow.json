@@ -1,0 +1,240 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "How a scaffolded service decides what to do at launch",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "external": {
+          "label": "Process arguments"
+        },
+        "backend": {
+          "label": "Serving path"
+        },
+        "messagebus": {
+          "label": "Job path"
+        },
+        "cloud": {
+          "label": "Flag-gated step"
+        },
+        "security": {
+          "label": "Refuses to serve, exits non-zero"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "entry",
+      "label": "Entry point"
+    },
+    {
+      "id": "serving",
+      "label": "Serves requests"
+    },
+    {
+      "id": "job",
+      "label": "Runs a job, then exits"
+    },
+    {
+      "id": "failed",
+      "label": "Fails visibly",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "launch",
+      "label": "Launch",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "decide",
+      "label": "Decide",
+      "fromCol": 2,
+      "toCol": 2,
+      "variant": "emphasis"
+    },
+    {
+      "id": "outcome",
+      "label": "Run and exit",
+      "fromCol": 3,
+      "toCol": 4
+    }
+  ],
+  "mainPath": [
+    "args",
+    "selector",
+    "serve",
+    "migrateOnStart",
+    "serving"
+  ],
+  "nodes": [
+    {
+      "id": "args",
+      "lane": "entry",
+      "col": 0,
+      "type": "external",
+      "label": "Process arguments",
+      "sublabel": "container args, dotnet run",
+      "width": 168
+    },
+    {
+      "id": "selector",
+      "lane": "entry",
+      "col": 1,
+      "type": "backend",
+      "label": "Job name selection",
+      "sublabel": "neither an option nor the value of one",
+      "tag": "first one wins; configuration never decides",
+      "width": 168
+    },
+    {
+      "id": "serve",
+      "lane": "serving",
+      "col": 2,
+      "type": "backend",
+      "label": "No job name",
+      "sublabel": "builds the web host",
+      "width": 168
+    },
+    {
+      "id": "migrateOnStart",
+      "lane": "serving",
+      "col": 3,
+      "type": "cloud",
+      "label": "In-process migration",
+      "sublabel": "RunDbMigrationWhenAppStart",
+      "tag": "single-process convenience, any build",
+      "width": 168
+    },
+    {
+      "id": "serving",
+      "lane": "serving",
+      "col": 4,
+      "type": "backend",
+      "label": "Serves requests",
+      "sublabel": "Kestrel bound, /healthz answering",
+      "width": 168
+    },
+    {
+      "id": "known",
+      "lane": "job",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Registered job name",
+      "sublabel": "matched case-insensitively",
+      "width": 168
+    },
+    {
+      "id": "migrationJob",
+      "lane": "job",
+      "col": 3,
+      "type": "messagebus",
+      "label": "migration job",
+      "sublabel": "migrates, then seeds",
+      "tag": "no listener bound, no message bus opened",
+      "width": 168
+    },
+    {
+      "id": "exitZero",
+      "lane": "job",
+      "col": 4,
+      "type": "backend",
+      "label": "Exits 0",
+      "sublabel": "the Kubernetes Job succeeds",
+      "width": 168
+    },
+    {
+      "id": "unknown",
+      "lane": "failed",
+      "col": 2,
+      "type": "security",
+      "label": "Unrecognised job name",
+      "sublabel": "a typo, not a request to serve",
+      "width": 168
+    },
+    {
+      "id": "exitNonZero",
+      "lane": "failed",
+      "col": 4,
+      "type": "security",
+      "label": "Exits non-zero",
+      "sublabel": "names the jobs it knows",
+      "width": 168
+    }
+  ],
+  "edges": [
+    {
+      "id": "args-selector",
+      "from": "args",
+      "to": "selector",
+      "variant": "emphasis"
+    },
+    {
+      "id": "selector-serve",
+      "from": "selector",
+      "to": "serve",
+      "label": "no job name",
+      "variant": "emphasis"
+    },
+    {
+      "id": "serve-migrate",
+      "from": "serve",
+      "to": "migrateOnStart",
+      "variant": "emphasis"
+    },
+    {
+      "id": "migrate-serving",
+      "from": "migrateOnStart",
+      "to": "serving",
+      "label": "migrated, or skipped when off",
+      "variant": "emphasis"
+    },
+    {
+      "id": "selector-known",
+      "from": "selector",
+      "to": "known",
+      "label": "job name in the registry",
+      "variant": "default"
+    },
+    {
+      "id": "known-migration",
+      "from": "known",
+      "to": "migrationJob",
+      "variant": "default"
+    },
+    {
+      "id": "migration-exit",
+      "from": "migrationJob",
+      "to": "exitZero",
+      "label": "completed",
+      "variant": "default"
+    },
+    {
+      "id": "selector-unknown",
+      "from": "selector",
+      "to": "unknown",
+      "label": "job name not in the registry",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "unknown-exit",
+      "from": "unknown",
+      "to": "exitNonZero",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "migration-failed",
+      "from": "migrationJob",
+      "to": "exitNonZero",
+      "label": "migration failed",
+      "variant": "security",
+      "role": "error"
+    }
+  ]
+}

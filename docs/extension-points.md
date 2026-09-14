@@ -2,7 +2,8 @@
 
 Where your own code attaches to a solution scaffolded by `dotnet new dknet-minimal`. Each seam
 below is discovered by convention or by assembly scan — none of them has a registration list you
-must remember to update.
+must remember to update, apart from [launch-time jobs](#launch-time-jobs), where the list is the
+seam.
 
 Paths use the template's own project names (`Minimal.Api`, `Minimal.AppServices`, …); a generated
 solution renames them to `<YourApp>.*`. For the configuration keys these seams read, see
@@ -24,6 +25,7 @@ solution renames them to `<YourApp>.*`. For the configuration keys these seams r
 | Rate-limit partitioning | `IRateLimitKeyProvider` | `Minimal.Api/Configs/RateLimits/` | Explicit DI registration |
 | Rate-limit values | `IRateLimitOptionsProvider` | `Minimal.Api/Configs/RateLimits/` | Explicit DI registration |
 | Domain service | `IDomainService` and friends | `Minimal.Domains/Services/` + `Minimal.Infra/Services/` | Explicit DI registration |
+| Launch-time job | `Func<IConfiguration, Task<int>>` | `Minimal.Api/Configs/Jobs/` | One entry in `JobRegistry.Jobs` |
 | Test host | `TestApiFactoryBase` | `Minimal.App.TestSupport/` | Subclass it |
 
 ## Endpoints
@@ -239,6 +241,33 @@ yourself. Detail: [`slimbus-messaging.md`](slimbus-messaging.md).
 `HealthCheckHandler`, and maps them at `/healthz` and `/`. `HealthCheckHandler` is a template stub
 that always reports healthy — implement `IHealthCheck` and add it in `AddHealthzConfig` for a real
 readiness probe. The whole block is gated on `FeatureManagement:EnableHealthCheck`.
+
+## Launch-time jobs
+
+A scaffolded service can be launched to run a job instead of serving — `dotnet <Name>.Api.dll
+migration`, or the same container image with `args: ["migration"]`. Which names it accepts is
+`Minimal.Api/Configs/Jobs/JobRegistry.cs`, and adding a second job is one entry in that dictionary:
+
+```csharp
+public static IReadOnlyDictionary<string, Func<IConfiguration, Task<int>>> Jobs { get; } =
+    new Dictionary<string, Func<IConfiguration, Task<int>>>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["migration"] = MigrationJob.RunAsync,
+        ["reindex"] = ReindexJob.RunAsync
+    };
+```
+
+A job is a `Func<IConfiguration, Task<int>>`: it is handed the configuration the process was started
+with, does its work, and returns the process exit code — `0` for success, anything else for failure,
+which is what a Kubernetes `Job` acts on. It runs before any host is built, so there is no DI
+container to resolve from: build what you need out of the configuration you are given, the way
+`MigrationJob` does. Keep it as small as `MigrationJob` is — a job that needs the full application
+is a request the service should be serving, not a job.
+
+Nothing else changes when you add one. The start-up path gains no branch, the solution gains no
+project, and the deployment gains no second image — the new name is simply recognised. How a name is
+selected from the arguments, and what happens when it is not recognised:
+[`template-usage.md`](template-usage.md#launch-mode-serve-or-run-a-job).
 
 ## Test hosts
 

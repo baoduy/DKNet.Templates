@@ -1,3 +1,5 @@
+using Minimal.Api.Configs.Jobs;
+
 namespace Minimal.Api.Configs;
 
 [ExcludeFromCodeCoverage]
@@ -5,26 +7,23 @@ internal static class DbMigration
 {
     #region Methods
 
-    public static async Task RunMigrationAsync(
-        this WebApplicationBuilder builder,
-        FeatureOptions features,
-        params string[] args)
+    /// <summary>
+    ///     When <see cref="FeatureOptions.RunDbMigrationWhenAppStart" /> is set, runs the migration job in-process
+    ///     before serving — in every environment and every build configuration (R6). A thin wrapper over the same
+    ///     <see cref="MigrationJob" /> the "migration" argument dispatches to (§3 row 1), not a second
+    ///     implementation of it.
+    /// </summary>
+    public static async Task RunMigrationAsync(this WebApplicationBuilder builder, FeatureOptions features)
     {
-#if DEBUG
-        var isMigration = features.RunDbMigrationWhenAppStart;
-#else
-        var isMigration = args.Any(x => string.Equals(x, "migration", StringComparison.OrdinalIgnoreCase));
-#endif
-
-        if (isMigration)
+        if (!features.RunDbMigrationWhenAppStart)
         {
-            Console.WriteLine("Running Db migration...");
-            await InfraMigration.MigrateDb(builder.Configuration.GetConnectionString(SharedConsts.DbConnectionString)!);
-            Console.WriteLine("Db migration is completed");
+            return;
+        }
 
-#if !DEBUG
-                Environment.Exit(0);
-#endif
+        var exitCode = await MigrationJob.RunAsync(builder.Configuration);
+        if (exitCode != 0)
+        {
+            throw new InvalidOperationException("Startup database migration failed.");
         }
     }
 

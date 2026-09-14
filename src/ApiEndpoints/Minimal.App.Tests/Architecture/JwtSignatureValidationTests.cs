@@ -16,7 +16,7 @@ public class JwtSignatureValidationTests
     ];
 
     [Fact]
-    public void MinimalApiSource_ShouldNotDisableJwtSignatureValidation()
+    public void ApiSource_ShouldNotDisableJwtSignatureValidation()
     {
         var apiSourceDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../../ApiEndpoints/Minimal.Api"));

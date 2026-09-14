@@ -89,6 +89,7 @@ both — never hand-edit the SVG.
 | `templates-domain-event-path` | An event from aggregate to handler, across the save boundary | [EF Core domain events](efcore-events.md) |
 | `templates-crud-generation` | Attributes in, generated requests/handlers/routes out | [CRUD attributes](crud-attributes.md) |
 | `templates-aspire-topology` | What the Aspire host provisions and injects | [Template features](template-features.md) |
+| `templates-launch-mode` | How process arguments decide between serving, running a job, and failing | [Template usage](template-usage.md#launch-mode-serve-or-run-a-job) |
 
 ## How the plumbing works
 
