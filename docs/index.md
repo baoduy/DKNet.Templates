@@ -26,6 +26,56 @@ production-ready .NET 10 microservices using vertical-slice DDD/CQRS.
 - [Generic List Endpoint](generic-list-endpoint.md) — the filter/search/order/page contract every
   generated CRUD list route exposes for free.
 
+### Capabilities you can reach for
+
+Everything below already exists in a generated solution — you opt into it per feature, usually with
+one attribute or one call. Nothing here needs new infrastructure.
+
+**Write side — shaping the slice**
+
+| Capability | Opt in with | Reference |
+|---|---|---|
+| Generate requests, handlers and routes for create/update | `[CrudCreate]` ctor, `[CrudUpdate]` method | [CRUD attributes](crud-attributes.md#the-four-attributes) |
+| Generate the DTO from the entity | `[GenerateDto(typeof(Entity))]` on a partial record | [CRUD attributes](crud-attributes.md#the-four-attributes) |
+| Non-CRUD domain verbs on their own route (`PUT /{id}/discontinue`) | `[CrudAction]`, with optional segment and verb overrides | [CRUD attributes](crud-attributes.md#domain-actions-with-crudaction) |
+| Raise a domain event on save without writing publish code | `[RaisesEvent(EventOperations.X, nameof(Prop))]` | [EF Core domain events](efcore-events.md) |
+| Raise a domain event from inside an aggregate method | `AddEvent(...)` in the entity | [EF Core domain events](efcore-events.md) |
+| Reject bad input before the handler runs | a FluentValidation `AbstractValidator<TRequest>` — auto-discovered | [API pipeline](api-pipeline.md#fluentvalidation-auto-validation), [Extension points](extension-points.md#requests-handlers-and-validators) |
+| Make a replayed `POST` return the first result instead of creating twice | `.RequiredIdempotentKey()` on the route; client sends `X-Idempotency-Key` | [API pipeline](api-pipeline.md#idempotency-on-post) |
+| Fill the acting user into a request from the token | `[FromClaim(...)]` on a request property | [API pipeline](api-pipeline.md#fromclaim-population) |
+| Stamp the acting user onto every entity without touching requests | `DataOwnerHook` — already wired; nothing per-feature | [Auditing and data ownership](auditing-and-data-ownership.md) |
+| Ship reference rows with the feature | a `DataSeedingConfiguration<T>` subclass — auto-discovered | [CRUD attributes](crud-attributes.md#data-seeding) |
+| Gapless human-readable numbers (order no., invoice no.) | a sequence definition | [CRUD attributes](crud-attributes.md#sequences) |
+| Forward a domain event to an external broker | `Produce`/`Consume` in `ServiceBusSetup` | [SlimMessageBus messaging](slimbus-messaging.md) |
+
+**Read side — shaping the response**
+
+| Capability | Opt in with | Reference |
+|---|---|---|
+| Reusable, testable query predicates instead of inline `IQueryable` | a `Specification<T>` subclass under `V1/Specs/` | [Querying and specifications](querying-and-specifications.md) |
+| Filter, search, order and page a list route | nothing — every generated list route exposes it | [Generic list endpoint](generic-list-endpoint.md) |
+| Limit which fields are filterable/searchable | the DTO is the boundary; fields must map to real columns | [Generic list endpoint](generic-list-endpoint.md#the-dto-is-the-boundary) |
+| Project to a DTO after `SaveChanges` without an extra round trip | `mapper.ResultOf<T>(entity)` / `LazyMap<T>()` | [DDD implementation guide](ddd-implementation-guide.md) |
+| Withhold a property from callers who lack a role | `[SensitiveData("role")]`, or `[SensitiveData]` for any authenticated caller | [CRUD attributes](crud-attributes.md#declaring-a-sensitive-property), [API pipeline](api-pipeline.md#role-aware-sensitive-property-filtering) |
+| Return only rows the caller owns | ownership filtering — already wired on `CoreDbContext` | [Auditing and data ownership](auditing-and-data-ownership.md#row-level-ownership-filtering) |
+| Aggregate counts by status without loading rows | the status-counts endpoint helper | [Querying and specifications](querying-and-specifications.md#status-counts-endpoint-helper) |
+
+**Protecting and proving the slice**
+
+| Capability | Opt in with | Reference |
+|---|---|---|
+| Require a token / a role on a route | `RequireAuthorization(...)` on the group or route | [API pipeline](api-pipeline.md#authentication--authorization), [Extension points](extension-points.md#authorization-and-claims) |
+| Throttle a route | a named rate-limit policy | [API pipeline](api-pipeline.md#rate-limiting), [Extension points](extension-points.md#rate-limiting) |
+| Ship the feature switched off | a `FeatureOptions` property plus the matching `FeatureManagement` JSON key | [Template features](template-features.md#featuremanagement-flags), [Configuration reference](configuration-reference.md) |
+| Cover the slice at the right level | handler/`Result` and model assertions in `Minimal.App.Tests`; HTTP behaviour in `Minimal.App.BDDTests` | [DDD implementation guide](ddd-implementation-guide.md) |
+| Keep layer references legal | nothing — the architecture tests fail the build for you | [Extension points](extension-points.md#boundaries-your-code-must-respect) |
+
+Two caveats worth reading before you rely on a row above: a DataAnnotations attribute on a generated
+request is *forwarded but not enforced* ([why](crud-attributes.md#end-to-end-trace-both-samples)), and
+`[SensitiveData]` filters nothing until the serializer opt-in is present — it is already wired in a
+generated solution, but that is what makes it work
+([why](crud-attributes.md#declaring-is-not-enforcing)).
+
 ## Diagrams
 
 Every diagram on these pages is committed twice under [`diagrams/`](diagrams): the typed JSON IR it
