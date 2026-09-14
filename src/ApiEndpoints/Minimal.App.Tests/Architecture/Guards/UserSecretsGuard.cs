@@ -13,11 +13,27 @@ internal static class UserSecretsGuard
 {
     /// <summary>Every non-empty &lt;UserSecretsId&gt; value declared across the given csproj documents.</summary>
     internal static IReadOnlyList<string> DeclaredUserSecretsIds(IEnumerable<XDocument> csprojDocuments)
-        => throw new NotImplementedException();
+        => csprojDocuments
+            .SelectMany(doc => doc.Descendants("UserSecretsId"))
+            .Select(e => e.Value)
+            .Where(v => !string.IsNullOrEmpty(v))
+            .ToList();
 
     /// <summary>Declared ids with no generated-guid symbol in template.json's "symbols" object replacing them.</summary>
     internal static IReadOnlyList<string> IdsWithoutGeneratedGuidSymbol(
         IEnumerable<string> declaredIds,
         JsonElement templateJsonSymbols)
-        => throw new NotImplementedException();
+    {
+        var generatedGuidReplaces = templateJsonSymbols
+            .EnumerateObject()
+            .Select(p => p.Value)
+            .Where(symbol =>
+                symbol.TryGetProperty("type", out var type) && type.GetString() == "generated" &&
+                symbol.TryGetProperty("generator", out var generator) && generator.GetString() == "guid" &&
+                symbol.TryGetProperty("replaces", out _))
+            .Select(symbol => symbol.GetProperty("replaces").GetString() ?? "")
+            .ToHashSet(StringComparer.Ordinal);
+
+        return declaredIds.Where(id => !generatedGuidReplaces.Contains(id)).ToList();
+    }
 }

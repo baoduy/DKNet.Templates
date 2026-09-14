@@ -10,5 +10,9 @@ internal static class PackagePinGuard
 {
     /// <summary>Distinct Version values of every PackageVersion whose Include starts with "DKNet.".</summary>
     internal static IReadOnlyList<string> DistinctDkNetVersions(XDocument directoryPackagesProps)
-        => throw new NotImplementedException();
+        => directoryPackagesProps.Descendants("PackageVersion")
+            .Where(e => (e.Attribute("Include")?.Value ?? "").StartsWith("DKNet.", StringComparison.Ordinal))
+            .Select(e => e.Attribute("Version")?.Value ?? "")
+            .Distinct()
+            .ToList();
 }
