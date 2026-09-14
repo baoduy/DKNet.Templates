@@ -113,6 +113,10 @@ dotnet new install DKNet.Minimal.Template::latest --nuget-source "https://nuget.
 dotnet new dknet-minimal -n MyCompany.MyService
 ```
 
+A name containing dots is supported — `dotnet new dknet-minimal -n DKNet.Accounts` scaffolds
+`DKNet.Accounts/` with `DKNet.Accounts.Api`, `DKNet.Accounts.Infra` and the rest, and the generated
+solution builds and tests green with no hand edits.
+
 This generates a fully-wired solution under a `MyCompany.MyService/` folder:
 
 ```
@@ -180,6 +184,13 @@ dotnet test <Name>.sln --settings coverage.runsettings --collect:"XPlat Code Cov
 dotnet run --project <Name>.ApiEndpoints/<Name>.Api       # API only
 dotnet run --project <Name>.ApiEndpoints/<Name>.AppHost   # full stack via Aspire (Redis + PostgreSQL)
 ```
+
+One image, one entry point: with no argument the service serves, and with a registered job name it
+runs that job and exits on its own exit status — so a Kubernetes `Job` running the same image with
+`args: ["migration"]` migrates the database, and the `Deployment` running it with none serves. An
+unrecognised name exits non-zero naming the jobs it knows, instead of quietly starting a web server.
+The decision, the Kubernetes shape, and where in-process start-up migration still fits:
+[`docs/template-usage.md`](docs/template-usage.md#launch-mode-serve-or-run-a-job).
 
 Full usage reference (parameters, migrations, packaging): [`docs/template-usage.md`](docs/template-usage.md).
 

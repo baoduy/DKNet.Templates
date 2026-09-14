@@ -67,7 +67,7 @@
       "id": "api",
       "type": "frontend",
       "label": "Minimal.Api",
-      "sublabel": "AddProject<Minimal_Api>",
+      "sublabel": "AddProject(\"Api\", projectPath)",
       "row": 1,
       "col": 0,
       "size": [
