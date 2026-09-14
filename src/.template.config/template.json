@@ -24,6 +24,24 @@
   },
   "sourceName": "Minimal",
   "preferNameDirectory": true,
+  "SpecialCustomOperations": {
+    "**/*.cs": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": ["#no-op-if-drk-1263"],
+            "elseif": ["#no-op-elseif-drk-1263"],
+            "else": ["#no-op-else-drk-1263"],
+            "endif": ["#no-op-endif-drk-1263"],
+            "trim": true,
+            "wholeLine": true,
+            "evaluator": "C++"
+          }
+        }
+      ]
+    }
+  },
   "symbols": {
     "Framework": {
       "type": "parameter",
