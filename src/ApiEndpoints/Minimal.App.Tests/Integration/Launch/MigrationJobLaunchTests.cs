@@ -1,4 +1,5 @@
 using Minimal.App.Tests.Integration.Support;
+using Minimal.Infra.Extensions;
 using Testcontainers.PostgreSql;
 
 namespace Minimal.App.Tests.Integration.Launch;
@@ -57,12 +58,25 @@ public sealed class MigrationJobLaunchTests : IAsyncLifetime
         process.ExitCode.ShouldBe(0, process.Output);
     }
 
+    /// <summary>
+    /// Pinned two ways so this cannot pass for the wrong reason (as it did before this revision, when today's
+    /// unimplemented app happened to crash on a *port collision* with a sibling test — a non-zero exit that had
+    /// nothing to do with the database): (1) an explicit <c>ASPNETCORE_URLS</c>, so "never falls back to
+    /// serving" (R4) is checked directly rather than assumed from timing; (2) the output must name what actually
+    /// failed, not just be non-empty — <c>"Failed to connect"</c> is <c>Npgsql.NpgsqlException</c>'s own message
+    /// for exactly this failure, confirmed against the installed Npgsql package by calling
+    /// <see cref="InfraMigration.MigrateDb" /> directly against this same closed-port connection string (message
+    /// observed: <c>Failed to connect to 127.0.0.1:&lt;port&gt;</c>, inner <c>SocketException</c>: "Connection
+    /// refused") — present whether the job lets the exception surface unhandled or catches and logs its Message.
+    /// </summary>
     [Fact]
     public async Task UnreachableDatabase_FailsVisiblyWithNonZeroExit()
     {
+        var port = ApiUnderTestBuild.GetFreeTcpPort();
         // A closed loopback port: nothing listens there, so the connection attempt fails rather than hangs.
         var overrides = new Dictionary<string, string?>
         {
+            ["ASPNETCORE_URLS"] = $"http://127.0.0.1:{port}",
             ["ConnectionStrings__AppDb"] =
                 $"Host=127.0.0.1;Port={ApiUnderTestBuild.GetFreeTcpPort()};Database=doesnotexist;Username=postgres;Password=postgres;Timeout=5",
             ["FeatureManagement__EnableSwagger"] = "false",
@@ -71,11 +85,16 @@ public sealed class MigrationJobLaunchTests : IAsyncLifetime
 
         using var process = RunningApiProcess.Start(ApiUnderTestBuild.CoLocatedDllPath, ["migration"], overrides);
 
+        var respondedOnThatPort = await process.WaitUntilRespondsAsync(port, "/healthz", TimeSpan.FromSeconds(5));
         var exited = await process.WaitForExitAsync(TimeSpan.FromSeconds(90));
 
+        respondedOnThatPort.ShouldBeFalse(
+            $"a database-migration failure must never fall back to serving requests (R4).{Environment.NewLine}{process.Output}");
         exited.ShouldBeTrue($"expected the process to give up and exit within 90s.{Environment.NewLine}{process.Output}");
         process.ExitCode.ShouldNotBe(0);
-        process.Output.ShouldNotBeEmpty("the failure must be visible on the process's output (R5).");
+        process.Output.ShouldContain("Failed to connect",
+            customMessage: "the failure must name what actually failed (R5), not merely exit non-zero with " +
+                $"unrelated output.{Environment.NewLine}{process.Output}");
     }
 
     [Fact]

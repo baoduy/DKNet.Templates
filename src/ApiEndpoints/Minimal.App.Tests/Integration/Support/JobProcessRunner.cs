@@ -102,10 +102,16 @@ public sealed class RunningApiProcess : IDisposable
         }
     }
 
-    /// <summary>Polls <paramref name="path" /> on the given loopback port until it answers or the process exits.</summary>
+    /// <summary>
+    /// Polls <paramref name="path" /> on the given loopback port until it answers or the process exits. A
+    /// per-attempt timeout well under <paramref name="timeout" /> is deliberate: a listener that accepted the TCP
+    /// connection but is itself stuck (e.g. a health check blocked on an unreachable database) must not be able
+    /// to swallow the whole poll window in one attempt and throw <see cref="TaskCanceledException" /> uncaught —
+    /// that already happened once and was mistaken for "process crashed" (it hadn't; the request was retriable).
+    /// </summary>
     public async Task<bool> WaitUntilRespondsAsync(int port, string path, TimeSpan timeout)
     {
-        using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}"), Timeout = TimeSpan.FromSeconds(5) };
+        using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}"), Timeout = TimeSpan.FromSeconds(2) };
         var deadline = DateTime.UtcNow.Add(timeout);
         while (DateTime.UtcNow < deadline)
         {
@@ -119,7 +125,7 @@ public sealed class RunningApiProcess : IDisposable
                 using var response = await client.GetAsync(path);
                 return true;
             }
-            catch (HttpRequestException)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
             {
                 await Task.Delay(200);
             }
