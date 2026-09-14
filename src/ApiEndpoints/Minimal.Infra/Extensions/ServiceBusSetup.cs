@@ -57,7 +57,7 @@ public static class ServiceBusSetup
         return builder;
     }
 
-    private static MessageBusBuilder AddMemoryBus(this MessageBusBuilder builder, Assembly serviceAssembly)
+    internal static MessageBusBuilder AddMemoryBus(this MessageBusBuilder builder, Assembly serviceAssembly)
     {
         //Memory bus to handle the internal MediatR-Like processes
         builder.AddChildBus(

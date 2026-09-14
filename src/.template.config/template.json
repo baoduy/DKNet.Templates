@@ -72,6 +72,18 @@
       "description": "The API's own bearer audience, used in Authentication:Schemes:Bearer:ValidAudiences.",
       "defaultValue": "api://your-api",
       "replaces": "api://your-api"
+    },
+    "ApiUserSecretsId": {
+      "type": "generated",
+      "generator": "guid",
+      "parameters": { "format": "d" },
+      "replaces": "6bd0969a-fec4-4cae-aba2-dc071b6478e4"
+    },
+    "AppHostUserSecretsId": {
+      "type": "generated",
+      "generator": "guid",
+      "parameters": { "format": "d" },
+      "replaces": "9515a45c-a957-41d7-81af-508ff22d218d"
     }
   },
   "sources": [

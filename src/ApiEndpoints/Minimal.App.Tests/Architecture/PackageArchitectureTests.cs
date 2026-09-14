@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Minimal.App.Tests.Architecture.Guards;
 
 namespace Minimal.App.Tests.Architecture;
 
@@ -105,8 +106,6 @@ public class PackageArchitectureTests
     [Fact]
     public void AllDKNetPackageReferences_ShouldResolveToOneRelease()
     {
-        const string expectedVersion = "10.1.21";
-
         var srcDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../.."));
 
@@ -114,17 +113,11 @@ public class PackageArchitectureTests
         File.Exists(directoryPackagesPath).ShouldBeTrue();
 
         var doc = XDocument.Load(directoryPackagesPath);
-        var dkNetVersions = doc.Descendants("PackageVersion")
-            .Where(e => (e.Attribute("Include")?.Value ?? "").StartsWith("DKNet.", StringComparison.Ordinal))
-            .Select(e => new { Package = e.Attribute("Include")!.Value, Version = e.Attribute("Version")?.Value })
-            .ToArray();
+        var distinctVersions = PackagePinGuard.DistinctDkNetVersions(doc);
 
-        dkNetVersions.ShouldNotBeEmpty();
-
-        var offenders = dkNetVersions.Where(p => p.Version != expectedVersion).ToArray();
-        offenders.ShouldBeEmpty(
-            $"The following DKNet packages are not pinned to {expectedVersion}: " +
-            string.Join(", ", offenders.Select(p => $"{p.Package}={p.Version}")));
+        distinctVersions.ShouldNotBeEmpty();
+        distinctVersions.Count.ShouldBe(1,
+            "DKNet packages must all resolve to the same release, found: " + string.Join(", ", distinctVersions));
     }
 
     [Fact]

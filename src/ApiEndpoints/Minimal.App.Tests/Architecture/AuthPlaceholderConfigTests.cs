@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Minimal.App.Tests.Architecture.Guards;
 
 namespace Minimal.App.Tests.Architecture;
 
@@ -104,27 +105,11 @@ public class AuthPlaceholderConfigTests
         tenantIdReplaces.ShouldNotBeNullOrWhiteSpace();
         apiAudienceReplaces.ShouldNotBeNullOrWhiteSpace();
 
-        var checkedAtLeastOneFile = false;
+        var result = EntraPlaceholderGuard.Check(BearerSectionsInAppSettings(), tenantIdReplaces!, apiAudienceReplaces!);
 
-        foreach (var (path, bearer) in BearerSectionsInAppSettings())
-        {
-            checkedAtLeastOneFile = true;
-
-            var metadataAddress = bearer.GetProperty("MetadataAddress").GetString() ?? "";
-            var validIssuer = bearer.GetProperty("ValidIssuer").GetString() ?? "";
-            metadataAddress.Contains(tenantIdReplaces!, StringComparison.Ordinal).ShouldBeTrue(
-                $"{Path.GetFileName(path)}: TenantId symbol no longer matches MetadataAddress");
-            validIssuer.Contains(tenantIdReplaces!, StringComparison.Ordinal).ShouldBeTrue(
-                $"{Path.GetFileName(path)}: TenantId symbol no longer matches ValidIssuer");
-
-            var audiences = bearer.GetProperty("ValidAudiences")
-                .EnumerateArray()
-                .Select(a => a.GetString())
-                .ToArray();
-            audiences.ShouldContain(apiAudienceReplaces,
-                $"{Path.GetFileName(path)}: ApiAudience symbol no longer matches any ValidAudiences entry");
-        }
-
-        checkedAtLeastOneFile.ShouldBeTrue("expected at least one appsettings*.json with a Bearer section");
+        result.Offenders.ShouldBeEmpty(
+            "template.json symbols no longer match shipped Entra config: " + string.Join(", ", result.Offenders));
+        result.EntraSectionsChecked.ShouldBeGreaterThanOrEqualTo(1,
+            "expected at least one Entra-shaped appsettings*.json Bearer section");
     }
 }
