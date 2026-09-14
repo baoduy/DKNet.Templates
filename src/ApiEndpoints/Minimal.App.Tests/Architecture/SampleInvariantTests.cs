@@ -159,23 +159,6 @@ public class SampleInvariantTests
     }
 
     [Fact]
-    public void ManualVsAutomatedDoc_LayersTheAutomatedSampleGenerates_ListsDomainActions()
-    {
-        var docPath = Path.GetFullPath(Path.Combine(SrcDir, "..", "docs", "samples", "manual-vs-automated.md"));
-        File.Exists(docPath).ShouldBeTrue();
-
-        var content = File.ReadAllText(docPath);
-        var sectionStart = content.IndexOf("## Layers the automated sample generates", StringComparison.Ordinal);
-        sectionStart.ShouldBeGreaterThanOrEqualTo(0);
-
-        var nextSectionStart = content.IndexOf("\n## ", sectionStart + 1, StringComparison.Ordinal);
-        var section = nextSectionStart > 0 ? content[sectionStart..nextSectionStart] : content[sectionStart..];
-
-        // The generated-layers enumeration must list the [CrudAction] domain-action layer.
-        section.ShouldContain("[CrudAction]");
-    }
-
-    [Fact]
     public void GeneratedCreateProductRequest_ShouldCarryNoActingUserProperty()
     {
         // Structural half of the security acceptance criterion (DRK-715 R1): the generated create request

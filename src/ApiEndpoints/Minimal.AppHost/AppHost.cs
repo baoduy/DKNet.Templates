@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Minimal.AppHost.SampleData;
-using Projects;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -12,7 +11,11 @@ var postgres = builder.AddPostgres("Postgres");
 var apDb = postgres
     .AddDatabase("AppDb");
 
-builder.AddProject<Minimal_Api>("Api")
+// The (name, projectPath) overload takes a plain path string, which survives sourceName
+// substitution as text — unlike AddProject<Minimal_Api>, whose generated Projects.* identifier
+// (derived from the .csproj file name with '.'/'-' replaced by '_') can disagree with the
+// template engine's own text substitution for a name containing a dot (e.g. "DKNet.Accounts").
+builder.AddProject("Api", "../Minimal.Api/Minimal.Api.csproj")
     .WithReference(cache, "Redis")
     .WithReference(apDb, "AppDb")
 

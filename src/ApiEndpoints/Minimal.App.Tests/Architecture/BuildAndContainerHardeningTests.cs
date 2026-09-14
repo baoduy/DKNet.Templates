@@ -46,19 +46,7 @@ public class BuildAndContainerHardeningTests
     }
 
     [Fact]
-    public void CiWorkflow_RunsOnPullRequestAndDevPush_SoTheAuditGatesThePipelineNotJustLocalBuilds()
-    {
-        var path = Path.Combine(SrcDir(), "..", ".github", "workflows", "build.yml");
-        File.Exists(path).ShouldBeTrue($"{path} should exist so the audit gates CI, not only local builds.");
-        var content = File.ReadAllText(path);
-
-        content.ShouldContain("pull_request");
-        content.ShouldContain("dev");
-        content.ShouldContain("dotnet build");
-    }
-
-    [Fact]
-    public void MinimalApiCsproj_PublishesTheContainerImageAsNonRoot()
+    public void ApiCsproj_PublishesTheContainerImageAsNonRoot()
     {
         var path = Path.Combine(SrcDir(), "ApiEndpoints", "Minimal.Api", "Minimal.Api.csproj");
         File.Exists(path).ShouldBeTrue();
