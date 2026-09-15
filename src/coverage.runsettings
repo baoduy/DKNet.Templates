@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
+    <!-- MaxCpuCount=1: run test assemblies one at a time — some fixtures in this solution
+         mutate machine-global state (the local `dotnet new` template store) and must not
+         execute concurrently. -->
+    <RunConfiguration>
+        <MaxCpuCount>1</MaxCpuCount>
+    </RunConfiguration>
     <DataCollectionRunSettings>
         <DataCollectors>
             <DataCollector friendlyName="XPlat Code Coverage">
