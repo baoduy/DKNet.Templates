@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
-    <!-- MaxCpuCount=1 (R4, DRK-1271): the root CI solution now runs Minimal.App.Tests and
-         DKNet.Templates.ScaffoldTests together, and both fixtures mutate the machine-global
-         `dotnet new` template store for the same identity (DKNet.Minimal.Template) — they must
-         never execute concurrently. -->
+    <!-- MaxCpuCount=1: run test assemblies one at a time — some fixtures in this solution
+         mutate machine-global state (the local `dotnet new` template store) and must not
+         execute concurrently. -->
     <RunConfiguration>
         <MaxCpuCount>1</MaxCpuCount>
     </RunConfiguration>
