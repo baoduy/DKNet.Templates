@@ -172,7 +172,7 @@ cannot claim another client's identity and spend its budget.
 
 The base file must carry this section explicitly, because the class defaults are 2 requests per
 second — an outage, not a rate limit.
-`Minimal.App.Tests/Architecture/SecureDefaultAppSettingsTests.cs` asserts it stays there. The
+`tests/DKNet.Templates.ScaffoldTests/SecureDefaultAppSettingsTests.cs` asserts it stays there. The
 shipped production numbers are a placeholder ceiling to tune, not a researched limit.
 
 Both `IRateLimitKeyProvider` and `IRateLimitOptionsProvider` are public interfaces you can replace

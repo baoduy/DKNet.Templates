@@ -14,6 +14,8 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
         <PackageReference Include="Shouldly" Version="4.3.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
             <PrivateAssets>all</PrivateAssets>
@@ -24,6 +26,13 @@
     <ItemGroup>
         <Using Include="Xunit" />
         <Using Include="Shouldly" />
+        <Using Include="System.Text.Json" />
+    </ItemGroup>
+
+    <!-- Config-contract guards (FeatureOptions binding, secure-default appsettings) need the
+         shipped types they assert against. Reference-only; nothing here ships to consumers. -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\ApiEndpoints\Minimal.Share\Minimal.Share.csproj" />
     </ItemGroup>
 
 </Project>

@@ -283,14 +283,16 @@ suites use. It boots the `Testing` environment, swaps `CoreDbContext` onto EF Co
 
 Feature flags are the exception: `Program.cs` binds `FeatureOptions` before these overrides merge,
 so a flag must come from `appsettings.Testing.json` or a `FeatureManagement__<Flag>` environment
-variable. The shipped fixtures — `AuthOnApiFixture`, `SwaggerOnApiFixture`,
-`VersioningOffApiFixture`, `CorsAllowlistApiFixture` — show the pattern; add a variant only when a
-test genuinely needs a different host.
+variable. The shipped fixtures — `AuthOnApiFixture`, `AuthOnMultiSubjectApiFixture`,
+`AuthOnNoNameClaimApiFixture`, `VersioningOffApiFixture` — show the pattern; add a variant only when
+a business-domain test genuinely needs a different host.
 
 ## Boundaries your code must respect
 
-These are checked by `Minimal.App.Tests/Architecture/`, so a violation fails the test run rather
-than review.
+These are checked by `Minimal.App.Tests/Architecture/` (layer and sample rules) and by
+`tests/DKNet.Templates.ScaffoldTests/` (packaging, package pinning and appsettings-contract guards,
+which live outside `src/` so they never ship to a consumer), so a violation fails the test run
+rather than review.
 
 | Rule | Test |
 |---|---|

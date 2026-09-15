@@ -50,6 +50,7 @@ The template carries two side-by-side vertical slices demonstrating opposite end
 - EF migrations scripts from `src/ApiEndpoints`: `./add-migration.sh <Name>` and `./remove-migration.sh <Name>`.
 
 ## Testing and quality constraints
+- **Both suites are business-domain tests only.** Write tests for your entities, validators, specs, handlers, CRUD routes and domain events. Do not add tests for logging, telemetry, health probes, Swagger/OpenAPI documents, CORS, HSTS, security headers, rate limiting, JWT configuration, host startup plumbing or config binding — that is framework behaviour covered upstream, and it buries the examples a new team member reads to learn the conventions. The only non-business tests that belong here are the `Architecture/` layer rules.
 - Tests currently live mainly under `src/ApiEndpoints/Minimal.App.Tests/` (Shouldly + xUnit patterns) and `src/ApiEndpoints/Minimal.App.BDDTests/` (Reqnroll + NUnit).
 - `Minimal.App.Tests.csproj` disables analyzers for tests; production projects enforce strict warnings-as-errors from `Directory.Packages.props`.
 - Coverage filters are defined in `src/coverage.runsettings`; avoid placing real logic in excluded paths (`bin/`, `obj/`, `*Test*.cs`).
