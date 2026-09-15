@@ -1,5 +1,6 @@
 using System.Xml.Linq;
 using Minimal.App.Tests.Architecture.Guards;
+using Minimal.App.Tests.Architecture.TemplateRepo.Guards;
 
 namespace Minimal.App.Tests.Architecture.TemplateRepo;
 

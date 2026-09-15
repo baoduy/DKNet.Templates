@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace Minimal.App.Tests.Architecture.Guards;
+namespace Minimal.App.Tests.Architecture.TemplateRepo.Guards;
 
 /// <summary>
 /// R1/R2 (DRK-1271): the shipped template solution never references a project outside src/, and

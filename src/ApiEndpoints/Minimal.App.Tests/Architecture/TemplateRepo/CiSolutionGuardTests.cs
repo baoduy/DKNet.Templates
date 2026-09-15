@@ -1,7 +1,7 @@
 using System.Xml.Linq;
-using Minimal.App.Tests.Architecture.Guards;
+using Minimal.App.Tests.Architecture.TemplateRepo.Guards;
 
-namespace Minimal.App.Tests.Architecture;
+namespace Minimal.App.Tests.Architecture.TemplateRepo;
 
 /// <summary>DRK-1271 R1/R2: synthetic csproj/sln scenarios for <see cref="CiSolutionGuard"/>.</summary>
 public class CiSolutionGuardTests
