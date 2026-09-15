@@ -103,6 +103,37 @@ samples (`ManualSample`, `AutomatedSample`) — the two namespaces don't have to
 
 ## Testing
 
+### Both shipped suites are TEACHING MATERIAL — business tests only
+
+`Minimal.App.Tests` and `Minimal.App.BDDTests` ship inside every consumer's generated solution. A
+team reads them to learn *how we write tests here*, so every test in them must be about the business
+domain — the `PurchaseOrder` (manual) and `Product` (automated) samples: entity invariants,
+validators, specs, handler results, CRUD over HTTP, domain events.
+
+**Do not add platform/infrastructure tests to either shipped suite.** Concretely, do not add tests for:
+
+| Category | Examples that were deliberately deleted |
+|---|---|
+| Logging & telemetry | log sanitizing, console/OTel exporter wiring |
+| Host & startup plumbing | job selectors, migration-job launch, host config markers, AppHost purity |
+| Security middleware | CORS, HSTS, security headers, rate limits, JWT signature config, default-deny auth |
+| Ops endpoints | health probes, Swagger/OpenAPI document regression, global exception handler |
+| Config binding | `FeatureOptions` ↔ `appsettings` key contracts, secure-default appsettings scans |
+| Template/repo shape | nuspec content, `dotnet new` scaffolding, package pinning, CI solution membership |
+
+These test DKNet framework or ASP.NET behaviour, not the consumer's business. They bloat the suite a
+team is meant to read as an example, and most are meaningless once the samples are deleted.
+
+**Where the repo-only guards live instead:** `tests/DKNet.Templates.ScaffoldTests/` (outside `src/`,
+never packed, member of the root `DKNet.Templates.slnx`). Packaging, scaffolding, repo-hygiene and
+appsettings-placeholder guards go there. That project resolves paths via
+`AppContext.BaseDirectory, "../../../../../src"` — keep new guards on the same convention.
+
+**The one exception inside `Minimal.App.Tests`:** `Architecture/` keeps the NetArchTest layer rules
+(`ApiTests`, `AppServiceTests`, `InfraTests`, `RecordArchitectureTests`) plus `MigrationSchemaTests`
+and `SampleInvariantTests`. Those enforce the DDD conventions a team must follow, so they earn their
+place as an example.
+
 - **Unit/integration** (`Minimal.App.Tests`, xUnit + Shouldly): folders are `Architecture/` (NetArchTest rules — enforce layer boundaries), `Data/`, `Extensions/`, `Integration/`, `Unit/`. Test project disables analyzers, so production warnings-as-errors do not apply here.
 - **BDD** (`Minimal.App.BDDTests`, Reqnroll + NUnit): `Support/BddApiFactory.cs` boots `WebApplicationFactory<Program>` once per test run via `[BeforeTestRun]` in `ApiHooks.cs`. Uses in-memory EF Core with migrations and Azure App Config disabled. Each scenario resets the DB in `[BeforeScenario(Order=0)]`; `HttpClient` and `ScenarioState` are injected via Reqnroll's BoDi. New scenarios go under `Features/<Domain>/*.feature` with matching `[Binding]` step class in `Features/<Domain>/Steps/`.
 - **POST in BDD**: generate a fresh `Guid.NewGuid()` for the `X-Idempotency-Key` header in each `[When]` step.

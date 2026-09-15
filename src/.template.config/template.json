@@ -122,8 +122,7 @@
             "**/.DS_Store",
             ".template.config/**",
             "**/.gitignore",
-            "**/.gitattributes",
-            "**/Architecture/TemplateRepo/**"
+            "**/.gitattributes"
           ]
         }
       ]
