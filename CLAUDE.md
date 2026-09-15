@@ -131,6 +131,9 @@ Keep the two suites at different levels; do not duplicate the same behavior in b
 
 ## Reference docs
 
+These live in this repository only — of the list below, `AGENTS.md` alone is packed into a consumer's
+generated solution.
+
 - `AGENTS.md` — full architecture reference (layer rules, message bus, command/mapping details).
 - `docs/samples/manual-vs-automated.md` — layer-by-layer comparison of the two worked samples, including what the generator-driven sample gives up.
 - `docs/samples/manual-purchase-orders/`, `docs/samples/automated-products/` — thin per-sample READMEs (what each demonstrates, routes, how to delete it).
@@ -162,12 +165,17 @@ deliberately no registry file to drift out of sync.
 New `.claude/skills/<x>` must be mirrored byte-identically to `.github/skills/<x>` and added to
 `CORE_SKILLS` in `validate-plugin.sh`; check 3 enforces the pair.
 
-## The plugin ships to consumers — write guidance for THEIR tree, not this one
+## `AGENTS.md` ships to consumers — write guidance for THEIR tree, not this one
 
-`DKNet.Minimal.Template.nuspec` packs `.claude/{skills,commands,agents}`, `.claude-plugin/`,
-`.github/`, `docs/` and `AGENTS.md` into the template. A consumer running
-`dotnet new dknet-minimal -n Contoso` receives this plugin inside their own solution. Guidance files
-are therefore product, and their paths must be correct **in the generated tree**:
+`DKNet.Minimal.Template.nuspec` packs exactly this into the template's `content/`: `AGENTS.md`,
+`.template.config/`, the four solution-level files (`global.json`, `Directory.Packages.props`,
+`coverage.runsettings`, `DKNet.Templates.sln`) and `ApiEndpoints/**`. Nothing else reaches a consumer —
+`.claude/`, `.claude-plugin/`, `.github/`, `.vscode/` and `docs/` stay in this repository, so a link
+into any of them is a dead link in the generated tree. (`README.md` is packed to the *package* root as
+the NuGet package-page readme, not into the generated solution.)
+
+A consumer running `dotnet new dknet-minimal -n Contoso` therefore receives `AGENTS.md` inside their
+own solution. It is product, and its paths must be correct **in the generated tree**:
 
 - **No `src/` prefix.** The pack's content root is `src/`, so the generated layout is
   `ApiEndpoints/<App>.Domains/…` with the solution at the root. Write every path relative to the
@@ -182,7 +190,6 @@ are therefore product, and their paths must be correct **in the generated tree**
 - **Write `Minimal.*`, never a sample name.** `sourceName` is `Minimal`, so `Minimal.Infra` in a
   markdown file becomes `Contoso.Infra` for the consumer. A hardcoded example name like `Acme.Infra`
   does **not** get rewritten and ships wrong to everyone.
-- **Only linked docs that are packed resolve.** `docs/**` is packed (excluding `docs/superpowers/`).
 
 Verify after touching shipped guidance — regenerating is the only real test:
 
@@ -190,9 +197,10 @@ Verify after touching shipped guidance — regenerating is the only real test:
 cd src && dotnet pack DKNet.Minimal.Template.csproj -c Release -o /tmp/pkg
 dotnet new install /tmp/pkg/DKNet.Minimal.Template.1.0.0.nupkg --force
 cd /tmp && dotnet new dknet-minimal -n Contoso && cd Contoso && dotnet build -c Release
-grep -rn 'src/ApiEndpoints\|add-migration.sh' .claude/    # expect no hits
+grep -n 'src/ApiEndpoints\|add-migration.sh' AGENTS.md    # expect no hits
 dotnet new uninstall DKNet.Minimal.Template               # clean up after
 ```
 
-`/dknet-scaffold`'s skill (`dknet-scaffold`) is the consumer's entry point: install, generate, the six
-template parameters, first run, and deleting the two shipped samples.
+The `dknet-scaffold` skill documents that flow end to end — install, generate, the six template
+parameters, first run, and deleting the two shipped samples. It lives in this repository only;
+consumers do not receive it.
