@@ -14,17 +14,12 @@ namespace Minimal.App.Tests.Architecture.TemplateRepo;
 public sealed class ScaffoldingTests(ScaffoldFixture fixture) : IClassFixture<ScaffoldFixture>
 {
     /// <summary>
-    /// DRK-1257 §7: the two assertions known red in every scaffolded solution because DRK-1263's
-    /// scaffold-time DEBUG-conditional stripping removes the only production code they depend on.
-    /// This list is closed — a third exclusion is a new finding, not something to add here (§7).
-    /// Deliberately not spelled with the literal preprocessor tokens here: the same DRK-1263 engine
-    /// defect this comment describes treats an unpaired occurrence of them as a real, unterminated
-    /// conditional and deletes the rest of this file at scaffold time.
+    /// DRK-1271 §3 row 7: the scaffolded suite's only remaining filter clause. The two DRK-1263
+    /// exclusions this constant used to carry are gone — that scaffold-time DEBUG-conditional
+    /// stripping defect is fixed and merged, so those two scenarios run in the scaffolded suite
+    /// like any other.
     /// </summary>
-    private const string ExcludingDrk1263 =
-        "FullyQualifiedName!~Integration" +
-        "&FullyQualifiedName!~FeatureOptionsBindingTests.EveryFeatureOptionsProperty_ShouldBeReadBySomeProductionClass" +
-        "&FullyQualifiedName!~PackageArchitectureTests.DebugGatedConfiguration_ShouldHaveDebugConditional";
+    private const string ExcludingIntegration = "FullyQualifiedName!~Integration";
 
     private static string SrcDir => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
 
@@ -38,7 +33,7 @@ public sealed class ScaffoldingTests(ScaffoldFixture fixture) : IClassFixture<Sc
         var build = fixture.BuildFor(null);
         build.ExitCode.ShouldBe(0, build.Output);
 
-        var test = fixture.TestFor(null, ExcludingDrk1263);
+        var test = fixture.TestFor(null, ExcludingIntegration);
         test.ExitCode.ShouldBe(0, test.Output);
     }
 
@@ -59,7 +54,7 @@ public sealed class ScaffoldingTests(ScaffoldFixture fixture) : IClassFixture<Sc
         var build = fixture.BuildFor(name);
         build.ExitCode.ShouldBe(0, build.Output);
 
-        var test = fixture.TestFor(name, ExcludingDrk1263);
+        var test = fixture.TestFor(name, ExcludingIntegration);
         test.ExitCode.ShouldBe(0, test.Output);
     }
 
@@ -179,12 +174,10 @@ public sealed class ScaffoldingTests(ScaffoldFixture fixture) : IClassFixture<Sc
         var testSource = Directory.GetFiles(dir, "PackageArchitectureTests.cs", SearchOption.AllDirectories).Single();
         File.ReadAllText(testSource).ShouldContain("DebugGatedConfiguration_ShouldHaveDebugConditional");
 
-        // Structural only, by design (§7): the same DRK-1263 stripping that empties generated
-        // InfraSetup.cs also deletes this method's own ShouldContain literals when scaffolded, so its
-        // *content* cannot be asserted here — only that it is present and executed.
         var testCsproj = Directory.GetFiles(dir, "*.App.Tests.csproj", SearchOption.AllDirectories).Single();
         var result = RunDotnetTest(testCsproj, "FullyQualifiedName~DebugGatedConfiguration_ShouldHaveDebugConditional");
 
+        result.ExitCode.ShouldBe(0, result.Output);
         TotalRan(result.Output).ShouldBe(1, result.Output);
     }
 
