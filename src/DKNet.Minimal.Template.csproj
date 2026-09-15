@@ -94,33 +94,6 @@
          Pack="true"
          PackagePath="content/"
          Link="AGENTS.md" />
-        <Content Include="$(MSBuildProjectDirectory)/../.github/agents/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.github/prompts/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.github/skills/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.claude/agents/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.claude/commands/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.claude/skills/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.claude-plugin/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.specify/**/*"
-          Pack="true"
-          PackagePath="content/" />
-        <Content Include="$(MSBuildProjectDirectory)/../.vscode/**/*"
-          Pack="true"
-          PackagePath="content/" />
   </ItemGroup>
 
 </Project>
