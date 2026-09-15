@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace DKNet.Templates.ScaffoldTests;
 
 /// <summary>
@@ -8,6 +6,16 @@ namespace DKNet.Templates.ScaffoldTests;
 /// Expected values below are literals copied from the brief's §7 Gherkin, never computed by
 /// reading `template.json` or any production source.
 /// </summary>
+/// <remarks>
+/// DRK-1271 §3 row 10: <c>GeneratedMigrationConfig_KeepsBothOfItsConditionals</c> and
+/// <c>GeneratedLogConfig_KeepsAllThreeDebugBlocks</c> were retired here (dev-leader authorization,
+/// DRK-1283 blocker thread) — DRK-1260 deliberately removed the conditionals they asserted on
+/// (<c>DbMigration.cs</c> now has none at all; <c>R8</c> moved <c>LogConfigs.cs</c>'s console
+/// exporters from <c>#if DEBUG</c> to <c>builder.Environment.IsDevelopment()</c>, leaving one block,
+/// not three). Not re-pinned to the new shape: the invariant they protected — the scaffold engine
+/// must not itself strip preprocessor directives — is already covered, more strongly, by the
+/// byte-equality check in <see cref="GeneratedFile_IsRepositoryFileWithOnlySourceNameSubstituted"/>.
+/// </remarks>
 [Trait("Feature", "template-scaffold")]
 public class TemplateConditionalProcessingTests(ScaffoldFixture fixture) : IClassFixture<ScaffoldFixture>
 {
@@ -51,37 +59,6 @@ public class TemplateConditionalProcessingTests(ScaffoldFixture fixture) : IClas
         generated.ShouldContain("#if DEBUG");
         generated.ShouldContain("builder.EnableDetailedErrors().EnableSensitiveDataLogging();");
         generated.ShouldContain("#endif");
-    }
-
-    [Fact]
-    [Trait("Category", "new")]
-    public void GeneratedMigrationConfig_KeepsBothOfItsConditionals()
-    {
-        var generated = fixture.ReadGenerated(DbMigrationGenerated);
-
-        generated.ShouldContain("#if DEBUG");
-        generated.ShouldContain("var isMigration = features.RunDbMigrationWhenAppStart;");
-        generated.ShouldContain("#else");
-        generated.ShouldContain("#if !DEBUG");
-
-        var guardStart = generated.IndexOf("#if !DEBUG", StringComparison.Ordinal);
-        var guardEnd = generated.IndexOf("#endif", guardStart, StringComparison.Ordinal);
-        guardEnd.ShouldBeGreaterThan(guardStart);
-
-        var exitIndex = generated.IndexOf("Environment.Exit(0);", StringComparison.Ordinal);
-        exitIndex.ShouldBeInRange(guardStart, guardEnd);
-    }
-
-    [Fact]
-    [Trait("Category", "new")]
-    public void GeneratedLogConfig_KeepsAllThreeDebugBlocks()
-    {
-        var generated = fixture.ReadGenerated(LogConfigsGenerated);
-
-        Regex.Matches(generated, Regex.Escape("#if DEBUG")).Count.ShouldBe(3);
-        generated.ShouldContain("builder.Logging.AddConsole();");
-        generated.ShouldContain("tracing.AddConsoleExporter();");
-        generated.ShouldContain("metrics.AddConsoleExporter();");
     }
 
     [Theory]
