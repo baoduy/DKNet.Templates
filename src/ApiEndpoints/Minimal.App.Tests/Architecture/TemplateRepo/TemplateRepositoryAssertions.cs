@@ -90,4 +90,119 @@ public class TemplateRepositoryAssertions
         // The generated-layers enumeration must list the [CrudAction] domain-action layer.
         section.ShouldContain("[CrudAction]");
     }
+
+    // ── DRK-1271 §3 rows 1, 5, 6 — every test project in the repository actually runs ──────
+
+    private static string RepoRoot => Path.GetFullPath(Path.Combine(SrcDir, ".."));
+
+    private const string ScaffoldTestsRelativePath =
+        "tests/DKNet.Templates.ScaffoldTests/DKNet.Templates.ScaffoldTests.csproj";
+
+    /// <summary>DRK-1271 §3 row 1 / §7 "the orphaned scaffold acceptance tests are in the CI solution".</summary>
+    [Fact]
+    public void CiSolution_IncludesTheScaffoldTestsProject()
+    {
+        var ciSolutionPath = Path.Combine(RepoRoot, "DKNet.Templates.slnx");
+        File.Exists(ciSolutionPath).ShouldBeTrue($"expected a root CI solution at {ciSolutionPath}");
+
+        File.ReadAllText(ciSolutionPath).ShouldContain(ScaffoldTestsRelativePath);
+    }
+
+    /// <summary>
+    /// DRK-1271 §3 row 5 / §7 "no test project in the repository is left out of the CI solution".
+    /// "Is a test project" is <see cref="CiSolutionGuard.IsTestProject"/> — a Microsoft.NET.Test.Sdk
+    /// reference — not a name match, so Minimal.App.TestSupport is correctly never required here
+    /// (see <see cref="TestSupportProject_IsNotClassifiedAsATestProject"/>).
+    /// </summary>
+    [Fact]
+    public void EveryTestProjectInTheRepository_IsIncludedInTheCiSolution()
+    {
+        var csprojFiles = Directory.GetFiles(RepoRoot, "*.csproj", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(seg =>
+                seg.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
+                seg.Equals("obj", StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        csprojFiles.ShouldNotBeEmpty();
+
+        var testProjectRelativePaths = csprojFiles
+            .Where(f => CiSolutionGuard.IsTestProject(XDocument.Load(f)))
+            .Select(f => Path.GetRelativePath(RepoRoot, f).Replace(Path.DirectorySeparatorChar, '/'))
+            .ToArray();
+        testProjectRelativePaths.ShouldNotBeEmpty();
+
+        var ciSolutionPath = Path.Combine(RepoRoot, "DKNet.Templates.slnx");
+        File.Exists(ciSolutionPath).ShouldBeTrue($"expected a root CI solution at {ciSolutionPath}");
+        var ciSolutionContent = File.ReadAllText(ciSolutionPath);
+
+        var offenders = CiSolutionGuard.TestProjectsMissingFromSolution(testProjectRelativePaths, ciSolutionContent);
+
+        offenders.ShouldBeEmpty(
+            "test project(s) missing from the root CI solution: " + string.Join(", ", offenders));
+    }
+
+    /// <summary>DRK-1271 §7 "TestSupport is not mistaken for a test project" — a design invariant of
+    /// <see cref="CiSolutionGuard.IsTestProject"/> itself, independent of the CI solution's contents.</summary>
+    [Fact]
+    public void TestSupportProject_IsNotClassifiedAsATestProject()
+    {
+        var testSupportCsproj = Path.Combine(
+            RepoRoot, "src", "ApiEndpoints", "Minimal.App.TestSupport", "Minimal.App.TestSupport.csproj");
+        File.Exists(testSupportCsproj).ShouldBeTrue();
+
+        CiSolutionGuard.IsTestProject(XDocument.Load(testSupportCsproj)).ShouldBeFalse(
+            "Minimal.App.TestSupport has no Microsoft.NET.Test.Sdk reference and must not be required " +
+            "by the CI-solution-membership guard");
+    }
+
+    /// <summary>DRK-1271 §3 row 6 / §7 "the shipped solution never points outside the template payload"
+    /// — the executable form of the §2 warning against adding the ScaffoldTests project to
+    /// src/DKNet.Templates.sln directly.</summary>
+    [Fact]
+    public void ShippedTemplateSolution_ReferencesNoProjectOutsideSrc()
+    {
+        var shippedSolutionPath = Path.Combine(SrcDir, "DKNet.Templates.sln");
+        File.Exists(shippedSolutionPath).ShouldBeTrue();
+
+        var offenders = CiSolutionGuard.ProjectPathsEscapingSolutionDirectory(File.ReadAllText(shippedSolutionPath));
+
+        offenders.ShouldBeEmpty(
+            "project path(s) in src/DKNet.Templates.sln escape src/: " + string.Join(", ", offenders));
+    }
+
+    /// <summary>DRK-1271 §3 row 3 / §7 "CI runs the CI solution".</summary>
+    [Fact]
+    public void CiWorkflow_RestoreBuildAndTestSteps_TargetTheCiSolution()
+    {
+        var path = Path.Combine(SrcDir, "..", ".github", "workflows", "build.yml");
+        File.Exists(path).ShouldBeTrue();
+        var content = File.ReadAllText(path);
+
+        content.ShouldNotContain("src/DKNet.Templates.sln");
+
+        var solutionSteps = content.Split('\n')
+            .Where(line => line.Contains("dotnet restore") || line.Contains("dotnet build") || line.Contains("dotnet test"))
+            .ToArray();
+        solutionSteps.ShouldNotBeEmpty();
+
+        var offenders = solutionSteps.Where(line => !line.Contains("DKNet.Templates.slnx")).ToArray();
+        offenders.ShouldBeEmpty(
+            "restore/build/test step(s) not targeting DKNet.Templates.slnx: " + string.Join(" | ", offenders));
+    }
+
+    /// <summary>DRK-1271 §3 row 4 / §7 "test assemblies do not race over the global template store"
+    /// (R4): the two scaffold fixtures both mutate the machine-global `dotnet new` store for
+    /// DKNet.Minimal.Template and must never run concurrently.</summary>
+    [Fact]
+    public void CoverageRunSettings_PinsMaxCpuCountToOne()
+    {
+        var path = Path.Combine(SrcDir, "coverage.runsettings");
+        File.Exists(path).ShouldBeTrue();
+
+        var doc = XDocument.Load(path);
+        var maxCpuCount = doc.Root?.Element("RunConfiguration")?.Element("MaxCpuCount")?.Value;
+
+        maxCpuCount.ShouldBe("1",
+            "expected RunConfiguration/MaxCpuCount=1 (R4): the two scaffold fixtures both mutate the " +
+            "global dotnet-new template store for DKNet.Minimal.Template and must not run concurrently");
+    }
 }
