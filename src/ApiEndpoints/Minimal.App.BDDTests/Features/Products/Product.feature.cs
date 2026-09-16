@@ -448,7 +448,8 @@ namespace Minimal.App.BDDTests.Features.Products
     await testRunner.GivenAsync("a product exists named \"Retiring\" with price 8.00", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 60
-    await testRunner.WhenAsync("I discontinue that product", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("I discontinue that product and name \"Retiring II\" priced 10.00 as its replacement" +
+                        "", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 61
     await testRunner.ThenAsync("the response status is 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
@@ -461,13 +462,13 @@ namespace Minimal.App.BDDTests.Features.Products
         }
         
         [global::NUnit.Framework.TestAttribute()]
-        [global::NUnit.Framework.DescriptionAttribute("Repeating discontinue is a 200 no-op, not a rejection")]
-        public async global::System.Threading.Tasks.Task RepeatingDiscontinueIsA200No_OpNotARejection()
+        [global::NUnit.Framework.DescriptionAttribute("Discontinuing an already-discontinued product is refused")]
+        public async global::System.Threading.Tasks.Task DiscontinuingAnAlready_DiscontinuedProductIsRefused()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "9";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Repeating discontinue is a 200 no-op, not a rejection", "", tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Discontinuing an already-discontinued product is refused", "", tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 64
@@ -487,19 +488,18 @@ namespace Minimal.App.BDDTests.Features.Products
     await testRunner.GivenAsync("a product exists named \"Retiring Twice\" with price 8.00", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 68
-    await testRunner.WhenAsync("I discontinue that product", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("I discontinue that product and name \"Retiring Twice II\" priced 10.00 as its repla" +
+                        "cement", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 69
     await testRunner.ThenAsync("the response status is 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 70
-    await testRunner.WhenAsync("I discontinue that product", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("I discontinue that product and name \"Retiring Twice III\" priced 10.00 as its repl" +
+                        "acement", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 71
-    await testRunner.ThenAsync("the response status is 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 72
-    await testRunner.AndAsync("the product response is discontinued", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.ThenAsync("the response status is 400", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

@@ -57,16 +57,15 @@ Feature: Product CRUD lifecycle (automated sample)
 
   Scenario: Discontinuing a product marks it discontinued
     Given a product exists named "Retiring" with price 8.00
-    When I discontinue that product
+    When I discontinue that product and name "Retiring II" priced 10.00 as its replacement
     Then the response status is 200
     And the product response is discontinued
 
-  Scenario: Repeating discontinue is a 200 no-op, not a rejection
-    # docs/samples/manual-vs-automated.md #4: a generated action has nowhere to hang a pre-condition, so
-    # discontinuing an already-discontinued product succeeds again instead of failing.
+  Scenario: Discontinuing an already-discontinued product is refused
+    # DRK-1386 R3: discontinuing now creates a replacement product in the same transaction, so it is no
+    # longer a repeatable no-op — repeating it against an already-discontinued product is a domain failure.
     Given a product exists named "Retiring Twice" with price 8.00
-    When I discontinue that product
+    When I discontinue that product and name "Retiring Twice II" priced 10.00 as its replacement
     Then the response status is 200
-    When I discontinue that product
-    Then the response status is 200
-    And the product response is discontinued
+    When I discontinue that product and name "Retiring Twice III" priced 10.00 as its replacement
+    Then the response status is 400

@@ -56,10 +56,12 @@ public sealed class ProductSteps(HttpClient client, ScenarioState state, BddApiF
         state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
     }
 
-    [When("I discontinue that product")]
-    public async Task WhenIDiscontinueThatProduct()
+    [When(@"I discontinue that product and name ""(.*)"" priced (.*) as its replacement")]
+    public async Task WhenIDiscontinueThatProductAndNameReplacementPriced(string replacementName, decimal replacementPrice)
     {
-        state.Response = await client.PutAsJsonAsync($"/v1/products/{_lastId}/discontinue", new { });
+        state.Response = await client.PutAsJsonAsync(
+            $"/v1/products/{_lastId}/discontinue",
+            new { replacementName, replacementPrice });
         state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
     }
 

@@ -126,36 +126,120 @@ public class SampleInvariantTests
     }
 
     [Fact]
-    public void AutomatedSample_ShouldNotHandWriteActionRequestsOrHandlers()
+    public void AutomatedSample_ShouldHandWriteOnlyTheDroppedAction()
     {
-        // The [CrudAction] Approve/Discontinue actions must stay fully generated (obj/Generated/, never
-        // committed source) — same rule DKNetSlimBusGeneratorsPackage_ShouldBeReferenced protects for the
-        // create/update pair. Needles are type names, not declaration keywords: this repo's hand-written
-        // slices declare requests as `record` (not `class`) and handlers with a `CommandHandler` suffix
-        // (not a bare `Handler`) — see ManualSample/PurchaseOrder/Actions/Cancel.cs.
+        // DRK-1386: discontinuing a product is the one generated route dropped by name and hand-written
+        // (R1) — its rule now spans two aggregates in a single transaction, which no generated handler can
+        // express. Approve/AssignSupplierReference must stay fully generated. R7: the hand-written
+        // replacement must not reuse the generated type names it drops — DiscontinueProductRequest and
+        // DiscontinueProductHandler stay reserved for the generator even after the route is excluded by
+        // name (see ManualSample/PurchaseOrder/Actions/Cancel.cs for the *CommandHandler naming this repo's
+        // hand-written slices use instead).
         var offenders = SourceFilesUnder("AutomatedSample")
             .Where(f => ContainsAny(File.ReadAllText(f),
-                "ApproveProductRequest", "DiscontinueProductRequest",
+                "ApproveProductRequest", "AssignSupplierReferenceProductRequest",
                 "ApproveProductCommandHandler", "ApproveProductHandler",
-                "DiscontinueProductCommandHandler", "DiscontinueProductHandler"))
+                "AssignSupplierReferenceProductCommandHandler", "AssignSupplierReferenceProductHandler",
+                "DiscontinueProductRequest", "DiscontinueProductHandler"))
             .ToArray();
 
         offenders.ShouldBeEmpty(
-            $"Approve/Discontinue must stay generator-produced — found a hand-written request or handler in: {string.Join(", ", offenders)}");
+            $"Approve/AssignSupplierReference must stay generator-produced, and the hand-written discontinue " +
+            $"replacement must not reuse a generated type name — found an offender in: {string.Join(", ", offenders)}");
     }
 
     [Fact]
-    public void ProductV1Endpoint_ShouldMapOnlyTheGeneratedCrudExtension()
+    public void ProductV1Endpoint_ShouldDeclareGeneratedRoutesFirst()
     {
-        // Guards against a hand-mapped route creeping in alongside MapProductCrud() for the new actions —
-        // e.g. a literal group.MapPost(".../approval", ...) would defeat the "nothing hand-mapped" claim in
-        // docs/samples/manual-vs-automated.md.
         var path = Path.Combine(SrcDir, "ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs");
         var content = File.ReadAllText(path);
 
-        content.ShouldContain("group.MapProductCrud();");
-        // ProductV1Endpoint must map only the generated MapProductCrud() extension — no hand-mapped route.
-        Regex.Matches(content, @"group\.Map\w+").Count.ShouldBe(1);
+        var generatedIndex = content.IndexOf("group.MapProductCrud(", StringComparison.Ordinal);
+        generatedIndex.ShouldBeGreaterThanOrEqualTo(0,
+            "ProductV1Endpoint must still call the generated MapProductCrud() extension.");
+
+        var handWrittenIndexes = Regex.Matches(content, @"group\.Map(Post|Get|Put|Delete)\(")
+            .Select(m => m.Index)
+            .ToArray();
+        handWrittenIndexes.ShouldNotBeEmpty(
+            "expected at least one hand-written route mapped below the generated CRUD block.");
+
+        generatedIndex.ShouldBeLessThan(handWrittenIndexes.Min(),
+            "every generated route must be declared above every hand-written route.");
+    }
+
+    [Fact]
+    public void ProductV1Endpoint_ShouldDropExactlyOneGeneratedRouteByName()
+    {
+        var path = Path.Combine(SrcDir, "ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs");
+        var content = File.ReadAllText(path);
+
+        // A route name is dropped via CrudMapOptions.Exclude("RouteName") — a CrudOp-kind exclusion (an
+        // enum member, never a string literal, e.g. Exclude(CrudOp.Action)) drops a whole operation kind,
+        // not one named route, and must not count here.
+        var excludedByNameCount = Regex.Matches(content, @"\.Exclude\(\s*""[A-Za-z]+""\s*\)").Count;
+
+        excludedByNameCount.ShouldBe(1,
+            $"expected exactly one generated route excluded by name, found {excludedByNameCount}.");
+    }
+
+    [Fact]
+    public void ProductV1Endpoint_HandWrittenReplacement_ShouldStateTheRule()
+    {
+        var path = Path.Combine(SrcDir, "ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs");
+        var content = File.ReadAllText(path);
+
+        var discontinueRouteIndex = content.IndexOf("discontinue", StringComparison.OrdinalIgnoreCase);
+        discontinueRouteIndex.ShouldBeGreaterThanOrEqualTo(0,
+            "expected a hand-written discontinue route in ProductV1Endpoint.");
+
+        var precedingText = content[..discontinueRouteIndex];
+        var lastCommentStart = precedingText.LastIndexOf("//", StringComparison.Ordinal);
+        lastCommentStart.ShouldBeGreaterThanOrEqualTo(0,
+            "expected a comment immediately above the hand-written discontinue route.");
+
+        // R4: the comment must state a rule a reader can apply to their own operations (multi-aggregate
+        // transactions in general), not merely a fact about discontinue specifically.
+        var comment = precedingText[lastCommentStart..];
+        comment.Contains("transaction", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
+            "the comment must state the rule generally (e.g. an operation spanning multiple aggregates in " +
+            "one transaction cannot be generated), not just describe discontinue.");
+    }
+
+    [Fact]
+    public void Docs_ShouldNotClaimTheOldShape()
+    {
+        // DRK-1386 R5: the product sample stops being "all generated" — these phrases described the old
+        // shape (no per-route setting, no per-route exclusion) and are now false. docs-writer's sibling
+        // [D1386-1] Docs sub-task rewrites the prose; this only guards that no scanned file still makes the
+        // stale claim, wherever it appears.
+        var selfPath = Path.Combine(SrcDir, "ApiEndpoints/Minimal.App.Tests/Architecture/SampleInvariantTests.cs");
+        var repoRoot = Path.GetFullPath(Path.Combine(SrcDir, ".."));
+
+        string[] staleClaims =
+        [
+            "nothing hand-mapped",
+            "passes no options",
+            "only capability",
+            "no per-method exclusion",
+            "all-or-nothing"
+        ];
+
+        var scannedFiles = new[] { "docs", ".claude", ".github" }
+            .Select(dir => Path.Combine(repoRoot, dir))
+            .Where(Directory.Exists)
+            .SelectMany(dir => Directory.GetFiles(dir, "*.md", SearchOption.AllDirectories))
+            .Concat(new[] { "README.md", "CLAUDE.md", "AGENTS.md" }
+                .Select(file => Path.Combine(repoRoot, file))
+                .Where(File.Exists))
+            .Where(f => !string.Equals(f, selfPath, StringComparison.Ordinal));
+
+        var offenders = scannedFiles
+            .Where(f => ContainsAny(SafeReadAllText(f), staleClaims))
+            .ToArray();
+
+        offenders.ShouldBeEmpty(
+            $"Found a document still describing the old product-sample shape: {string.Join(", ", offenders)}");
     }
 
     [Fact]
