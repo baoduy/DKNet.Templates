@@ -14,8 +14,10 @@ This sample implements the full vertical-slice pattern by hand, from entity to e
 - A filtered, paged list query.
 - Static reference-data seeding.
 
-For the line-by-line trade-off against the automated sample, see
-[`docs/samples/manual-vs-automated.md`](../manual-vs-automated.md).
+Which of the two samples to copy for a feature of your own is stated once, in
+[Manual vs. Automated — At a glance](../manual-vs-automated.md#at-a-glance-which-one-should-i-copy);
+this page does not carry a second version of it. The same document holds the line-by-line trade-off
+against the automated sample.
 
 ## Routes
 

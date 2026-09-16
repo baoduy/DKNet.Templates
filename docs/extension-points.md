@@ -190,6 +190,16 @@ the DTO, never the entity, so `[GenerateDto(..., Exclude = [...])]` is the query
 well as the response-shape control. See
 [`generic-list-endpoint.md`](generic-list-endpoint.md#the-dto-is-the-boundary).
 
+**Adding a response value the convention cannot produce.** `[GenerateDto]` emits a `partial record`,
+so a value it cannot derive — anything computed from more than one column — can be hand-written onto
+the DTO and mapped by a Mapster `IRegister`. `ForType` merges onto the convention's config instead of
+replacing it, and `config.Scan` in `Minimal.AppServices/Extensions/MapsToExtensions.cs:34-37`
+discovers the register with no per-DTO wiring. The customisation stays a response-mapping concern:
+no generated route, request or handler is written or dropped for it, and the added property is
+response-only, so the list route refuses to filter or order on it with a `400`. Worked example —
+`ProductDto.GrossMargin`:
+[automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
+
 ## Persistence
 
 | Seam | Contract | Discovery |

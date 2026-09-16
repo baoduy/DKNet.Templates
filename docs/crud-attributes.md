@@ -75,7 +75,7 @@ public class Product : AggregateRoot, IOwnedBy
   ```csharp
   [GenerateDto(typeof(Product),
       Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
-  public sealed partial record ProductDto;
+  public sealed partial record ProductDto { … }
   ```
 
   The default is "every audited property", not "only what I chose" — narrow with
@@ -83,14 +83,27 @@ public class Product : AggregateRoot, IOwnedBy
   `OwnedBy` duplicates `CreatedBy` on the wire, while `LastModifiedBy`/`LastModifiedOn` are computed
   conveniences with no mapped column, and leaving them on the DTO breaks the generated list route
   (see [`generic-list-endpoint.md`](generic-list-endpoint.md#trap-a-dto-field-must-map-to-a-real-column)).
-  What is left after the exclusions, verified against `obj/Generated/.../ProductDto.g.cs`: `Name`,
-  `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
+
+### What the generated DTO holds
+
+What is left after the exclusions — `Product`'s properties minus the three names in the `Exclude`
+list above: `Name`, `Price`, `IsDiscontinued`, `SupplierCostPrice`, `SupplierReferenceCode`,
+`CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`. The two supplier properties stay on the
+generated record and do reach the wire; what varies per caller is `[SensitiveData]`, not the DTO
+shape — see [Declaring a sensitive property](#declaring-a-sensitive-property) below. This list is the
+one place the generated field set is written down; other pages link here rather than repeat it.
+
+`ProductDto` additionally carries `GrossMargin`, which the generator did not produce: it is
+hand-written onto the partial record and mapped by a Mapster `IRegister` — see
+[the automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
 
 Generated DTOs and `[MapsFrom]`-tagged hand-written DTOs both register with Mapster the same way.
 `Minimal.AppServices/Extensions/MapsToExtensions.cs`'s `ScanMaps` reflects over the assembly for
 either attribute and calls `config.NewConfig(entityType, dtoType)` for each hit. That scan runs from
 `Minimal.AppServices/AppSetup.cs` at startup; no per-feature mapping registration is needed for
 either style.
+
+### What the generators emit
 
 `DKNet.SlimBus.Generators` (the package behind `[CrudCreate]`/`[CrudUpdate]`) emits three things per
 entity, under `obj/Generated/` (not committed to source control — inspect the output after a
