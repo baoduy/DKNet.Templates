@@ -283,10 +283,18 @@ in service registration, never in an endpoint filter or a request handler.
   "name": "Espresso Machine",
   "price": 899.00,
   "supplierCostPrice": 412.50,
+  "grossMargin": 486.50,
   "supplierReferenceCode": "SUP-88231",
   "isDiscontinued": false
 }
 ```
+
+`grossMargin` is `Price` minus `SupplierCostPrice` — a hand-mapped DTO property, not a column, that
+declares `[SensitiveData("pricing")]` because it discloses the same confidential number as the
+supplier cost price it is derived from
+(`Minimal.AppServices/AutomatedSample/V1/ProductDto.cs:38-39`). It is gated on role membership, not
+on whether a value exists: a caller in `pricing` sees the key even when no supplier cost price was
+ever recorded, holding an explicit `null`.
 
 The same row, for an authenticated caller **holding no roles**:
 
@@ -299,15 +307,20 @@ The same row, for an authenticated caller **holding no roles**:
 }
 ```
 
-`supplierCostPrice` is **absent** — not `null`, not `"***"`. Nothing in the payload hints that a
-property was withheld, and a client deserializing into a type with a nullable property simply sees
-`null` because nothing was assigned. `supplierReferenceCode` survives because its declaration names
-no role and this caller is authenticated.
+`supplierCostPrice` and `grossMargin` are **absent** — not `null`, not `"***"`. Nothing in the
+payload hints that a property was withheld, and a client deserializing into a type with a nullable
+property simply sees `null` because nothing was assigned. `supplierReferenceCode` survives because
+its declaration names no role and this caller is authenticated.
 
-Because this template sets `DefaultIgnoreCondition = WhenWritingNull` on the same options
-(`SharedConsts.JsonSerializerOptions`), a nullable property that is simply unset is absent too — so
-a caller cannot tell "withheld from you" from "never recorded". That is the intended shape, not a
-leak to close.
+Withheld is not the same as unset. This template sets
+`DefaultIgnoreCondition = WhenWritingNull` (`SharedConsts.JsonSerializerOptions`), so an ordinary
+nullable property that is unset is simply absent. A `[SensitiveData]` property is not subject to
+that: the per-property `ShouldSerialize` the resolver installs decides it, and for a caller who
+passes the role check the key is written even when its value is `null`
+(`Minimal.App.Tests/Integration/AutomatedSample/V1/ProductGrossMarginTests.cs:107-123`). So a
+pricing-role caller reading a product with no supplier cost price recorded gets
+`"supplierCostPrice": null` and `"grossMargin": null`; a caller outside the role gets neither key at
+all (same file, `:129-142`).
 
 ### The decision rules
 
