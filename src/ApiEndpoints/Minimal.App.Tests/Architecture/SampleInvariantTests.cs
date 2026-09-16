@@ -186,21 +186,41 @@ public class SampleInvariantTests
     [Fact]
     public void ProductV1Endpoint_HandWrittenReplacement_ShouldStateTheRule()
     {
+        // Anchored on the hand-written route's own map call (its route literal contains "discontinue"), not
+        // on the first occurrence of the word anywhere in the file — the generated block's
+        // o.Exclude("Discontinue") sits above it and would otherwise be mistaken for the route this
+        // scenario is about, letting a Build that comments the exclusion but leaves the hand-written route
+        // bare pass here while still failing the spec.
         var path = Path.Combine(SrcDir, "ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs");
-        var content = File.ReadAllText(path);
+        var lines = File.ReadAllLines(path);
 
-        var discontinueRouteIndex = content.IndexOf("discontinue", StringComparison.OrdinalIgnoreCase);
-        discontinueRouteIndex.ShouldBeGreaterThanOrEqualTo(0,
-            "expected a hand-written discontinue route in ProductV1Endpoint.");
+        var routeLineIndex = Array.FindIndex(lines, l =>
+            Regex.IsMatch(l, @"group\.Map(Post|Get|Put|Delete)\(") &&
+            l.Contains("discontinue", StringComparison.OrdinalIgnoreCase));
+        routeLineIndex.ShouldBeGreaterThanOrEqualTo(0,
+            "expected a hand-written route (group.MapPost/Get/Put/Delete) whose route literal contains \"discontinue\".");
 
-        var precedingText = content[..discontinueRouteIndex];
-        var lastCommentStart = precedingText.LastIndexOf("//", StringComparison.Ordinal);
-        lastCommentStart.ShouldBeGreaterThanOrEqualTo(0,
-            "expected a comment immediately above the hand-written discontinue route.");
+        // Walk upward collecting the comment block immediately above that call — stops at the first line
+        // that isn't a `//` comment, so a bare route (no comment directly attached) yields no comment lines
+        // even if some earlier, unrelated line in the file happens to contain "//".
+        var commentLines = new List<string>();
+        for (var i = routeLineIndex - 1; i >= 0; i--)
+        {
+            var trimmed = lines[i].Trim();
+            if (!trimmed.StartsWith("//", StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            commentLines.Insert(0, trimmed);
+        }
+
+        commentLines.ShouldNotBeEmpty(
+            "expected a comment immediately above the hand-written discontinue route's own map call.");
 
         // R4: the comment must state a rule a reader can apply to their own operations (multi-aggregate
         // transactions in general), not merely a fact about discontinue specifically.
-        var comment = precedingText[lastCommentStart..];
+        var comment = string.Join(' ', commentLines);
         comment.Contains("transaction", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
             "the comment must state the rule generally (e.g. an operation spanning multiple aggregates in " +
             "one transaction cannot be generated), not just describe discontinue.");
