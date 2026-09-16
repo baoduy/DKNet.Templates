@@ -7,12 +7,15 @@ wires up. Follow a package's link for its full API surface.
 ## Wired by this template
 
 This table is verified against the `.csproj` files under `src/`. Every DKNet package is pinned at
-**10.1.24** in `src/Directory.Packages.props`, and
-`Minimal.App.Tests/Architecture/PackageArchitectureTests.cs` fails the build if those pins ever
-straddle two releases — it asserts that every `DKNet.*` pin resolves to the *same* release, whichever
-release that is, so moving them all together needs no test edit while a partial bump fails. Two
-further tests in the same file fail the build if a `DKNet.*` pin exists that no project references,
-or if any `PackageReference` under `src/` carries an inline `Version` attribute.
+**10.1.26** in `src/Directory.Packages.props`, and
+`tests/DKNet.Templates.ScaffoldTests/PackageArchitectureTests.cs` guards those pins with four tests.
+`AllDKNetPackageReferences_ShouldResolveToOneRelease` asserts that every `DKNet.*` pin resolves to the
+*same* release, whichever release that is, so a partial bump fails the build while the pins stay in
+lockstep at any single release. `AllDKNetPackages_ShouldBePinnedTo_10_1_26` then asserts that release
+is exactly `10.1.26`, so a future bump moves all thirteen pins together *and* edits that one test. Two
+further tests in the same file fail the build if a `DKNet.*` pin exists that no project references
+(`EveryDKNetPackageVersion_ShouldBeReferencedByAtLeastOneProject`), or if any `PackageReference` under
+`src/` carries an inline `Version` attribute (`NoPackageReference_ShouldCarryAVersionAttribute`).
 
 | Package | What it gives you | Where the template wires it | DKNet doc |
 |---|---|---|---|
