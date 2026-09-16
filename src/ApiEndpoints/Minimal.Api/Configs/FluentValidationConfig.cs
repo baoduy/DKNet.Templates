@@ -31,7 +31,11 @@ internal static class FluentValidationConfig
 
             o.Customize = (problemDetails, ctx) =>
             {
-                var code = ctx.Errors.Select(e => e.Code).FirstOrDefault(c => c is not null);
+                // Prefer a precondition. code over an ordinary coded rule mixed into the same refusal, so
+                // "code" always names the rule the StatusCode above actually answered 409 for.
+                var code = ctx.Errors.Select(e => e.Code)
+                    .FirstOrDefault(c => c is not null && c.StartsWith(PreconditionCodes.Prefix, StringComparison.Ordinal))
+                    ?? ctx.Errors.Select(e => e.Code).FirstOrDefault(c => c is not null);
                 if (code is not null)
                 {
                     problemDetails.Extensions["code"] = code;

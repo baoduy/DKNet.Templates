@@ -280,7 +280,14 @@ public class SampleInvariantTests
         var repoRoot = Path.GetFullPath(Path.Combine(SrcDir, ".."));
         var readmePath = Path.Combine(repoRoot, "docs", "samples", "automated-products", "README.md");
 
-        File.Exists(readmePath).ShouldBeTrue();
+        // The template's content root is `src/` — `docs/` never reaches a scaffolded consumer solution
+        // (see CLAUDE.md's "AGENTS.md ships to consumers" section), so this guard has nothing to check
+        // there. Mirrors Docs_ShouldNotClaimTheOldShape's Directory.Exists/File.Exists guards above.
+        if (!File.Exists(readmePath))
+        {
+            return;
+        }
+
         var content = File.ReadAllText(readmePath);
 
         content.Contains("constraint", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
