@@ -39,9 +39,7 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
 
         group.MapProductCrud(o =>
         {
-            // An operation that writes more than one aggregate in one transaction cannot be generated —
-            // discontinuing now also creates a replacement product (see the hand-written route below), so
-            // the generated route is dropped by name and replaced (R1).
+            // Dropped by name and replaced below — see that route's comment for why (R1).
             o.Exclude("Discontinue");
 
             if (!requireAuthorization)

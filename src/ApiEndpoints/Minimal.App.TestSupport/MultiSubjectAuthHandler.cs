@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Minimal.Api.ApiEndpoints.AutomatedSample;
 
 namespace Minimal.App.TestSupport;
 
@@ -39,7 +40,7 @@ public sealed class MultiSubjectAuthHandler(
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, "multi-subject-caller"),
-            new("scp", "products.read products.write products.supplier products.discontinue")
+            new("scp", string.Join(' ', ProductScopes.All))
         };
 
         if (Request.Headers.TryGetValue(ObjectIdHeaderName, out var oid) && !string.IsNullOrEmpty(oid))

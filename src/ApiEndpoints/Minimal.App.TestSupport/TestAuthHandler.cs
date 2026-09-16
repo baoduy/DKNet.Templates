@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Minimal.Api.ApiEndpoints.AutomatedSample;
 
 namespace Minimal.App.TestSupport;
 
@@ -27,8 +28,11 @@ public sealed class TestAuthHandler(
     /// </summary>
     public const string ScopesHeaderName = "X-Test-Scopes";
 
-    /// <summary>Every products.* scope — keeps every pre-existing auth-on test passing without this header.</summary>
-    public const string DefaultScopes = "products.read products.write products.supplier products.discontinue";
+    /// <summary>
+    /// Every <see cref="ProductScopes"/> entry, space-joined — keeps every pre-existing auth-on test
+    /// passing without this header, and never needs updating by hand when a scope is added or removed.
+    /// </summary>
+    public static readonly string DefaultScopes = string.Join(' ', ProductScopes.All);
 
     /// <summary>
     /// The claim <c>PrincipalProvider</c> reads as <c>ProfileId</c> — <c>DataOwnerHook</c> stamps

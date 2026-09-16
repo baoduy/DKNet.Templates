@@ -6,6 +6,10 @@ namespace Minimal.Api.ApiEndpoints.AutomatedSample;
 /// generated CRUD route and both hand-written routes below it require one of these via
 /// <c>RequireAuthorization</c>. The supplier-reference route keeps <see cref="Supplier"/> rather than
 /// sharing <see cref="Write"/> — holding only <see cref="Write"/> must not be enough to assign it.
+/// Stays <see langword="internal"/> (Architecture's <c>ApiTests.AllApiClassesShouldBeInternal</c> forbids
+/// a public class here) — visible to <c>Minimal.App.TestSupport</c> only via
+/// <c>InternalsVisibleTo</c> in this project's csproj, so its auth-handler test doubles can build their
+/// default scope claim from <see cref="All"/> instead of duplicating it by hand.
 /// </summary>
 internal static class ProductScopes
 {

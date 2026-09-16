@@ -45,5 +45,6 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Minimal.App.Tests" />
+        <InternalsVisibleTo Include="Minimal.App.TestSupport" />
     </ItemGroup>
 </Project>

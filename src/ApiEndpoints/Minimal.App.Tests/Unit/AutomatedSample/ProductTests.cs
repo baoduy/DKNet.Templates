@@ -82,5 +82,19 @@ public class ProductTests
         product.IsDiscontinued.ShouldBeTrue();
     }
 
+    [Fact]
+    public void Discontinue_CalledTwice_ShouldStayDiscontinued_NotThrow()
+    {
+        // The entity method itself stays idempotent (Product.cs's own remarks) — the refusal on a second
+        // discontinue (DRK-1386 R3) is a business rule enforced by DiscontinueProductCommandHandler, one
+        // layer up, not by this method throwing or guarding.
+        var product = new Product("Widget", 9.99m);
+
+        product.Discontinue();
+        product.Discontinue();
+
+        product.IsDiscontinued.ShouldBeTrue();
+    }
+
     #endregion
 }
