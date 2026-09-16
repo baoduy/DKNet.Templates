@@ -46,7 +46,7 @@ lets one endpoint drop a single generated route by name and hand-write that one 
 generated call, so the generator keeps the routes it expresses well and you write only the ones it
 cannot. `ProductV1Endpoint` is exactly that composite: `MapProductCrud(o => …)` first, carrying the
 per-route scopes and `Exclude("Discontinue")`, then two hand-written routes — a discontinue that
-must refuse, and a summary query the generator has no shape for.
+writes two aggregates in one transaction, and a summary query the generator has no shape for.
 
 The rest of this document is the evidence behind that guidance.
 
@@ -155,7 +155,8 @@ emit at compile time — the amber and purple nodes in the diagram:
   `[CrudAction("supplier-reference", Verb = CrudActionVerb.Put)] AssignSupplierReference(string)`
   → `PUT /v1/products/{id}/supplier-reference`. Both answer `200` with `ProductDto`. Its third
   action, `Discontinue`, is excluded from the generated map by name and hand-written below it,
-  because it has to refuse a second call. The manual sample's equivalent — `Cancel.cs` plus its
+  because discontinuing a product also creates its named replacement in the same transaction, and an
+  operation that writes more than one aggregate in one transaction cannot be generated. The manual sample's equivalent — `Cancel.cs` plus its
   literal `MapPost(".../cancel")` — is hand-written in full. See
   [`docs/crud-attributes.md`](../crud-attributes.md#domain-actions-with-crudaction) for declaring
   one, and trade-off 4 below for what a generated action cannot do that `Cancel` does.
@@ -246,10 +247,12 @@ name and you hand-write it below the generated call — which is what `ProductV1
   check. The manual sample's `Cancel` demonstrates exactly this — rejecting an already-cancelled
   order with a domain-specific 400.
 - **Domain actions** inherit the same gap. A generated `[CrudAction]` handler loads the row, calls
-  the method and saves; there is no place to fail a pre-condition first. That is why this sample's
-  `Discontinue` is no longer generated: `PUT /v1/products/{id}/discontinue` is hand-written, takes
-  `{ replacementName, replacementPrice }`, discontinues the product and creates its replacement in
-  one transaction, and fails a second call as a domain failure instead of repeating a `200`.
+  the method and saves; there is no place to fail a pre-condition first. This sample's `Discontinue`
+  left the generated map for a different and stricter reason — it writes more than one aggregate in
+  one transaction, which the generator cannot express at all. The hand-written
+  `PUT /v1/products/{id}/discontinue` takes `{ replacementName, replacementPrice }`, discontinues
+  the product and creates its replacement in one transaction, and, being hand-written, also gets to
+  fail a second call as a domain failure instead of repeating a `200`.
   Everything else the generated path gives up — unenforced validation, no idempotency, the
   every-audited-field DTO — applies to the actions that stay generated unchanged.
 

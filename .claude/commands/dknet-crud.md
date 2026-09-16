@@ -72,10 +72,13 @@ consumer.** If you find yourself writing a request, validator, or handler here, 
   `Product.Approve` (segment override) and `Product.AssignSupplierReference` (both overridden) are
   the shipped exemplars. A generated action has **nowhere to hang a pre-condition** — re-running it
   on an entity already in that state is a no-op `200`, not a `409`. If the action must reject an
-  invalid state transition, drop that one route by name (`o.Exclude("<MethodName>")` on
-  `MapProductCrud`) and hand-write it below the generated call — which is what `Product.Discontinue`
-  does. The rest of the entity's routes stay generated; there is no need to fall back to Path 1 for
-  the whole feature.
+  invalid state transition, that alone is not enough to leave the generated map — write the
+  pre-condition into a hand-written route only when the operation also writes **more than one
+  aggregate in one transaction**, which the generator cannot express. Then drop that one route by
+  name (`o.Exclude("<MethodName>")` on `MapProductCrud`) and hand-write it below the generated call.
+  `Product.Discontinue` is the shipped case: it also creates the product's named replacement in the
+  same transaction. The rest of the entity's routes stay generated; there is no need to fall back to
+  Path 1 for the whole feature.
 - `[GenerateDto(typeof(Entity))] public sealed partial record <Entity>Dto;` — one line, generates every audited property by default (`Exclude`/`Include` to narrow).
 
 ### What gets generated

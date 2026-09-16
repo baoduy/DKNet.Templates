@@ -72,7 +72,7 @@ group.MapDelete("{id:guid}", async ([AsParameters] DeletePurchaseOrderRequest re
 group.MapProductCrud(o => o
     .Exclude("Discontinue")                                                     // dropped, hand-written below
     .Configure(CrudOp.GetById, b => b.RequireAuthorization("products.read")));  // per-route scope
-group.MapPut("{id:guid}/discontinue", /* … */);   // hand-written: has to refuse a second call
+group.MapPut("{id:guid}/discontinue", /* … */);   // hand-written: writes two aggregates in one transaction
 group.MapGet("summary", /* … */);                 // hand-written: no generated shape for it
 ```
 

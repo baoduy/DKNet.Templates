@@ -318,12 +318,16 @@ call unattended, it is an action, not an update.
 > no idempotency filter, and the DTO's every-audited-field default. One is worth calling out
 > specifically: **a generated action has nowhere to hang a pre-condition.** A generated handler
 > loads the row, calls the method and saves; an operation that must *refuse* rather than merely run
-> has nowhere to say no. That is why `Discontinue` is not among this sample's generated routes any
-> more: `ProductV1Endpoint` drops it with `Exclude("Discontinue")` and hand-writes
-> `PUT /v1/products/{id}/discontinue` below the generated call, where discontinuing an
-> already-discontinued product is a domain failure rather than a repeated `200`. The manual
+> has nowhere to say no. On its own that is not a reason to leave the generated map — the manual
 > sample's `Cancel.cs`, which rejects an already-cancelled order with a domain-specific 400, is the
-> same shape.
+> shape to copy when a pre-condition is all you need.
+>
+> **The bar for hand-writing a route is higher: the operation writes more than one aggregate in one
+> transaction**, which the generator cannot express at all. `Discontinue` is this sample's one such
+> route — discontinuing a product also creates its named replacement in the same transaction — so
+> `ProductV1Endpoint` drops it with `Exclude("Discontinue")` and hand-writes
+> `PUT /v1/products/{id}/discontinue` below the generated call. Its refusal of a second call comes
+> free with being hand-written; it is not what qualified it.
 
 ### Worked example: add your own action
 

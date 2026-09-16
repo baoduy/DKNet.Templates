@@ -17,7 +17,10 @@ This sample declares behavior through attributes instead of writing it by hand. 
   `Discontinue` declaring the verb override — so the sample shows the default and each override
   without you inventing one. The first two are published by the generator with no hand-written
   request, handler or endpoint registration; `Discontinue` is deliberately excluded from the
-  generated map by name and hand-written, because it must refuse a second call.
+  generated map by name and hand-written, because discontinuing a product also creates its named
+  replacement in the same transaction — and an operation that writes more than one aggregate in one
+  transaction cannot be generated. That the hand-written command also refuses a second call is a
+  consequence of that rule, not the reason the route left the generated map.
 - A **composite endpoint**: `ProductV1Endpoint` calls `MapProductCrud(o => …)` first — per-route
   scopes plus `Exclude("Discontinue")` — and hand-writes only the two routes the generator cannot
   express, below it. Generated and hand-written routes live in the same group, not in rival samples.

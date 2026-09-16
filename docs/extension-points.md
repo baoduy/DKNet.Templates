@@ -167,7 +167,7 @@ public void Map(RouteGroupBuilder group)
     group.MapProductCrud(o => o
         .Exclude("Discontinue")                                                   // drop that one action
         .Configure(CrudOp.Update, b => b.RequireAuthorization("products.write"))); // every generated PUT
-    group.MapPut("{id:guid}/discontinue", /* your own pre-condition */);           // hand-written, below
+    group.MapPut("{id:guid}/discontinue", /* writes two aggregates in one transaction */);
 }
 ```
 
