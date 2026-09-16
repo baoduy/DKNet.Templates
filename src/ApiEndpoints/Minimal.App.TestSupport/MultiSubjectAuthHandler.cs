@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Minimal.Api.ApiEndpoints.AutomatedSample;
 
 namespace Minimal.App.TestSupport;
 
@@ -33,7 +34,14 @@ public sealed class MultiSubjectAuthHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var claims = new List<Claim> { new(ClaimTypes.Name, "multi-subject-caller") };
+        // Every products.* scope, always — this handler's own tests (ownership isolation, sensitive-data
+        // role filtering) exercise a different axis than Product's per-route scopes (DRK-1386 §5) and never
+        // vary it, so unlike TestAuthHandler there is no header to override it with.
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, "multi-subject-caller"),
+            new("scp", string.Join(' ', ProductScopes.All))
+        };
 
         if (Request.Headers.TryGetValue(ObjectIdHeaderName, out var oid) && !string.IsNullOrEmpty(oid))
         {

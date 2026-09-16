@@ -84,7 +84,7 @@ it states exactly what each layer costs or gives up.
 | Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — still hand-written, no generator produces this |
 | AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | One `[GenerateDto(typeof(Entity))] public sealed partial record <Feature>Dto;` |
 | AppServices | `<Feature>/V1/Events/`                          | Hand-written consumer for a declared event — the generator raises, it does not consume |
-| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension, nothing hand-mapped |
+| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension first, with any hand-written business routes mapped below it |
 | *(generated)* | `obj/Generated/.../<Entity>CrudRequests.g.cs`, `...Handlers.g.cs`, `...Endpoints.g.cs` | Requests, handlers, and route registration — not committed, inspect after a build |
 
 Note: the domain entity folder and the `AppServices` slice use the same feature folder name in both
@@ -180,8 +180,10 @@ the authority on that footprint, the out-of-folder touchpoints a delete must als
 migrations, docs links), and the migration rule on removal.
 
 Every scaffolding command takes `mode=manual|auto`, threaded end-to-end by the orchestrator. The mode
-is not a style preference — it changes which files exist, whether validation is enforced, whether
-create is idempotent, and how the acting user is attributed. Commands that omit `mode=` detect it by
+is not a style preference — it changes which files exist, whether an attribute-declared rule is
+enforced, whether create is idempotent, and how the acting user is attributed. A rule that has to
+refuse an operation is not part of that trade: a FluentValidation validator on a generated request
+runs on the generated route (`docs/api-pipeline.md`). Commands that omit `mode=` detect it by
 grepping the entity for `[CrudCreate]`.
 
 | Command | Purpose |

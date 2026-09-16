@@ -85,8 +85,9 @@ public class ProductTests
     [Fact]
     public void Discontinue_CalledTwice_ShouldStayDiscontinued_NotThrow()
     {
-        // docs/samples/manual-vs-automated.md #4: a generated action has nowhere to hang a pre-condition,
-        // so repeating Discontinue is a no-op, never a rejection.
+        // The entity method itself stays idempotent (Product.cs's own remarks) — the refusal on a second
+        // discontinue (DRK-1386 R3) is a business rule enforced by DiscontinueProductCommandHandler, one
+        // layer up, not by this method throwing or guarding.
         var product = new Product("Widget", 9.99m);
 
         product.Discontinue();

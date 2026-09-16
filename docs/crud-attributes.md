@@ -75,7 +75,7 @@ public class Product : AggregateRoot, IOwnedBy
   ```csharp
   [GenerateDto(typeof(Product),
       Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
-  public sealed partial record ProductDto;
+  public sealed partial record ProductDto { … }
   ```
 
   The default is "every audited property", not "only what I chose" — narrow with
@@ -83,14 +83,27 @@ public class Product : AggregateRoot, IOwnedBy
   `OwnedBy` duplicates `CreatedBy` on the wire, while `LastModifiedBy`/`LastModifiedOn` are computed
   conveniences with no mapped column, and leaving them on the DTO breaks the generated list route
   (see [`generic-list-endpoint.md`](generic-list-endpoint.md#trap-a-dto-field-must-map-to-a-real-column)).
-  What is left after the exclusions, verified against `obj/Generated/.../ProductDto.g.cs`: `Name`,
-  `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
+
+### What the generated DTO holds
+
+What is left after the exclusions — `Product`'s properties minus the three names in the `Exclude`
+list above: `Name`, `Price`, `IsDiscontinued`, `SupplierCostPrice`, `SupplierReferenceCode`,
+`CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`. The two supplier properties stay on the
+generated record and do reach the wire; what varies per caller is `[SensitiveData]`, not the DTO
+shape — see [Declaring a sensitive property](#declaring-a-sensitive-property) below. This list is the
+one place the generated field set is written down; other pages link here rather than repeat it.
+
+`ProductDto` additionally carries `GrossMargin`, which the generator did not produce: it is
+hand-written onto the partial record and mapped by a Mapster `IRegister` — see
+[the automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
 
 Generated DTOs and `[MapsFrom]`-tagged hand-written DTOs both register with Mapster the same way.
 `Minimal.AppServices/Extensions/MapsToExtensions.cs`'s `ScanMaps` reflects over the assembly for
 either attribute and calls `config.NewConfig(entityType, dtoType)` for each hit. That scan runs from
 `Minimal.AppServices/AppSetup.cs` at startup; no per-feature mapping registration is needed for
 either style.
+
+### What the generators emit
 
 `DKNet.SlimBus.Generators` (the package behind `[CrudCreate]`/`[CrudUpdate]`) emits three things per
 entity, under `obj/Generated/` (not committed to source control — inspect the output after a
@@ -106,16 +119,40 @@ build):
 It never generates the `IEntityTypeConfiguration<T>` mapping, or any event *consumer* (see
 [`docs/efcore-events.md`](efcore-events.md)). Those stay hand-written for both samples.
 
-`Map<Entity>Crud()` takes one optional argument — an `Action<CrudMapOptions>` whose only capability
-is dropping operations, so you can hand-write the one route the generator cannot express:
+`Map<Entity>Crud()` takes one optional argument — an `Action<CrudMapOptions>` with four overloads
+across two capabilities: dropping routes you would rather hand-write, and settings applied to the
+routes that stay.
 
 ```csharp
-group.MapProductCrud(o => o.Exclude(CrudOp.Delete));
+group.MapProductCrud(o => o
+    .Exclude(CrudOp.Delete)                                                     // a whole operation kind
+    .Exclude("Discontinue")                                                     // one generated route, by name
+    .Configure(CrudOp.GetById, b => b.RequireAuthorization("products.read"))    // every route of a kind
+    .Configure("ChangePrice", b => b.RequireAuthorization("products.write")));  // one named route
 ```
 
-`CrudOp` has six members: `GetById`, `GetList`, `Create`, `Update`, `Delete`, `Action`. `Update` and
-`Action` are all-or-nothing — there is no per-method exclusion. Nothing is excluded by default, and
-the shipped `ProductV1Endpoint` passes no options.
+- **`Exclude(params CrudOp[])`** — `CrudOp` has six members: `GetById`, `GetList`, `Create`,
+  `Update`, `Delete`, `Action`. An excluded operation is skipped entirely, not merely hidden.
+- **`Exclude(params string[] routeNames)`** — drops the one generated route carrying that member
+  name and leaves the entity's other routes of the same kind published. This is the per-method
+  exclusion: `Exclude("Discontinue")` drops that one action and keeps `Approve` and
+  `AssignSupplierReference`.
+- **`Configure(CrudOp, Action<RouteHandlerBuilder>)`** — runs a `RouteHandlerBuilder` setting
+  against every generated route of that operation kind.
+- **`Configure(string routeName, Action<RouteHandlerBuilder>)`** — runs it against the one route
+  carrying that name.
+
+A route's name is `GetById`, `GetList`, `Create` or `Delete` for the four fixed operations, and the
+verbatim C# member name for each `[CrudUpdate]`/`[CrudAction]` member — never the kebab-cased route
+segment (`ChangePrice`, not `change-price`) and never the generated request record's name. Both
+`Configure` overloads are additive and ordered: for any one route every operation-kind setting runs
+first, then every name setting, each in call order. A name the entity does not carry throws
+`ArgumentException` at start-up, so a typo fails the host rather than silently publishing an
+unprotected route.
+
+Nothing is excluded by default. The shipped `ProductV1Endpoint` passes both kinds of option — a
+per-route scope on each generated route, and one `Exclude("Discontinue")` whose route it hand-writes
+below the generated call instead.
 
 ## Declaring a sensitive property
 
@@ -291,12 +328,24 @@ call unattended, it is an action, not an update.
 > **What an action does not give you.** Everything the generated create/update path gives up, an
 > action gives up too — the [validation gap](samples/manual-vs-automated.md#1-request-validation-that-looks-wired-but-never-runs-the-sharpest-gap)
 > (`DataAnnotations` on an action's parameters are forwarded onto the request and never evaluated),
-> no idempotency filter, and the DTO's every-audited-field default. One is worth calling out
-> specifically: **a generated action has nowhere to hang a pre-condition.** `Discontinue` on an
-> already-discontinued product returns `200`, not a domain failure — a generated handler runs the
-> method and saves. The manual sample's `Cancel.cs`, which rejects an already-cancelled order with
-> a domain-specific 400, is still the shape you need when the pre-condition must be enforced, and
-> still means hand-writing that one route.
+> no idempotency filter, and the DTO's every-audited-field default.
+>
+> **A pre-condition is not on that list.** A generated action's request is body-bound and passes
+> through the group-level `AddFluentValidationAutoValidation()` filter (`Minimal.Api/Program.cs:50`),
+> so a FluentValidation validator registered for it runs before the generated handler and can read
+> stored data and refuse. The automated sample proves it on the two generated routes that needed it:
+> `CreateProductRequestValidator` refuses a name already taken and `DeleteProductRequestValidator`
+> refuses a product still for sale, both with `409`, with no hand-written route, request or handler.
+> Write the rule as a validator; the manual sample's `Cancel.cs`, which rejects an already-cancelled
+> order with a domain-specific 400 from inside the handler, is the shape to copy only when the
+> refusal has to come from the aggregate itself.
+>
+> **The bar for hand-writing a route is higher: the operation writes more than one aggregate in one
+> transaction**, which the generator cannot express at all. `Discontinue` is this sample's one such
+> route — discontinuing a product also creates its named replacement in the same transaction — so
+> `ProductV1Endpoint` drops it with `Exclude("Discontinue")` and hand-writes
+> `PUT /v1/products/{id}/discontinue` below the generated call. Its refusal of a second call comes
+> free with being hand-written; it is not what qualified it.
 
 ### Worked example: add your own action
 
@@ -337,17 +386,20 @@ Build, and the generator has published:
 
 Drop the `"archived"` argument and the route segment becomes `archive`. Drop `Verb` and it becomes
 a `POST`. No endpoint registration, no request record and no handler is written by hand —
-`ProductV1Endpoint`'s single `MapProductCrud()` call already picks the new route up.
+`ProductV1Endpoint`'s `MapProductCrud(...)` call already picks the new route up, and it stays picked
+up unless you exclude it by name.
 
-> `Archive` is an exercise for this page. It is **not** part of the shipped sample, which carries
-> exactly two actions — `Approve` and `Discontinue`. Add it to your own copy, not to the template's.
+> `Archive` is an exercise for this page. It is **not** part of the shipped sample, which publishes
+> exactly two generated actions — `Approve` and `AssignSupplierReference`; its third,
+> `Discontinue`, is excluded by name from the generated map and hand-written instead. Add `Archive`
+> to your own copy, not to the template's.
 
 ## End-to-end trace, both samples
 
 | Step | `ManualSample`/`PurchaseOrder` | `AutomatedSample`/`Product` |
 |---|---|---|
-| HTTP endpoint | `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs` — literal `group.MapPost("/", ...)` etc., one call per route | `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` — one `group.MapProductCrud()` call, nothing hand-mapped |
-| Validation | `CreatePurchaseOrderCommandValidator`/`UpdatePurchaseOrderCommandValidator` (FluentValidation) run and are enforced on every hand-mapped route | `[Range]`/`[Required]` on the `[CrudCreate]`/`[CrudUpdate]` parameters are forwarded onto the generated request but **not evaluated** — `MapProductCrud` routes through `DKNet.AspCore.Extensions`'s generic `Map*<TRequest,TDto>` wrapper, which the .NET 10 minimal-API validation source generator can't see through. A negative price returns `201`, not `400` |
+| HTTP endpoint | `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs` — literal `group.MapPost("/", ...)` etc., one call per route | `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` — composite: `group.MapProductCrud(o => …)` first, carrying the per-route scopes and one `Exclude("Discontinue")`, then the two hand-written routes below it |
+| Validation | `CreatePurchaseOrderCommandValidator`/`UpdatePurchaseOrderCommandValidator` (FluentValidation) run and are enforced on every hand-mapped route | FluentValidation runs here too — the group filter reaches generated routes, so `CreateProductRequestValidator`/`DeleteProductRequestValidator` refuse with `409` before the generated handler. What is **not evaluated** is a forwarded `[Range]`/`[Required]` on the `[CrudCreate]`/`[CrudUpdate]` parameters: `MapProductCrud` routes through `DKNet.AspCore.Extensions`'s generic `Map*<TRequest,TDto>` wrapper, which the .NET 10 minimal-API validation source generator can't see through. A negative price returns `201`, not `400` |
 | Bus dispatch | `IMessageBus bus` → `bus.Send(req, ...)` in the endpoint delegate | Same `IMessageBus`, dispatched inside the generated route delegate |
 | Handler | `CreatePurchaseOrderCommandHandler`/`UpdatePurchaseOrderCommandHandler` (`Minimal.AppServices/ManualSample/V1/Actions/`) | Generated `CreateProductHandler`/`ChangePriceProductHandler` (`Minimal.AppServices.Crud` namespace) |
 | Domain entity method | `new PurchaseOrder(...)` / `order.ChangeAmount(...)` | `new Product(request.Name, request.Price)` / `product.ChangePrice(request.Price)` |
@@ -358,8 +410,10 @@ a `POST`. No endpoint registration, no request record and no handler is written 
 The hand-written path's explicit actions — `Minimal.AppServices/ManualSample/V1/Actions/Create.cs`,
 `Update.cs`, `Cancel.cs`, `Delete.cs` — are the contrast. `Cancel.cs` rejects an already-cancelled
 order with a domain-specific failure, and `Delete.cs` 404s via `NotFoundError` before deleting.
-Neither shape is available on the generated path: a generic delete-by-id either deletes the row or
-404s, with nowhere to hang a pre-delete rule.
+A generic delete-by-id has no handler of its own to fail from, so a hand-written `Delete.cs` is still
+the only way to return a *domain* failure. A pre-delete **rule**, however, needs no hand-written
+route: a validator on the generated `DeleteProductRequest` refuses first — that is how the automated
+sample keeps a product that is still for sale from being deleted.
 
 ## Data seeding
 

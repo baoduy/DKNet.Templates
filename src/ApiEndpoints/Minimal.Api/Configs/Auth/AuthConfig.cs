@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Minimal.Api.ApiEndpoints.AutomatedSample;
 
 namespace Minimal.Api.Configs.Auth;
 
@@ -40,6 +41,13 @@ internal static class AuthConfig
             options.AddPolicy(
                 HasScopeRequirement.PolicyName,
                 policy => policy.Requirements.Add(new HasScopeRequirement("sample-scope")));
+
+            // Product's per-route scopes (DRK-1386 §5): one policy per scope, the scope value doubling
+            // as its own policy name, so a route can call .RequireAuthorization(ProductScopes.Read) etc.
+            foreach (var scope in ProductScopes.All)
+            {
+                options.AddPolicy(scope, policy => policy.Requirements.Add(new HasScopeRequirement(scope)));
+            }
         });
 
         // Sample IClaimsTransformation: enriches the user principal after authentication.

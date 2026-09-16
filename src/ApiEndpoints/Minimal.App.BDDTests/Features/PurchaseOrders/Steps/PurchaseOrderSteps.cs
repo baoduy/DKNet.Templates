@@ -8,7 +8,20 @@ public sealed class PurchaseOrderSteps(HttpClient client, ScenarioState state, B
 {
     private Guid _lastId;
 
+    // DRK-1410: purchase orders created for the cross-type "delete rule refuses nothing else" scenario,
+    // keyed by the business-readable key the Gherkin names them by (e.g. "PO-1001").
+    private readonly Dictionary<string, Guid> _ordersByKey = new();
+
+    public Guid GetIdByKey(string key) => _ordersByKey[key];
+
     #region When
+
+    [When(@"catalogue-ops lists purchase orders with page index (-?\d+)")]
+    public async Task WhenCatalogueOpsListsPurchaseOrdersWithPageIndex(int pageIndex)
+    {
+        state.Response = await client.GetAsync($"/v1/purchase-orders?pageIndex={pageIndex}");
+        state.ResponseBody = await state.Response.Content.ReadAsStringAsync();
+    }
 
     [When(@"I create a purchase order for customer ""(.*)"" with amount (.*)")]
     public Task WhenICreateAPurchaseOrder(string customerName, decimal amount) =>
@@ -85,6 +98,14 @@ public sealed class PurchaseOrderSteps(HttpClient client, ScenarioState state, B
     {
         await CreateAsync(customerName, amount, Guid.NewGuid().ToString());
         state.Response!.IsSuccessStatusCode.ShouldBeTrue();
+    }
+
+    [Given(@"the purchase order ""(.*)"" for ""(.*)"" exists")]
+    public async Task GivenThePurchaseOrderForExists(string key, string customerName)
+    {
+        await CreateAsync(customerName, 100.00m, Guid.NewGuid().ToString());
+        state.Response!.IsSuccessStatusCode.ShouldBeTrue();
+        _ordersByKey[key] = _lastId;
     }
 
     #endregion

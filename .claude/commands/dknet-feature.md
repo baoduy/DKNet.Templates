@@ -31,16 +31,19 @@ of the same output.
 | Mode | Exemplar | Shape |
 |---|---|---|
 | `manual` | `ManualSample` / `PurchaseOrder` | Every request, validator, handler, spec, DTO, and route is a file you write. Enforced validation, `.RequiredIdempotentKey()` on create, `[FromClaim]` acting user. |
-| `auto` | `AutomatedSample` / `Product` | `[RaisesEvent]` / `[CrudCreate]` / `[CrudUpdate]` / `[CrudAction]` on the entity plus a one-line `[GenerateDto]`. Requests, handlers, and routes are generated. No idempotency, **validation not enforced**, acting user via `DataOwnerHook`. |
+| `auto` | `AutomatedSample` / `Product` | `[RaisesEvent]` / `[CrudCreate]` / `[CrudUpdate]` / `[CrudAction]` on the entity plus a one-line `[GenerateDto]`. Requests, handlers, and routes are generated. No idempotency, **forwarded DataAnnotations not enforced** (a FluentValidation validator on a generated request *is*), acting user via `DataOwnerHook`. |
 
 If `mode=` was not supplied, apply §1 of the lifecycle skill, **recommend one with a reason**, and ask
-the user to confirm. Default to `manual` whenever the request mentions a business rule, state
-transition, duplicate check, or validation that must return `400` — `auto` is a deliberate trade, not
-a fallback.
+the user to confirm. Default to `manual` whenever the request mentions an operation that writes more
+than one aggregate in one transaction, idempotent writes, a filtered query, a DTO that hides fields,
+or attribute-declared validation that must return `400` — `auto` is a deliberate trade, not a
+fallback. A business rule, state transition or duplicate check on its own does **not** force
+`manual`: write it as a FluentValidation validator on the generated request, the way the product
+sample refuses a duplicate name and a delete of a product still for sale.
 
 When `auto` is selected, state the validation gap in your confirmation message: a `[Range]` on a
 generated request property is forwarded but never enforced, so a `POST` with an invalid value returns
-`201`, not `400`. The user accepts that before Phase 2 starts.
+`201`, not `400`. The gap is the attribute only — FluentValidation still runs on generated routes. The user accepts that before Phase 2 starts.
 
 Thread the resolved mode into every phase below and do not let it drift. Mixing flows on one
 aggregate is out of scope for this command — if only one operation needs a rule, finish in `auto` and

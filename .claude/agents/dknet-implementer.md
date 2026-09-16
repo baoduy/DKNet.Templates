@@ -29,7 +29,7 @@ Read these in order, every time:
 
 ## Execution order (do not skip, do not reorder)
 
-This is the hand-written path — follow it when the plan calls for idempotent writes, a business rule that blocks an operation conditionally, a filtered query, or a DTO that hides fields (mirror `PurchaseOrder`). For a genuinely plain CRUD entity with no such requirement, skip to "Declarative alternative" below instead of doing steps 5–6 by hand.
+This is the hand-written path — follow it when the plan calls for idempotent writes, an operation that writes more than one aggregate in one transaction, a filtered query, or a DTO that hides fields (mirror `PurchaseOrder`). A rule that conditionally refuses an operation is not on that list: a FluentValidation validator written against a *generated* request runs on the generated route through the group-level `AddFluentValidationAutoValidation()` filter, which is how `Product` refuses a duplicate name and a delete of a product still for sale. For a genuinely plain CRUD entity with no such requirement, skip to "Declarative alternative" below instead of doing steps 5–6 by hand.
 
 1. **Domain** — entity (`AggregateRoot`/`DomainEntity`), owned types, `DomainSchemas` constant, sequence name (if used), domain service interface (if needed). `PurchaseOrder` raises its own creation event by calling `AddEvent(new PurchaseOrderCreatedEvent(...))` directly inside the constructor — no attribute involved.
 2. **Infra mapper** — `internal sealed : DefaultEntityTypeConfiguration<T>`, `base.Configure(builder)` first, indexes, lengths, `ToTable("...", DomainSchemas.X)` (see `PurchaseOrderConfigs`).
@@ -41,12 +41,12 @@ This is the hand-written path — follow it when the plan calls for idempotent w
 
 ## Declarative alternative — faster path for plain CRUD (`Product`)
 
-For an entity with no business rule beyond DataAnnotations, skip steps 2–6's AppServices/Api work almost entirely:
+For a plain CRUD entity, skip steps 2–6's AppServices/Api work almost entirely (a business rule is still allowed here — write it as a FluentValidation validator against the generated request):
 
 - `[RaisesEvent(EventOperations.Created, Include=[...])]` / `[RaisesEvent(EventOperations.Updated, nameof(Prop))]` at the class level instead of a hand-written event + `AddEvent(...)` call. Naming composes as `<Entity><NarrowingProps><Operation>Event` — e.g. `[RaisesEvent(EventOperations.Updated, nameof(Price))]` on `Product` generates `ProductPriceUpdatedEvent`, not `ProductUpdatedEvent`. Verify the composed name against the compiled assembly before wiring a consumer to it.
 - `[CrudCreate]` on the constructor and `[CrudUpdate]` on a mutation method — `DKNet.SlimBus.Generators` then generates the request record, handler, and route registration for you (namespace `Minimal.AppServices.Crud`, not committed — inspect `obj/Generated/DKNet.SlimBus.Generators/` after a build).
 - `[GenerateDto(typeof(Entity))] public sealed partial record <Entity>Dto;` — one line — instead of a hand-written DTO. Generates every audited property by default; use `Exclude`/`Include` to narrow.
-- The endpoint becomes a single `group.Map<Entity>Crud()` call (see `ProductV1Endpoint`, 9 lines total) instead of five hand-written `Map*` calls.
+- The endpoint becomes one `group.Map<Entity>Crud(o => …)` call instead of five hand-written `Map*` calls, with any route the generator cannot express excluded by name and hand-mapped below it (see `ProductV1Endpoint`).
 - **Validation-gap caveat — do not skip this:** a `[Range]`/`[Required]` on a `[CrudCreate]`/`[CrudUpdate]` parameter *is* forwarded onto the generated request property, but it is **never enforced** under this template's endpoint-registration convention — the .NET 10 validation source generator only sees literal `Map*(string, Delegate)` calls, and the generated CRUD route goes through `DKNet.AspCore.Extensions`'s generic `MapPost<TRequest,TDto>` wrapper instead. Confirmed live: `POST /v1/products` with a negative price returns `201`, not `400`. Pick this path only when that gap is acceptable, or when you plan to enforce the rule some other way. Also: `[FromClaim]` can never reach a generated request (the generator forwards only DataAnnotations attributes), so acting-user attribution goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead — wired once in `Minimal.Api/Configs/ServiceConfigs.cs`, not per-entity.
 
 ## Build/verify gates

@@ -80,6 +80,18 @@ public sealed class ProductListSteps(HttpClient client, ScenarioState state)
         doc.RootElement.GetProperty(field).GetRawText().ShouldBe(expected);
     }
 
+    [Then(@"the response names the unsupported field ""(.*)""")]
+    public void ThenTheResponseNamesTheUnsupportedField(string field)
+    {
+        // The generic list route answers an unusable filter/order field via Results.Problem(error, 400) —
+        // ProblemDetails' "detail" carries the field name, not an "errors" dictionary (that shape is
+        // FluentValidation's, a different refusal path this route never goes through).
+        state.ResponseBody.ShouldNotBeNullOrEmpty();
+        using var doc = JsonDocument.Parse(state.ResponseBody!);
+        doc.RootElement.TryGetProperty("detail", out var detail).ShouldBeTrue();
+        detail.GetString()!.Contains(field, StringComparison.OrdinalIgnoreCase).ShouldBeTrue();
+    }
+
     #endregion
 
     private List<string> ItemNames()

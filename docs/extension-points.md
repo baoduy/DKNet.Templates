@@ -157,27 +157,48 @@ An entity carrying `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` plus a `[Generat
 requests, handlers and routes emitted by `DKNet.SlimBus.Generators`. Full mechanics:
 [`crud-attributes.md`](crud-attributes.md). Two seams are worth knowing here.
 
-**Excluding an operation.** The generated `Map<Entity>Crud()` takes an optional
-`Action<CrudMapOptions>`. It is the only knob on the generated method:
+**Dropping and configuring routes.** The generated `Map<Entity>Crud()` takes an optional
+`Action<CrudMapOptions>`, the one knob on the generated method. It drops routes and applies settings
+to the routes that stay:
 
 ```csharp
 public void Map(RouteGroupBuilder group)
 {
-    group.MapProductCrud(o => o.Exclude(CrudOp.Delete));   // hand-map delete yourself instead
-    group.MapDelete("{id:guid}", /* your own pre-delete rule */);
+    group.MapProductCrud(o => o
+        .Exclude("Discontinue")                                                   // drop that one action
+        .Configure(CrudOp.Update, b => b.RequireAuthorization("products.write"))); // every generated PUT
+    group.MapPut("{id:guid}/discontinue", /* writes two aggregates in one transaction */);
 }
 ```
 
-`CrudOp` has six members — `GetById`, `GetList`, `Create`, `Update`, `Delete`, `Action`. `Update`
-and `Action` are all-or-nothing: there is no per-method exclusion. Nothing is excluded by default.
-The template's own `ProductV1Endpoint` passes no options, and
-`Minimal.App.Tests/Architecture/SampleInvariantTests.cs` pins that — change the sample and that
-test tells you.
+`Exclude` has two overloads — `params CrudOp[]` (`GetById`, `GetList`, `Create`, `Update`, `Delete`,
+`Action`) and `params string[]` route names — so an `Update` or an `Action` can be dropped one
+member at a time, not only as a whole kind. `Configure` mirrors that pair, attaching any
+`RouteHandlerBuilder` setting to an operation kind or to one named route. A route's name is
+`GetById`, `GetList`, `Create` or `Delete`, or the verbatim C# member name of a
+`[CrudUpdate]`/`[CrudAction]` member; an unknown name throws `ArgumentException` at start-up. Full
+rules: [`crud-attributes.md`](crud-attributes.md#the-four-attributes).
+
+Nothing is excluded by default. The template's own `ProductV1Endpoint` is the composite shape this
+seam exists for — `MapProductCrud(o => …)` first, carrying the per-route scopes and one
+`Exclude("Discontinue")`, then two hand-written business routes below it.
+`Minimal.App.Tests/Architecture/SampleInvariantTests.cs` pins that sample's shape — change it and
+that test tells you.
 
 **Narrowing the response.** Filter, search and order on the generated list route resolve against
 the DTO, never the entity, so `[GenerateDto(..., Exclude = [...])]` is the query-surface control as
 well as the response-shape control. See
 [`generic-list-endpoint.md`](generic-list-endpoint.md#the-dto-is-the-boundary).
+
+**Adding a response value the convention cannot produce.** `[GenerateDto]` emits a `partial record`,
+so a value it cannot derive — anything computed from more than one column — can be hand-written onto
+the DTO and mapped by a Mapster `IRegister`. `ForType` merges onto the convention's config instead of
+replacing it, and `config.Scan` in `Minimal.AppServices/Extensions/MapsToExtensions.cs:34-37`
+discovers the register with no per-DTO wiring. The customisation stays a response-mapping concern:
+no generated route, request or handler is written or dropped for it, and the added property is
+response-only, so the list route refuses to filter or order on it with a `400`. Worked example —
+`ProductDto.GrossMargin`:
+[automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
 
 ## Persistence
 

@@ -1,15 +1,14 @@
-using System.Text.RegularExpressions;
-
 namespace DKNet.Templates.ScaffoldTests;
 
 /// <summary>
 /// DRK-1257 §7 — dknet-minimal scaffolds a solution the developer owns. Every scenario here shells
-/// out to the .NET SDK (<see cref="TemplateScaffoldFixture" />), which is itself a template-repository-only
-/// property, not something a generated service should carry — hence this class living under
-/// <c>Architecture/TemplateRepo/</c> (§3 row 1), the folder §3 row 2 excludes from scaffolded output.
-/// Every method starts with the same guard: if this copy is executing from inside an already-scaffolded
-/// solution (possible until row 2 lands), it is a no-op, mirroring
-/// <c>RepoHygieneTests.NoUserFile_ShouldBeTrackedByGit</c>'s "not a work tree" early return.
+/// out to the .NET SDK (<see cref="TemplateScaffoldFixture" />). This class lives in
+/// <c>tests/DKNet.Templates.ScaffoldTests/</c>, never shipped or packed. Every method starts with the
+/// same guard: if this copy is executing from inside an already-scaffolded solution, it is a no-op,
+/// mirroring <c>RepoHygieneTests.NoUserFile_ShouldBeTrackedByGit</c>'s "not a work tree" early return.
+/// DRK-1371 — the three template-repository probes that used to run here were retired: their subjects
+/// (<see cref="TemplateRepositoryAssertions" />, <see cref="PackageArchitectureTests" />) moved into this
+/// same assembly and now run directly as part of the solution's own test run.
 /// </summary>
 public sealed class ScaffoldingTests(TemplateScaffoldFixture fixture) : IClassFixture<TemplateScaffoldFixture>
 {
@@ -20,8 +19,6 @@ public sealed class ScaffoldingTests(TemplateScaffoldFixture fixture) : IClassFi
     /// like any other.
     /// </summary>
     private const string ExcludingIntegration = "FullyQualifiedName!~Integration";
-
-    private static string SrcDir => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
 
     #region @existing / @new — scaffold, build, run the filtered suite
 
@@ -123,90 +120,4 @@ public sealed class ScaffoldingTests(TemplateScaffoldFixture fixture) : IClassFi
     }
 
     #endregion
-
-    #region @new / @existing — the template-repository assertions, checked where the templater never ran
-
-    [Fact]
-    public void TemplateRepositoryAssertions_StillRunInTheTemplateRepository()
-    {
-        if (!TemplateScaffoldFixture.Available) return;
-
-        var testCsproj = Path.Combine(SrcDir, "ApiEndpoints", "Minimal.App.Tests", "Minimal.App.Tests.csproj");
-        const string filter =
-            "FullyQualifiedName~EveryDeclaredUserSecretsId_ShouldHaveAGeneratedGuidSymbol" +
-            "|FullyQualifiedName~TemplateJson_TenantIdAndApiAudienceSymbols_ShouldMatchAppSettingsPlaceholders" +
-            "|FullyQualifiedName~CiWorkflow_RunsOnPullRequestAndDevPush_SoTheAuditGatesThePipelineNotJustLocalBuilds";
-
-        var result = RunDotnetTest(testCsproj, filter);
-
-        result.ExitCode.ShouldBe(0, result.Output);
-        TotalRan(result.Output).ShouldBe(3, result.Output);
-    }
-
-    [Fact]
-    public void SensitiveDataLoggingGuard_KeepsItsTeethInTheTemplateRepository()
-    {
-        if (!TemplateScaffoldFixture.Available) return;
-
-        var path = Path.Combine(SrcDir, "ApiEndpoints", "Minimal.App.Tests", "Architecture", "PackageArchitectureTests.cs");
-        File.Exists(path).ShouldBeTrue();
-        var source = File.ReadAllText(path);
-
-        source.ShouldContain("DebugGatedConfiguration_ShouldHaveDebugConditional");
-        source.ShouldContain("\"#if DEBUG\"");
-        source.ShouldContain("\"EnableDetailedErrors()\"");
-        source.ShouldContain("\"EnableSensitiveDataLogging()\"");
-        source.ShouldContain("\"#endif\"");
-
-        var testCsproj = Path.Combine(SrcDir, "ApiEndpoints", "Minimal.App.Tests", "Minimal.App.Tests.csproj");
-        var result = RunDotnetTest(testCsproj, "FullyQualifiedName~DebugGatedConfiguration_ShouldHaveDebugConditional");
-
-        result.ExitCode.ShouldBe(0, result.Output);
-        TotalRan(result.Output).ShouldBe(1, result.Output);
-    }
-
-    [Fact]
-    public void SensitiveDataLoggingGuard_IsStillShippedToAGeneratedService()
-    {
-        if (!TemplateScaffoldFixture.Available) return;
-
-        var dir = fixture.ScaffoldDirFor(null);
-        var testSource = Directory.GetFiles(dir, "PackageArchitectureTests.cs", SearchOption.AllDirectories).Single();
-        File.ReadAllText(testSource).ShouldContain("DebugGatedConfiguration_ShouldHaveDebugConditional");
-
-        var testCsproj = Directory.GetFiles(dir, "*.App.Tests.csproj", SearchOption.AllDirectories).Single();
-        var result = RunDotnetTest(testCsproj, "FullyQualifiedName~DebugGatedConfiguration_ShouldHaveDebugConditional");
-
-        result.ExitCode.ShouldBe(0, result.Output);
-        TotalRan(result.Output).ShouldBe(1, result.Output);
-    }
-
-    #endregion
-
-    private static (int ExitCode, string Output) RunDotnetTest(string csproj, string filter)
-    {
-        var startInfo = new System.Diagnostics.ProcessStartInfo(
-            "dotnet", $"test \"{csproj}\" --filter \"{filter}\" -v quiet")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-
-        using var process = System.Diagnostics.Process.Start(startInfo)!;
-        // Read both streams concurrently — reading them sequentially deadlocks once either pipe's
-        // buffer fills while the process blocks writing to the other one.
-        var stdOutTask = process.StandardOutput.ReadToEndAsync();
-        var stdErrTask = process.StandardError.ReadToEndAsync();
-        process.WaitForExit();
-        Task.WaitAll(stdOutTask, stdErrTask);
-        return (process.ExitCode, stdOutTask.Result + stdErrTask.Result);
-    }
-
-    private static int TotalRan(string dotnetTestOutput)
-    {
-        var match = Regex.Match(dotnetTestOutput, @"Total:\s*(\d+)");
-        match.Success.ShouldBeTrue("expected a test-run summary line with a Total count: " + dotnetTestOutput);
-        return int.Parse(match.Groups[1].Value);
-    }
 }

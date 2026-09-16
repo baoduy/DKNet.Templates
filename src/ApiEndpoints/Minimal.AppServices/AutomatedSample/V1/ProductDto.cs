@@ -1,4 +1,5 @@
 using DKNet.EfCore.Abstractions.Entities;
+using DKNet.EfCore.Abstractions.Attributes;
 using DKNet.EfCore.DtoGenerator;
 using Minimal.Domains.Features.AutomatedSample.Entities;
 
@@ -18,4 +19,22 @@ namespace Minimal.AppServices.AutomatedSample.V1;
 /// </remarks>
 [GenerateDto(typeof(Product),
     Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
-public sealed partial record ProductDto;
+public sealed partial record ProductDto
+{
+    /// <summary>
+    /// Gets the product's gross margin (<see cref="Product.Price"/> minus
+    /// <see cref="Product.SupplierCostPrice"/>).
+    /// </summary>
+    /// <remarks>
+    /// The generator's name-matching convention only mirrors an entity property onto the DTO under the
+    /// same (or flexibly-matched) name — it cannot produce a value derived from two source properties. A
+    /// margin, a total, or any other computed-from-multiple-columns value falls in that class and needs a
+    /// hand-written Mapster rule (<see cref="ProductMappingRegister"/>) instead. Every other property on
+    /// this DTO — <c>Name</c>, <c>Price</c>, <c>SupplierCostPrice</c>, the audit columns — still comes from
+    /// the generator's convention untouched; only this one property is hand-mapped.
+    /// <see cref="SensitiveDataAttribute"/> "pricing" mirrors <see cref="Product.SupplierCostPrice"/>'s own
+    /// restriction, since the margin discloses the same confidential value.
+    /// </remarks>
+    [SensitiveData("pricing")]
+    public decimal? GrossMargin { get; init; }
+}

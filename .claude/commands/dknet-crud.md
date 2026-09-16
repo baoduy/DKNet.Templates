@@ -69,10 +69,18 @@ consumer.** If you find yourself writing a request, validator, or handler here, 
 - `[CrudAction("segment")]` on a domain-action method — publishes a route at the by-id path plus a
   segment, returning `200` + the entity DTO. The default verb is POST and the default segment is
   derived from the method name; `[CrudAction(Verb = CrudActionVerb.Put)]` overrides the verb.
-  `Product.Approve` (segment override) and `Product.Discontinue` (verb override) are the two shipped
-  exemplars. A generated action has **nowhere to hang a pre-condition** — re-running it on an entity
-  already in that state is a no-op `200`, not a `409`. If the action must reject an invalid state
-  transition, it belongs in Path 1.
+  `Product.Approve` (segment override) and `Product.AssignSupplierReference` (both overridden) are
+  the shipped exemplars. A generated action's handler on its own is a no-op `200` when the entity is
+  already in that state — but the request is body-bound and passes the group-level
+  `AddFluentValidationAutoValidation()` filter, so a **pre-condition belongs in a FluentValidation
+  validator** on the generated request, which can read stored data and refuse (the product sample
+  answers `409` that way on create and delete). A pre-condition is therefore never a reason to leave
+  the generated map — hand-write the route only when the operation writes **more than one
+  aggregate in one transaction**, which the generator cannot express. Then drop that one route by
+  name (`o.Exclude("<MethodName>")` on `MapProductCrud`) and hand-write it below the generated call.
+  `Product.Discontinue` is the shipped case: it also creates the product's named replacement in the
+  same transaction. The rest of the entity's routes stay generated; there is no need to fall back to
+  Path 1 for the whole feature.
 - `[GenerateDto(typeof(Entity))] public sealed partial record <Entity>Dto;` — one line, generates every audited property by default (`Exclude`/`Include` to narrow).
 
 ### What gets generated
@@ -84,7 +92,7 @@ consumer.** If you find yourself writing a request, validator, or handler here, 
 
 ### Constraints and the validation-gap caveat
 
-- Do NOT hand-write a request/validator/handler for a `[CrudCreate]`/`[CrudUpdate]` member — that defeats the point of the generator; if a business rule needs enforcing, drop that one operation to a hand-written route instead (Path 1) rather than mixing generated and hand-written CRUD on the same entity.
+- Do NOT hand-write a request or handler for a `[CrudCreate]`/`[CrudUpdate]` member while its route is still generated — that defeats the point of the generator. A **validator** is the exception and the supported shape: a FluentValidation validator for the generated request runs on the generated route through the group filter. Exclude a route by name (`CrudMapOptions.Exclude(string)`) and hand-write it below the `Map<Entity>Crud(...)` call only when the operation writes more than one aggregate in one transaction. Generated and hand-written routes coexisting in one endpoint is the shipped shape, not a smell — see `ProductV1Endpoint`.
 - **Validation gap, confirmed live**: a `[Range]`/`[Required]` on a `[CrudCreate]`/`[CrudUpdate]` parameter *is* forwarded onto the generated request property, but it is **never enforced** under this template's endpoint-registration convention — the .NET 10 validation source generator only recognizes literal `Map*(string, Delegate)` calls, and the generated route goes through `DKNet.AspCore.Extensions`'s generic `MapPost<TRequest,TDto>` wrapper instead. `POST /v1/products` with a negative price returns `201`, not `400`. Do not present a DataAnnotations attribute on a generated request as enforced without checking the endpoint's mapping style.
 - Acting-user attribution cannot use `[FromClaim]` on a generated request (the generator forwards only `System.ComponentModel.DataAnnotations` attributes) — it goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `Minimal.Api/Configs/ServiceConfigs.cs`, not per-entity.
 - No idempotency key support on the generated create route — see `/dknet-endpoint`'s "Alternative: generated CRUD route" section if the feature needs it.

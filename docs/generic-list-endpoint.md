@@ -22,7 +22,8 @@ Worked instance — the automated `Product` sample:
 // src/ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs
 public void Map(RouteGroupBuilder group)
 {
-    group.MapProductCrud();   // generated → group.MapGetList<Product, Guid, ProductDto>()
+    // generated → group.MapGetList<Product, Guid, ProductDto>(), with the scope attached per route
+    group.MapProductCrud(o => o.Configure(CrudOp.GetList, b => b.RequireAuthorization("products.read")));
 }
 ```
 
@@ -243,16 +244,31 @@ entity**. This is a deliberate security boundary: a column the DTO doesn't expos
 filtered on, or searched — no hidden column leaks through the query surface. Widen or narrow the query
 surface by changing what the DTO exposes (`[GenerateDto(... Exclude/Include ...)]`), not the endpoint.
 
-The `Product` sample DTO is generated as:
+The `Product` sample DTO is declared as:
 
 ```csharp
 [GenerateDto(typeof(Product),
     Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
-public sealed partial record ProductDto;
+public sealed partial record ProductDto
+{
+    [SensitiveData("pricing")]
+    public decimal? GrossMargin { get; init; }
+}
 ```
 
 `OwnedBy` is excluded, so it is unqueryable through this route by construction — you cannot filter or
 sort products by their ownership key over HTTP, even though the column exists on the entity.
+
+`GrossMargin` is the opposite case: a property written by hand onto the generated `partial record`
+and mapped from two columns (`Price` minus `SupplierCostPrice`) by a Mapster `IRegister`, so it is on
+the response but has no entity counterpart of its own. **A derived DTO field cannot be filtered,
+searched or ordered on**, and asking for one is refused rather than attempted —
+`?orderBy=grossMargin` and `?filter=grossMargin:GreaterThan:0` each answer `400` naming the field,
+alongside the other unsupported-field errors listed above
+(`Minimal.App.Tests/Integration/AutomatedSample/V1/ProductGrossMarginTests.cs:181-210`). The rest of
+the query surface is unaffected: filtering and searching on the convention-mapped fields behaves as
+before, with the margin reported on each item that survives. How the property is put on the response:
+[the automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
 
 ### Trap: a DTO field must map to a real column
 
@@ -261,6 +277,11 @@ queryable DTO field has to resolve to a *mapped* entity column. A DTO property w
 is computed or `[NotMapped]` makes the whole query fail to translate — a **500**, not a `400`, and it
 fires the moment such a field is touched (search touches *every* string field, so it breaks on the
 first search).
+
+This is the narrower case, and it is why it bites: the field has to be *declared* on the entity but
+not mapped to a column. A DTO field with no entity counterpart at all — `GrossMargin` above — is
+caught by the field check and refused with `400`. One that the entity declares and EF does not map
+passes that check and fails later, in the database provider.
 
 This is exactly why `LastModifiedBy` / `LastModifiedOn` are excluded above. On `AuditedEntity<TKey>`
 they are computed conveniences ("the updated value, or the created one if never modified"), not columns
