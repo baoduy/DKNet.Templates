@@ -6,11 +6,10 @@ and its tests.
 
 Two shipped samples ground every step below, built two different ways:
 
-- **`ManualSample`/`PurchaseOrder`** — every layer hand-written. This guide's primary
-  walkthrough; copy this when a feature needs attribute-declared validation that's actually
-  enforced, idempotency, an operation that writes more than one aggregate in one transaction, a
-  filtered query, or a response shape you control. A rule that merely has to *refuse* an operation
-  no longer forces this shape — see the validation note in §9.
+- **`ManualSample`/`PurchaseOrder`** — every layer hand-written. This guide's primary walkthrough.
+  Which of the two shapes to copy is stated once, in
+  [Manual vs. Automated — At a glance](samples/manual-vs-automated.md#at-a-glance-which-one-should-i-copy);
+  this guide does not keep a second list.
 - **`AutomatedSample`/`Product`** — entity/events/CRUD declared via attributes, everything the
   generators can produce is produced. Called out inline wherever it diverges from the manual
   walkthrough.
@@ -243,21 +242,28 @@ public sealed record PurchaseOrderDto
 
 Hand-writing the DTO means the response exposes exactly the fields you list — nothing more.
 Mapster's global config in `AppServices/AppSetup.cs` (`TypeAdapterConfig.GlobalSettings`) maps it
-to/from the entity by convention (matching property names); no per-feature mapping file to write.
+to/from the entity by convention (matching property names); no per-feature mapping file to write. A
+field the convention cannot fill — one derived from more than one property — takes a hand-written
+Mapster rule instead; that case is documented on
+[the automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
 
 **Automated alternative** (`Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`):
 
 ```csharp
 [GenerateDto(typeof(Product),
     Exclude = [nameof(Product.OwnedBy), nameof(AuditedEntity<Guid>.LastModifiedBy), nameof(AuditedEntity<Guid>.LastModifiedOn)])]
-public sealed partial record ProductDto;
+public sealed partial record ProductDto
+{
+    [SensitiveData("pricing")] public decimal? GrossMargin { get; init; } // hand-mapped, see link above
+}
 ```
 
-One declaration. `[GenerateDto]` (source generator, `DKNet.EfCore.DtoGenerator`) emits every
-audited property from the entity at compile time, so the default is "everything audited", not "only
-what I chose to expose". The sample narrows it with `Exclude`, leaving `Name`, `Price`,
-`IsDiscontinued`, `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn` and `Id` — verified against
-`obj/Generated/.../ProductDto.g.cs`. Decide explicitly what your entity should expose before
+One declaration plus, here, one hand-written property. `[GenerateDto]` (source generator,
+`DKNet.EfCore.DtoGenerator`) emits every audited property from the entity at compile time, so the
+default is "everything audited", not "only what I chose to expose". The sample narrows it with
+`Exclude`, leaving `Name`, `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`, `UpdatedBy`,
+`UpdatedOn` and `Id` — verified against `obj/Generated/.../ProductDto.g.cs` — and adds `GrossMargin`,
+which the convention cannot produce. Decide explicitly what your entity should expose before
 reaching for this shape; on a generated CRUD slice the DTO is also the filter/search/order surface,
 so it is a query boundary as well as a response shape.
 

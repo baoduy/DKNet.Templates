@@ -34,9 +34,15 @@ This sample declares behavior through attributes instead of writing it by hand. 
   hand-wired publish/subscribe.
 - Two supplier fields declared `[SensitiveData]` on the entity, withheld from callers who lack the
   role they name — with no second response model and no filtering code in any handler.
+- One response value the generator's convention cannot produce — `GrossMargin`
+  (`Price` minus `SupplierCostPrice`) — hand-mapped onto the generated DTO by a Mapster `IRegister`,
+  with no route, request or handler written for it. See
+  [A response value the convention cannot produce](#a-response-value-the-convention-cannot-produce).
 
-For the line-by-line trade-off against the manual sample, including the confirmed validation gap
-this sample carries, see [`docs/samples/manual-vs-automated.md`](../manual-vs-automated.md).
+Which of the two samples to copy for a feature of your own is stated once, in
+[Manual vs. Automated — At a glance](../manual-vs-automated.md#at-a-glance-which-one-should-i-copy);
+this page does not carry a second version of it. The same document holds the line-by-line trade-off,
+including the confirmed validation gap this sample carries.
 
 ## Routes
 
@@ -56,6 +62,53 @@ so a stock Development run enforces none of it.
 | `PUT /{id}/supplier-reference` | generated (`AssignSupplierReference`) | `products.supplier` | Domain action overriding both segment and verb — `[CrudAction("supplier-reference", Verb = CrudActionVerb.Put)] AssignSupplierReference(string supplierReferenceCode)`. Body `{ "supplierReferenceCode": "..." }`; `200` + `ProductDto`; 404 on unknown id. Assigns the `[SensitiveData]` property after creation — it is not a create-request field. The only route on this scope — a per-route setting, not a per-kind one. |
 | `PUT /{id}/discontinue` | hand-written | `products.discontinue` | Excluded from the generated map by name (`Exclude("Discontinue")`). Body `{ "replacementName", "replacementPrice" }`; discontinues the product and creates its replacement in one transaction. **Not** a repeatable no-op: a second call on an already-discontinued product is a domain failure. |
 | `GET /summary` | hand-written | `products.read` | `{ productCount, averagePrice }` across the caller's own products. A shape the generator has none for — hence hand-written. |
+
+## A response value the convention cannot produce
+
+`ProductDto` carries one property that is not mirrored from a `Product` column: **`GrossMargin`**
+(`Price` minus `SupplierCostPrice`). The DTO generator's name-matching convention mirrors an entity
+property onto the DTO under the same (or flexibly-matched) name, so a value derived from two columns
+is outside what it can emit (`Minimal.AppServices/AutomatedSample/V1/ProductDto.cs:29-34`). Three
+small pieces put it on the response, and none of them is a route:
+
+| Piece | Where | What it does |
+|---|---|---|
+| The property | `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs:38-39` | `[SensitiveData("pricing")] decimal? GrossMargin`, hand-written into the generated `partial record`. |
+| The mapping | `Minimal.AppServices/AutomatedSample/V1/ProductMappingRegister.cs:20-22` | A Mapster `IRegister`: `config.ForType<Product, ProductDto>().Map(d => d.GrossMargin, s => s.Price - s.SupplierCostPrice)`. `ForType` **merges** onto the config the convention already built for the pair; `NewConfig` would have replaced it, taking every convention-mapped property with it. |
+| The wiring | `Minimal.AppServices/Extensions/MapsToExtensions.cs:34-37` | `config.Scan(assembly)` registers every `IRegister` in the assembly, and runs **after** the convention loop so the merge survives — a second customisation needs no per-DTO wiring. |
+
+Every other value on the response — `Name`, `Price`, `SupplierCostPrice`, the audit columns — still
+comes from the convention untouched; exactly one property is mapped by hand. No generated route,
+request or handler was written or dropped for it, and two structure tests pin that: `ProductV1Endpoint`
+contains no reference to `GrossMargin`, and no `*GrossMargin*Request`/`*Handler` type exists
+(`Minimal.App.Tests/Architecture/ProductGrossMarginStructureTests.cs:12-36`). **Needing a response the
+convention cannot produce is not a reason to hand-write the route.**
+
+Two behaviours to plan for, both measured and both easy to assume the other way round:
+
+- **The role gate is on role membership, not on whether a value exists.** `GrossMargin` declares
+  `[SensitiveData("pricing")]`, mirroring `SupplierCostPrice`'s own restriction because the margin
+  discloses the same confidential number. A caller in the `pricing` role gets the property even when
+  no supplier cost price was ever disclosed — the key is present, holding an explicit JSON `null`
+  (`Minimal.App.Tests/Integration/AutomatedSample/V1/ProductGrossMarginTests.cs:107-123`). A caller
+  outside that role gets no `grossMargin` key at all, exactly as it gets no `supplierCostPrice`
+  (same file, `:129-142`). The gate's full decision table:
+  [`docs/api-pipeline.md`](../../api-pipeline.md#role-aware-sensitive-property-filtering).
+- **Ordering or filtering the list route by `grossMargin` answers `400`, by construction rather than
+  by luck.** The query surface requires the field on the stored record as well as on the response,
+  and `GrossMargin` exists only on the response — so the route refuses it as an unsupported field
+  instead of building a query that cannot translate
+  (`Minimal.App.Tests/Integration/AutomatedSample/V1/ProductGrossMarginTests.cs:181-210`;
+  `Minimal.App.BDDTests/Features/Products/ProductList.feature:142-153`). That a queryable DTO field
+  must resolve to a real entity column is the constraint documented in
+  [Generic List Endpoint](../../generic-list-endpoint.md#trap-a-dto-field-must-map-to-a-real-column).
+  The rest of the query surface is unaffected: `?filter=price:GreaterThan:100` and `?search=` behave
+  as before, with the margin reported on each surviving item (same test file, `:148-179`).
+
+To add a derived value of your own: write the property on the DTO's `partial record`, write an
+`IRegister` beside it that `ForType`-maps it, and stop — the scan wires it. Keep the mapping
+expression a plain property expression, so it stays EF-translatable where the list route projects it
+over `IQueryable<Product>`.
 
 ## Platform capabilities it carries
 
