@@ -10,15 +10,17 @@ namespace Minimal.Domains.Features.AutomatedSample.Entities;
 /// Represents a sellable product aggregate root.
 /// </summary>
 /// <remarks>
-/// Creation and price changes are declared via <see cref="RaisesEventAttribute"/> and raised automatically
-/// by the DKNet events hook on save — nothing here raises an event by hand. The <c>[CrudCreate]</c>
-/// constructor's parameter list becomes the generated create request's payload, so it deliberately carries
-/// no acting-user parameter — that would make the acting user caller-settable.
+/// Composite-first, not fully generated: creation and price changes are declared via
+/// <see cref="RaisesEventAttribute"/> and raised automatically by the DKNet events hook on save — nothing
+/// here raises an event by hand. The <c>[CrudCreate]</c> constructor's parameter list becomes the generated
+/// create request's payload, so it deliberately carries no acting-user parameter — that would make the
+/// acting user caller-settable.
 /// A <c>[CrudAction]</c> method publishes a POST at the by-id route plus a segment, returning 200 with the
 /// entity DTO. <see cref="Approve"/> overrides the segment (<c>approval</c>) while keeping the default POST
-/// verb; <see cref="Discontinue"/> keeps the default method-derived segment but overrides the verb to PUT;
-/// <see cref="AssignSupplierReference"/> overrides both the segment (<c>supplier-reference</c>) and the verb
-/// (PUT).
+/// verb; <see cref="AssignSupplierReference"/> overrides both the segment (<c>supplier-reference</c>) and
+/// the verb (PUT), under its own authorization scope. <see cref="Discontinue"/> keeps its
+/// <c>[CrudAction]</c> declaration so the generator still has a route to drop by name, but that generated
+/// route is excluded and replaced by a hand-written one — see <see cref="Discontinue"/>'s own remarks.
 /// Implements <see cref="IOwnedBy"/> so <c>DataOwnerAuthQuery</c>'s global read filter (row-level isolation)
 /// applies to it; <c>DataOwnerHook</c> stamps <see cref="OwnedBy"/> from the same ownership key as
 /// <c>CreatedBy</c> on insert.
@@ -103,8 +105,17 @@ public class Product : AggregateRoot, IOwnedBy
     public void Approve(string byUser) => SetUpdatedBy(byUser);
 
     /// <summary>
-    /// Discontinues the product. Idempotent — calling it again is a no-op.
+    /// Discontinues the product. Idempotent at this level — calling it again is a no-op here.
     /// </summary>
+    /// <remarks>
+    /// This method itself stays a plain <c>[CrudAction]</c> so the generator still emits a route for
+    /// <c>CrudMapOptions.Exclude(string[])</c> to drop by name — but that generated route is excluded and
+    /// replaced by a hand-written <c>PUT {id}/discontinue</c> (<c>DiscontinueProductCommand</c> in
+    /// <c>Minimal.AppServices</c>), because discontinuing a product now also creates its replacement in the
+    /// same transaction, and an operation that writes more than one aggregate in one transaction cannot be
+    /// generated. The hand-written command handler — not this method — is what refuses a second call
+    /// against an already-discontinued product.
+    /// </remarks>
     [CrudAction(Verb = CrudActionVerb.Put)]
     public void Discontinue() => IsDiscontinued = true;
 

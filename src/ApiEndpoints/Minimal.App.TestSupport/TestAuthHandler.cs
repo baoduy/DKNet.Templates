@@ -21,6 +21,16 @@ public sealed class TestAuthHandler(
     public const string CallerName = "test-authenticated-caller";
 
     /// <summary>
+    /// Request header carrying the caller's scope claim for one request — space- or comma-separated,
+    /// either way normalized to the space-separated form <c>HasScopeHandler</c> parses. Overrides
+    /// <see cref="DefaultScopes" /> when present (DRK-1386 row 19).
+    /// </summary>
+    public const string ScopesHeaderName = "X-Test-Scopes";
+
+    /// <summary>Every products.* scope — keeps every pre-existing auth-on test passing without this header.</summary>
+    public const string DefaultScopes = "products.read products.write products.supplier products.discontinue";
+
+    /// <summary>
     /// The claim <c>PrincipalProvider</c> reads as <c>ProfileId</c> — <c>DataOwnerHook</c> stamps
     /// <c>CreatedBy</c>/<c>UpdatedBy</c> from <c>GetOwnershipKey()</c> (i.e. this value's string form), not
     /// from <see cref="CallerName" />. A real token carries this as its <c>sub</c>/<c>oid</c> claim.
@@ -29,10 +39,15 @@ public sealed class TestAuthHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        var scopes = Request.Headers.TryGetValue(ScopesHeaderName, out var header) && !string.IsNullOrEmpty(header)
+            ? header.ToString().Replace(',', ' ')
+            : DefaultScopes;
+
         var identity = new ClaimsIdentity(
             [
                 new Claim(ClaimTypes.Name, CallerName),
-                new Claim(ClaimTypes.NameIdentifier, CallerProfileId.ToString())
+                new Claim(ClaimTypes.NameIdentifier, CallerProfileId.ToString()),
+                new Claim("scp", scopes)
             ],
             SchemeName);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);

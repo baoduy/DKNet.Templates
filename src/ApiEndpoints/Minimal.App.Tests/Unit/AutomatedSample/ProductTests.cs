@@ -82,18 +82,5 @@ public class ProductTests
         product.IsDiscontinued.ShouldBeTrue();
     }
 
-    [Fact]
-    public void Discontinue_CalledTwice_ShouldStayDiscontinued_NotThrow()
-    {
-        // docs/samples/manual-vs-automated.md #4: a generated action has nowhere to hang a pre-condition,
-        // so repeating Discontinue is a no-op, never a rejection.
-        var product = new Product("Widget", 9.99m);
-
-        product.Discontinue();
-        product.Discontinue();
-
-        product.IsDiscontinued.ShouldBeTrue();
-    }
-
     #endregion
 }
