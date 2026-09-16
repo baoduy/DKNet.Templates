@@ -70,18 +70,28 @@ public sealed class CommonSteps(ScenarioState state)
     [Then("the response body carries a code naming the rule that refused")]
     public void ThenTheResponseBodyCarriesACodeNamingTheRuleThatRefused()
     {
+        // A "code" that's merely non-empty passes even when every refusal shares one generic value —
+        // it must carry the "precondition." prefix (R... one shared error-response setting) plus a rule
+        // segment after it, not just the prefix alone.
         state.ResponseBody.ShouldNotBeNullOrEmpty();
         using var doc = JsonDocument.Parse(state.ResponseBody!);
         doc.RootElement.TryGetProperty("code", out var code).ShouldBeTrue();
-        code.GetString().ShouldNotBeNullOrEmpty();
+        var value = code.GetString();
+        value.ShouldNotBeNullOrEmpty();
+        value!.ShouldStartWith("precondition.");
+        value.Length.ShouldBeGreaterThan("precondition.".Length);
     }
 
     [Then("the response names the field it refused")]
     public void ThenTheResponseNamesTheFieldItRefused()
     {
+        // This scenario's only refusal is ListPurchaseOrdersQueryValidator's PageIndex rule — assert the
+        // errors object names that field, not merely that it names some field.
         state.ResponseBody.ShouldNotBeNullOrEmpty();
         using var doc = JsonDocument.Parse(state.ResponseBody!);
         doc.RootElement.TryGetProperty("errors", out var errors).ShouldBeTrue();
-        errors.EnumerateObject().Any().ShouldBeTrue();
+        errors.EnumerateObject()
+            .Any(p => p.Name.Contains("pageindex", StringComparison.OrdinalIgnoreCase))
+            .ShouldBeTrue();
     }
 }

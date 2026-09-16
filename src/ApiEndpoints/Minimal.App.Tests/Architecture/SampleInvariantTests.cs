@@ -243,10 +243,15 @@ public class SampleInvariantTests
             "only capability",
             "no per-method exclusion",
             "all-or-nothing",
-            // DRK-1410: both phrases below claimed a generated route (delete, or a domain action) has
-            // nowhere to attach a precondition — the two new validators prove otherwise.
+            // DRK-1410: every phrase below claimed a generated route — create, delete, or a domain
+            // action — has nowhere to attach a precondition. All four are wrong for the same reason: a
+            // generated action's request has always been body-bound and reachable by the group-level
+            // FluentValidation filter (Minimal.Api/Program.cs:50); only delete needed the package's new
+            // request binding. The two new validators (create, delete) prove the claim false everywhere.
             "nowhere to hang a",
-            "no place to fail a pre-condition first"
+            "no place to fail a pre-condition first",
+            "has nowhere to say no",
+            "A business rule that conditionally blocks an operation"
         ];
 
         var scannedFiles = new[] { "docs", ".claude", ".github" }
