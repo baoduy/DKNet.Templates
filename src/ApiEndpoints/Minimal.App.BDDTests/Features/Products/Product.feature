@@ -40,7 +40,11 @@ Feature: Product CRUD lifecycle (automated sample)
     And the product response has price 30.00
 
   Scenario: Deleting a product removes it
+    # DRK-1410: a product must be discontinued before it can be deleted — this scenario now discontinues
+    # first, so it keeps proving the generic delete route while staying compatible with that new rule.
     Given a product exists named "Doohickey" with price 5.00
+    When I discontinue that product and name "Doohickey Replacement" priced 6.00 as its replacement
+    Then the response status is 200
     When I delete that product
     # The generic MapDeleteById<TEntity,TKey,TRequest>() library route returns 204 (No Content) — unlike the manual
     # sample's hand-written delete route, which returns 200 with a body (see PurchaseOrder.feature).
@@ -69,3 +73,87 @@ Feature: Product CRUD lifecycle (automated sample)
     Then the response status is 200
     When I discontinue that product and name "Retiring Twice III" priced 10.00 as its replacement
     Then the response status is 400
+
+  # DRK-1410 §5: preconditions read stored product data before a generated route accepts a request —
+  # a create refuses a name already taken, a delete refuses a product still for sale — both answered 409
+  # through the one shared error-response body.
+
+  @integration
+  Scenario: A product with a free name is created
+    Given catalogue-ops holds the scope "products.write"
+    When catalogue-ops creates the product "Widget" priced 9.99 SGD
+    Then the response is 201
+    And the product is named "Widget"
+
+  @integration
+  Scenario: A product name that is already taken is refused
+    Given catalogue-ops holds the scope "products.write"
+    And the product "Widget" priced 9.99 SGD exists
+    When catalogue-ops creates the product "Widget" priced 12.00 SGD
+    Then the response is 409
+    And exactly 1 product is named "Widget"
+
+  @integration
+  Scenario Outline: Every refusal carries the service's standard error body
+    Given catalogue-ops holds the scope "products.write"
+    And the product "Widget" priced 9.99 SGD exists
+    And the product "Gadget" priced 5.00 SGD is for sale
+    When catalogue-ops <refused request>
+    Then the response body carries a trace identifier
+    And the response body carries a code naming the rule that refused
+
+    Examples:
+      | refused request                               |
+      | creates the product "Widget" priced 12.00 SGD |
+      | deletes "Gadget"                               |
+
+  @integration
+  Scenario: A discontinued product is deleted
+    Given catalogue-ops holds the scope "products.write"
+    And the product "Widget" priced 9.99 SGD is discontinued
+    When catalogue-ops deletes "Widget"
+    Then the response is 204
+    And "Widget" is gone
+
+  @integration
+  Scenario: A product still for sale is not deleted
+    Given catalogue-ops holds the scope "products.write"
+    And the product "Gadget" priced 5.00 SGD is for sale
+    When catalogue-ops deletes "Gadget"
+    Then the response is 409
+    And "Gadget" still exists
+
+  @integration
+  Scenario Outline: The delete rule refuses nothing else
+    Given catalogue-ops holds every scope the operation needs
+    And the product "Gadget" priced 5.00 SGD is for sale
+    And the purchase order "PO-1001" for "Contoso" exists
+    When catalogue-ops calls <operation>
+    Then the response is <status>
+
+    Examples:
+      | operation                           | status |
+      | reading "Gadget" by id               | 200    |
+      | approving "Gadget"                   | 200    |
+      | deleting the purchase order PO-1001  | 200    |
+
+  @integration
+  Scenario: A failed command still answers as it does today
+    Given catalogue-ops holds the scope "products.discontinue"
+    And the product "Widget" priced 9.99 SGD is discontinued
+    When catalogue-ops discontinues "Widget" and names "Widget III" priced 14.00 SGD as its replacement
+    Then the response is 400
+    And the response body carries a trace identifier
+
+  @integration
+  Scenario: A request refused on its own values keeps its status
+    Given catalogue-ops is signed in
+    When catalogue-ops lists purchase orders with page index -1
+    Then the response is 400
+    And the response names the field it refused
+
+  @integration
+  Scenario: An attribute-declared rule is still not evaluated
+    Given catalogue-ops holds the scope "products.write"
+    When catalogue-ops creates the product "Broken Widget" priced -1.00 SGD
+    Then the response is 201
