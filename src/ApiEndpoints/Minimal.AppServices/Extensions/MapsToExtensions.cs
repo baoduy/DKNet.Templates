@@ -30,6 +30,11 @@ internal static class MapsToExtensions
                 config.NewConfig(generateDtoAtt.EntityType, type);
             }
         }
+
+        // Must run after the loop above: an IRegister customisation (e.g. ProductMappingRegister)
+        // merges onto a NewConfig'd pair via ForType — running it first would have its merge wiped out
+        // by the convention's NewConfig call.
+        config.Scan(typeof(MapsToExtensions).Assembly);
     }
 
     #endregion
