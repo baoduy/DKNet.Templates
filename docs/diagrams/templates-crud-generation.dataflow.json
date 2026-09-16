@@ -145,7 +145,7 @@
         "The IEntityTypeConfiguration mapping and any seed data",
         "Every event consumer \u2014 RaisesEvent only declares and raises",
         "Idempotency: no generated route calls RequiredIdempotentKey()",
-        "Enforced validation: forwarded DataAnnotations are never evaluated on a generated route"
+        "The FluentValidation validator \u2014 it runs on a generated route; forwarded DataAnnotations never do"
       ]
     }
   ]

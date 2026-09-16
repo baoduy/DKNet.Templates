@@ -1,10 +1,28 @@
 using Microsoft.EntityFrameworkCore;
+using Minimal.Domains.Features.AutomatedSample.Entities;
 using Minimal.Infra.Contexts;
 
 namespace Minimal.App.Tests.Architecture;
 
 public class MigrationSchemaTests
 {
+    [Fact]
+    public void EfCoreModel_ShouldDeclareProductNameUnique()
+    {
+        // DRK-1410: the uniqueness rule is a check backed by a real guarantee — the database constraint,
+        // not the validator, is what actually keeps a product name unique.
+        using var dbContext = new DbContextFactory().CreateDbContext([]);
+        var entityType = dbContext.Model.FindEntityType(typeof(Product));
+        entityType.ShouldNotBeNull();
+
+        var nameIndex = entityType!.GetIndexes()
+            .SingleOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == nameof(Product.Name));
+
+        nameIndex.ShouldNotBeNull("Product.Name must have an index declared in the EF Core model.");
+        nameIndex!.IsUnique.ShouldBeTrue("Product.Name's index must be unique.");
+    }
+
+
     [Fact]
     public void Migration_ShouldCreate_SeqSchema()
     {

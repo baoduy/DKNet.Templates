@@ -242,7 +242,16 @@ public class SampleInvariantTests
             "passes no options",
             "only capability",
             "no per-method exclusion",
-            "all-or-nothing"
+            "all-or-nothing",
+            // DRK-1410: every phrase below claimed a generated route — create, delete, or a domain
+            // action — has nowhere to attach a precondition. All four are wrong for the same reason: a
+            // generated action's request has always been body-bound and reachable by the group-level
+            // FluentValidation filter (Minimal.Api/Program.cs:50); only delete needed the package's new
+            // request binding. The two new validators (create, delete) prove the claim false everywhere.
+            "nowhere to hang a",
+            "no place to fail a pre-condition first",
+            "has nowhere to say no",
+            "A business rule that conditionally blocks an operation"
         ];
 
         var scannedFiles = new[] { "docs", ".claude", ".github" }
@@ -260,6 +269,51 @@ public class SampleInvariantTests
 
         offenders.ShouldBeEmpty(
             $"Found a document still describing the old product-sample shape: {string.Join(", ", offenders)}");
+    }
+
+    [Fact]
+    public void Docs_ShouldStateWhatTheUniquenessCheckIsNot()
+    {
+        // DRK-1410: the uniqueness rule is a check, not a guarantee — two callers can pass it at the same
+        // moment — so the sample must name the database constraint as what actually keeps the name unique,
+        // and must keep stating that an attribute-declared rule on a generated request is not evaluated.
+        var repoRoot = Path.GetFullPath(Path.Combine(SrcDir, ".."));
+        var readmePath = Path.Combine(repoRoot, "docs", "samples", "automated-products", "README.md");
+
+        // The template's content root is `src/` — `docs/` never reaches a scaffolded consumer solution
+        // (see CLAUDE.md's "AGENTS.md ships to consumers" section), so this guard has nothing to check
+        // there. Mirrors Docs_ShouldNotClaimTheOldShape's Directory.Exists/File.Exists guards above.
+        if (!File.Exists(readmePath))
+        {
+            return;
+        }
+
+        var content = File.ReadAllText(readmePath);
+
+        content.Contains("constraint", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
+            "the sample must name the database constraint as what keeps a product name unique.");
+        content.Contains("unique", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
+            "the sample must state that the product name is unique.");
+        content.Contains("never evaluated", StringComparison.Ordinal).ShouldBeTrue(
+            "the sample must keep stating that an attribute-declared rule on a generated request is not evaluated.");
+    }
+
+    [Fact]
+    public void CreateAndDeleteProduct_ShouldStayGenerated()
+    {
+        // DRK-1410: both preconditions attach through validators only — creating and deleting a product
+        // must stay fully generated, with no hand-written request or handler for either operation. Matches
+        // a declaration (the `record`/`class` keyword immediately before the type name), never a bare
+        // occurrence — otherwise the validators the change set adds (rows 3-4: CreateProductRequestValidator,
+        // DeleteProductRequestValidator) would close this gate on themselves.
+        var declarationPattern = new Regex(@"\b(record|class)\s+(Create|Delete)ProductRequest\b|\b(record|class)\s+(Create|Delete)ProductHandler\b");
+
+        var offenders = SourceFilesUnder("AutomatedSample")
+            .Where(f => declarationPattern.IsMatch(File.ReadAllText(f)))
+            .ToArray();
+
+        offenders.ShouldBeEmpty(
+            $"Creating and deleting a product must stay generated — found a hand-written declaration in: {string.Join(", ", offenders)}");
     }
 
     [Fact]

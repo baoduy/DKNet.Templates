@@ -518,7 +518,10 @@ global using Minimal.Domains.Features.{Feature}.Entities;
 
 For an entity like `Product` that declares `[CrudCreate]` on its constructor and `[CrudUpdate]` on a
 mutation method, **this entire layer is generated, not hand-written** — there is no `Actions/`
-folder, no validator, no handler class in source for create/update at all. The
+folder and no handler class in source for create/update at all. A *validator* is the one piece you
+may still write by hand: an `AbstractValidator<CreateProductRequest>` is picked up by assembly
+scanning and run by the group-level filter before the generated handler, which is how the product
+sample refuses a name already taken and a delete of a product still for sale. The
 `DKNet.SlimBus.Generators` analyzer produces `CreateProductRequest`/`ChangePriceProductRequest`
 (requests) and `CreateProductHandler`/`ChangePriceProductHandler` (handlers) in the
 `Minimal.AppServices.Crud` namespace, inspectable only after a build (not committed to source).
@@ -531,8 +534,9 @@ spec, or handler class for those regardless of generator use.
 the generated request property but is **not enforced** — confirmed live, `POST /v1/products` with a
 negative price returns `201`. See `docs/samples/manual-vs-automated.md` for the full explanation
 (the .NET 10 validation source generator can't see through the generic `Map*<TRequest,TDto>` wrapper
-these routes are registered through). Pick the hand-written shape above whenever a request needs
-validation that must actually run.
+these routes are registered through). Pick the hand-written shape above whenever an
+attribute-declared rule must actually run — for any other rule, write a FluentValidation validator
+against the generated request and keep the generated route.
 
 ---
 

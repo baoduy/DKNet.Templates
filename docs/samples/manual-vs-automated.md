@@ -24,10 +24,18 @@ exchange.
 maps to a trade-off explained later in this document:
 
 - Idempotent writes (safe client retries)
-- Request validation that is actually enforced
-- A business rule that conditionally blocks an operation (e.g. "cannot cancel twice")
+- Attribute-declared (`DataAnnotations`) validation that is actually enforced
+- An operation that writes more than one aggregate in one transaction
 - A filtered or customized list query
 - A response DTO that deliberately hides fields
+
+A rule that conditionally refuses an operation is **not** on that list. A FluentValidation validator
+written against a *generated* request runs on the generated route — the group-level
+`AddFluentValidationAutoValidation()` filter (`Minimal.Api/Program.cs:50`) applies to every route in
+the group, generated or hand-mapped — so the rule can read stored data and refuse before the handler
+runs. The automated sample does exactly that twice: `POST /v1/products` refuses a name already taken,
+and `DELETE /v1/products/{id}` refuses a product that is still for sale. Both answer `409`, and
+neither has a hand-written route, request or handler. See §4 below.
 
 **Copy the automated sample (`Product`)** for a genuinely plain CRUD entity — one where
 DataAnnotations can express every validation rule you care about (or you don't need them enforced),
@@ -39,7 +47,9 @@ That generated shape is not limited to plain create/update/list/delete: **named 
 with it.** `[CrudAction]` publishes a business operation — approve, assign a supplier reference — at
 the entity's by-id route plus a segment, with the verb and segment under your control, and no
 hand-written request, handler or route registration. The trade-off is the one in the first list
-above: a generated action still has nowhere to hang a pre-condition.
+above: an attribute-declared rule on a generated action's request is still never evaluated. Needing to
+*refuse* an action is not a trade-off any more — write the rule as a FluentValidation validator against
+the generated request, the way this sample's create and delete rules are written.
 
 **The choice is not either/or, and the automated sample no longer pretends it is.** `CrudMapOptions`
 lets one endpoint drop a single generated route by name and hand-write that one route below the
@@ -190,16 +200,19 @@ negative price should be rejected.
 through the `Microsoft.Extensions.Validation.ValidationsGenerator` source generator, which is
 gated on `<EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>` (not set here).
 Even with that flag forced on, the generator only recognizes **literal** `Map*(string, Delegate)`
-calls in the compiling project's own source. The manual sample writes exactly those literal calls,
-so its FluentValidation rules run. The automated sample maps through
+calls in the compiling project's own source. The manual sample writes exactly those literal calls.
+The automated sample maps through
 `DKNet.AspCore.Extensions`'s generic `MapPost<TRequest,TResponse>` — compiled inside a precompiled
 package the source generator cannot see through.
 
-**Your options:** fixing this means either hand-writing a validator for a generator-owned request
-(defeating the point) or changing `DKNet.AspCore.Extensions` itself (a different repo) — both out
-of scope here. Pick the automated path only where the DataAnnotations rules you can express are
-genuinely optional, or accept that you must drop to a hand-mapped route the moment validation
-matters.
+**The gap is the attribute, not validation itself.** FluentValidation reaches a generated route by a
+different road: `UseEndpointConfigs` applies `AddFluentValidationAutoValidation()` to every endpoint
+group (`Minimal.Api/Program.cs:50`), so a validator registered for a generated request type is run
+before the generated handler, with no literal `Map*` call needed. Writing one is the supported fix and
+the sample ships two of them — see §4. What remains true, and has no fix short of changing
+`DKNet.AspCore.Extensions` itself (a different repo): a `DataAnnotations` attribute forwarded onto a
+generated request is never evaluated, so `price: -1` still returns `201`. Express a rule you actually
+need enforced as a validator, not as an attribute.
 
 ### 2. No idempotency on POST
 
@@ -226,7 +239,7 @@ a field whose entity counterpart is computed rather than mapped turns every `?se
 That second reason, not tidiness, is why `LastModifiedBy`/`LastModifiedOn` are excluded — see
 [Generic List Endpoint](../generic-list-endpoint.md#trap-a-dto-field-must-map-to-a-real-column).
 
-### 4. No filtered list, no custom get-by-id, no pre-delete business rule
+### 4. No filtered list, no custom get-by-id — and what a pre-condition actually costs
 
 The generic routes take what the generator can express, and no more. Where that is not enough, the
 fix is per-route rather than per-entity: `CrudMapOptions.Exclude(string)` drops the one route by
@@ -243,18 +256,24 @@ name and you hand-write it below the generated call — which is what `ProductV1
   `ListPurchaseOrdersQuery` and its `CustomerName` filter).
 - **Get-by-id** has no query object to extend. A future "also check tenant ownership" or "expand a
   related entity" forces that one route back to hand-written.
-- **Delete** either deletes or returns 404; there is nowhere to hang a "can this row be deleted?"
-  check. The manual sample's `Cancel` demonstrates exactly this — rejecting an already-cancelled
-  order with a domain-specific 400.
-- **Domain actions** inherit the same gap. A generated `[CrudAction]` handler loads the row, calls
-  the method and saves; there is no place to fail a pre-condition first. This sample's `Discontinue`
+- **Delete** either deletes or returns 404 *on its own* — but the generated `DeleteProductRequest`
+  goes through the group's FluentValidation filter first, so a "can this row be deleted?" check is a
+  validator, not a hand-written route. `DeleteProductRequestValidator` is that check here: a
+  `MustAsync` rule reads the stored product through `IRepositorySpec` and refuses one that is still
+  for sale with `409`, so a product must be discontinued before it can be deleted. What the generic
+  route still cannot express is a *handler-side* domain failure, which is what the manual sample's
+  `Cancel` demonstrates — rejecting an already-cancelled order with a domain-specific 400.
+- **Domain actions** are reached by the same filter. A generated `[CrudAction]` handler loads the
+  row, calls the method and saves — a rule that must refuse first belongs in a validator on the
+  generated request, exactly as create and delete do it here. This sample's `Discontinue`
   left the generated map for a different and stricter reason — it writes more than one aggregate in
   one transaction, which the generator cannot express at all. The hand-written
   `PUT /v1/products/{id}/discontinue` takes `{ replacementName, replacementPrice }`, discontinues
   the product and creates its replacement in one transaction, and, being hand-written, also gets to
   fail a second call as a domain failure instead of repeating a `200`.
-  Everything else the generated path gives up — unenforced validation, no idempotency, the
-  every-audited-field DTO — applies to the actions that stay generated unchanged.
+  Everything else the generated path gives up — attribute-declared validation that is never
+  evaluated, no idempotency, the every-audited-field DTO — applies to the actions that stay generated
+  unchanged.
 
 ### 5. Event names follow a convention, and requests can't carry extra fields
 

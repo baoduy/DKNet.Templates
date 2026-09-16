@@ -344,6 +344,14 @@ scans the `AppServices` assembly for `AbstractValidator<T>` implementations — 
 validation never reaches a handler. It short-circuits to a `400` with FluentValidation's
 problem-details shape, with no handler code involved.
 
+The filter is attached per endpoint group — `UseEndpointConfigs` calls
+`group.AddFluentValidationAutoValidation()` on every group (`Minimal.Api/Program.cs:50`) — so it runs
+on **generated** routes too, not only hand-mapped ones. A validator written against a generated
+request (`CreateProductRequestValidator`, `DeleteProductRequestValidator`) therefore runs before the
+generated handler and may read stored data through `IRepositorySpec` to refuse; both of those answer
+`409`. This is unrelated to the forwarded-DataAnnotations gap described in
+[`docs/samples/manual-vs-automated.md`](samples/manual-vs-automated.md).
+
 ## Idempotency on POST
 
 Idempotency is opt-in per route, not automatic for every POST.

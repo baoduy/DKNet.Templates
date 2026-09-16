@@ -128,9 +128,10 @@ public sealed class ProductScopeAuthorizationTests(AuthOnApiFixture fixture) : I
                 await client.SendAsync(WithScope(
                     HttpMethod.Post, $"/v1/products/{productId}/approval", scope, new { byUser = "alice" })),
                 HttpStatusCode.OK),
-            "delete" => (
-                await client.SendAsync(WithScope(HttpMethod.Delete, $"/v1/products/{productId}", scope)),
-                HttpStatusCode.NoContent),
+            // DRK-1410: delete now refuses a product still for sale — discontinue it first (all scopes, so
+            // this setup call is never what the scope under test is proving) so the route under test still
+            // exercises the "kept route, unchanged for its callers" claim on its success path.
+            "delete" => await DeleteAfterDiscontinuingAsync(client, scope, productId),
             "supplier reference assignment" => (
                 await client.SendAsync(WithScope(
                     HttpMethod.Put, $"/v1/products/{productId}/supplier-reference", scope,
@@ -138,6 +139,20 @@ public sealed class ProductScopeAuthorizationTests(AuthOnApiFixture fixture) : I
                 HttpStatusCode.OK),
             _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown kept-route operation.")
         };
+
+    private static async Task<(HttpResponseMessage Response, HttpStatusCode ExpectedStatus)> DeleteAfterDiscontinuingAsync(
+        HttpClient client, string scope, Guid productId)
+    {
+        using var discontinueRequest = WithScope(
+            HttpMethod.Put, $"/v1/products/{productId}/discontinue", TestAuthHandler.DefaultScopes,
+            new { replacementName = "Kept Delete Replacement", replacementPrice = 1.00m });
+        using var discontinueResponse = await client.SendAsync(discontinueRequest);
+        discontinueResponse.EnsureSuccessStatusCode();
+
+        return (
+            await client.SendAsync(WithScope(HttpMethod.Delete, $"/v1/products/{productId}", scope)),
+            HttpStatusCode.NoContent);
+    }
 
     private static async Task<ProductDto> CreateProductAsync(HttpClient client, string name, decimal price)
     {

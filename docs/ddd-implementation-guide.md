@@ -7,8 +7,10 @@ and its tests.
 Two shipped samples ground every step below, built two different ways:
 
 - **`ManualSample`/`PurchaseOrder`** — every layer hand-written. This guide's primary
-  walkthrough; copy this when a feature needs request validation that's actually enforced,
-  idempotency, a conditional business rule, a filtered query, or a response shape you control.
+  walkthrough; copy this when a feature needs attribute-declared validation that's actually
+  enforced, idempotency, an operation that writes more than one aggregate in one transaction, a
+  filtered query, or a response shape you control. A rule that merely has to *refuse* an operation
+  no longer forces this shape — see the validation note in §9.
 - **`AutomatedSample`/`Product`** — entity/events/CRUD declared via attributes, everything the
   generators can produce is produced. Called out inline wherever it diverges from the manual
   walkthrough.
@@ -383,6 +385,14 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
 > not `400`. Don't assume a DataAnnotations attribute on a `[CrudCreate]`/`[CrudUpdate]` parameter is
 > enforced without checking which mapping style its endpoint uses — full detail in
 > `docs/samples/manual-vs-automated.md`.
+>
+> **FluentValidation is not affected by this gap.** `UseEndpointConfigs` applies
+> `AddFluentValidationAutoValidation()` to every endpoint group (`Minimal.Api/Program.cs:50`), which
+> runs on generated routes as well as literal ones. A validator registered for a generated request —
+> `CreateProductRequestValidator` and `DeleteProductRequestValidator` in the automated sample — runs
+> before the generated handler and can read stored data through `IRepositorySpec` to refuse, so a
+> pre-condition is no reason on its own to hand-write a route. Express a rule you need enforced as a
+> validator rather than as an attribute.
 
 ## 10. Unit / integration tests — `Minimal.App.Tests/Integration/<Feature>/V1/`
 
