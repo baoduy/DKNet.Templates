@@ -42,7 +42,8 @@ because the generator has nothing to read. If the mode was not supplied, apply
        stamps it instead);
      - `[CrudUpdate]` on each mutation method;
      - `[CrudAction("segment")]` / `[CrudAction(Verb = CrudActionVerb.Put)]` for domain actions that
-       mutate and return the DTO with no pre-condition to reject;
+       mutate and return the DTO — a pre-condition is allowed, written as a FluentValidation
+       validator on the generated request;
      - `IOwnedBy` if the aggregate needs row-level ownership isolation.
 
 2. Run `dotnet build -c Release` and stop on first error.

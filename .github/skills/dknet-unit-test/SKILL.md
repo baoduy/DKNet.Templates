@@ -424,11 +424,16 @@ integration-level assertion through `ApiFixture`, not a handler-level one), row-
 isolation, and the hand-written `ProductCreatedEventHandler`/`ProductCreatedNotificationHandler`
 consumers.
 
-**Do not write a validation test against a generated route.** Per
+**Do not write an attribute-validation test against a generated route.** Per
 `docs/samples/manual-vs-automated.md`, a negative `Price` is expected to **succeed** (`201`), not
 fail — the forwarded `[Range]` is never enforced under this template's generated-route convention. If
 you assert that gap, assert what actually happens; never "fix" such a test by relaxing it into
-claiming the validation runs.
+claiming the attribute runs.
+
+A **FluentValidation** rule on a generated request is the opposite case: it does run, and it is worth
+testing. The product sample's duplicate-name and still-for-sale rules are covered at the
+acceptance/integration level (`Product.feature`), asserting the `409` and the standard error body,
+because the validator only means anything with the group filter and the database in play.
 
 The same scope provides both `IMessageBus` and `IRepositorySpec` — they share the same `DbContext` instance, so `SaveChangesAsync` on the repository commits what the bus handler staged.
 

@@ -26,9 +26,13 @@ If the aggregate boundary, entity-vs-value-object choice, or invariant placement
 > record, the create/update request + handler, and the CRUD routes for you. See
 > `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`. The trade-off: the generated request's
 > DataAnnotations (`[Required]`, `[Range]`, …) are **not enforced** under this template's own
-> endpoint-registration convention — see `docs/samples/manual-vs-automated.md` for why. Pick the
-> hand-written shape whenever that validation must actually run, or for any business rule beyond what a
-> DataAnnotations attribute can express.
+> endpoint-registration convention — see `docs/samples/manual-vs-automated.md` for why. A rule beyond
+> what a DataAnnotations attribute can express does **not** force the hand-written shape: write a
+> FluentValidation validator against the generated request and the group-level
+> `AddFluentValidationAutoValidation()` filter runs it before the generated handler — that is how
+> `Product` refuses a duplicate name and refuses to delete a product still for sale, both `409`. Pick
+> the hand-written shape when attribute-declared validation must actually run, or when the operation
+> writes more than one aggregate in one transaction.
 
 ## Inputs Required
 

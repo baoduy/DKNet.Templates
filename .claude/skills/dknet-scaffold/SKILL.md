@@ -126,7 +126,7 @@ They exist to be read, then deleted:
 
 | Feature folder | Entity | Flow |
 |---|---|---|
-| `ManualSample` | `PurchaseOrder` | Hand-written — enforced validation, idempotent create, `[FromClaim]` acting user |
+| `ManualSample` | `PurchaseOrder` | Hand-written — enforced DataAnnotations validation, idempotent create, `[FromClaim]` acting user |
 | `AutomatedSample` | `Product` | Generator-driven — `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`/`[RaisesEvent]` attributes |
 
 Read `docs/samples/manual-vs-automated.md` before copying either — it is the layer-by-layer

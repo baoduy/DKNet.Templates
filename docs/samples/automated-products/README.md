@@ -24,6 +24,12 @@ This sample declares behavior through attributes instead of writing it by hand. 
 - A **composite endpoint**: `ProductV1Endpoint` calls `MapProductCrud(o => …)` first — per-route
   scopes plus `Exclude("Discontinue")` — and hand-writes only the two routes the generator cannot
   express, below it. Generated and hand-written routes live in the same group, not in rival samples.
+- **Pre-conditions on generated routes** — two FluentValidation `MustAsync` rules, written against
+  the *generated* `CreateProductRequest` and `DeleteProductRequest`, read stored data through
+  `IRepositorySpec` and refuse before the generated handler runs: a name already taken, and a
+  product that is still for sale. Neither route, request nor handler is hand-written; the rules reach
+  them through the group-level `AddFluentValidationAutoValidation()` filter
+  (`Minimal.Api/Program.cs:50`).
 - A declaratively raised event that still reaches an external Azure Service Bus topic, through
   hand-wired publish/subscribe.
 - Two supplier fields declared `[SensitiveData]` on the entity, withheld from callers who lack the
@@ -41,11 +47,11 @@ so a stock Development run enforces none of it.
 
 | Route | From | Scope | Notes |
 |---|---|---|---|
-| `POST /` | generated (`Create`) | `products.write` | **No idempotency protection** and **no enforced validation** — see the comparison doc. |
+| `POST /` | generated (`Create`) | `products.write` | **No idempotency protection.** `CreateProductRequestValidator` refuses a name already taken with `409`; the forwarded `[Range]` on `price` is still never evaluated — see the comparison doc. |
 | `GET /` | generated (`GetList`) | `products.read` | Generic list (`DKNet.AspCore.Extensions`' `MapGetList`) with the uniform `filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` contract, resolved against `ProductDto`. `pageSize` defaults to `1000` with a configurable ceiling of `1000`, and `fromDate`/`toDate` last-activity bounds which, left out, window an audited listing — `Product` is audited — to the last three months. Full contract: [`docs/generic-list-endpoint.md`](../../generic-list-endpoint.md). |
 | `GET /{id}` | generated (`GetById`) | `products.read` | 404 on unknown id (generic `MapGetById`). |
 | `PUT /{id}` | generated (`ChangePrice`) | `products.write` | Changes `Price`; 404 on unknown id. |
-| `DELETE /{id}` | generated (`Delete`) | `products.write` | Generic `MapDeleteById`. |
+| `DELETE /{id}` | generated (`Delete`) | `products.write` | Generic `MapDeleteById`, bound to the generated `DeleteProductRequest`. `DeleteProductRequestValidator` refuses a product that is still for sale with `409` — discontinue it first. `204` on success. |
 | `POST /{id}/approval` | generated (`Approve`) | `products.write` | Domain action — `[CrudAction("approval")] Approve(string byUser)`. Body `{ "byUser": "..." }`; `200` + `ProductDto`; 404 on unknown id. |
 | `PUT /{id}/supplier-reference` | generated (`AssignSupplierReference`) | `products.supplier` | Domain action overriding both segment and verb — `[CrudAction("supplier-reference", Verb = CrudActionVerb.Put)] AssignSupplierReference(string supplierReferenceCode)`. Body `{ "supplierReferenceCode": "..." }`; `200` + `ProductDto`; 404 on unknown id. Assigns the `[SensitiveData]` property after creation — it is not a create-request field. The only route on this scope — a per-route setting, not a per-kind one. |
 | `PUT /{id}/discontinue` | hand-written | `products.discontinue` | Excluded from the generated map by name (`Exclude("Discontinue")`). Body `{ "replacementName", "replacementPrice" }`; discontinues the product and creates its replacement in one transaction. **Not** a repeatable no-op: a second call on an already-discontinued product is a domain failure. |
@@ -116,10 +122,25 @@ purchase orders; see the manual sample for both. The demonstration product above
 it is generated at run time by the Aspire application host, only when `SampleData:RecordsPerEntity` is
 above zero, and it is absent from a database the API migrated on its own.
 
-Its forwarded `[Range]` validation on `Price` is never evaluated under this template's own
-endpoint-registration convention. Confirmed live: `POST /v1/products` with a negative price returns
-`201`, not `400`. Read why in the comparison doc before reusing this pattern for an entity whose
-validation must actually be enforced.
+## What the two pre-conditions do and do not promise
+
+Both rules answer with the service's standard problem document — a `trace-id` plus a machine-readable
+`code` — from the one shared error-response setting in `Minimal.Api/Configs/FluentValidationConfig.cs`,
+the same setting a failed command already uses. A request refused only on its own values, with no
+stored data read, still answers `400` with today's body.
+
+The create rule is **a check, not a guarantee**. It reads the catalogue and refuses a name it finds
+already taken, but two callers can pass that check at the same moment and both go on to insert. What
+actually keeps a product name unique is the database: `ProductConfigs` declares a unique index on
+`Product.Name` (`builder.HasIndex(p => p.Name).IsUnique()`), and that constraint is the last word. The
+validator exists to turn the common case into a clear `409` instead of a constraint violation — copy
+both halves, never the validator alone.
+
+A different limitation is unchanged and still true: an attribute-declared rule on a generated request
+is **never evaluated**. `Price` carries `[Range(0.01, double.MaxValue)]`, and `POST /v1/products` with
+a negative price still returns `201`, not `400` — confirmed live. That has nothing to do with the two
+rules above: it is the forwarded-`DataAnnotations` gap described in the comparison doc. Express a rule
+you need enforced as a validator, not as an attribute.
 
 ## Deleting this sample
 

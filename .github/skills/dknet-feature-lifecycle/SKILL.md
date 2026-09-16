@@ -27,11 +27,12 @@ behavior — which is exactly the confusion this table exists to prevent.
 
 Choose `manual` if **any** of these is true:
 
-- A business rule must be enforced beyond DataAnnotations (state transitions, cross-field rules,
-  duplicate checks against the DB).
+- The operation writes more than one aggregate in one transaction — the generator cannot express it.
 - Writes must be idempotent — `POST` needs `.RequiredIdempotentKey()` and an `X-Idempotency-Key`
   contract.
-- Validation must actually return `400`. See the validation gap below.
+- An attribute-declared (`DataAnnotations`) rule must actually return `400`. See the validation gap
+  below. A rule you can write as a FluentValidation validator is *not* a reason to choose `manual`:
+  the group filter runs validators on generated routes too.
 - The response DTO must hide or reshape fields rather than expose every audited property.
 - Queries need filtering/specs beyond get-by-id and the generic list.
 - The acting user must come from a claim on the request (`[FromClaim]`).
@@ -42,14 +43,20 @@ Choose `auto` only when the aggregate is genuinely plain CRUD:
   you accept those are advisory, not enforced.
 - No idempotency requirement on create.
 - The DTO can be every audited property (narrowed with `Exclude`/`Include` at most).
-- Any extra operations fit `[CrudAction]`'s shape: mutate the aggregate, return `200` + DTO, with no
-  pre-condition to reject.
+- Any extra operations fit `[CrudAction]`'s shape: mutate the aggregate and return `200` + DTO. A
+  pre-condition is fine here — write it as a FluentValidation validator on the generated request.
 
 **The validation gap — confirmed live, state it whenever recommending `auto`.** A `[Range]` on a
 `[CrudCreate]` parameter *is* forwarded onto the generated request property but is **never
 enforced**: the .NET 10 validation source generator only sees literal `Map*(string, Delegate)` calls,
 and every generated route goes through `DKNet.AspCore.Extensions`' generic `Map*<TRequest,TDto>`
 wrapper. `POST /v1/products` with a negative price returns `201`, not `400`.
+
+**The gap is the attribute, not validation.** `UseEndpointConfigs` applies
+`AddFluentValidationAutoValidation()` to every endpoint group (`Minimal.Api/Program.cs:50`), so a
+validator registered for a generated request runs before the generated handler and may read stored
+data through `IRepositorySpec` to refuse. The `auto` product sample ships two such rules
+(`CreateProductRequestValidator`, `DeleteProductRequestValidator`), both answering `409`.
 
 **Acting-user attribution differs by flow.** `manual` uses `[FromClaim(ClaimTypes.Name)]` on the
 request. `auto` cannot — the generator forwards only `System.ComponentModel.DataAnnotations`

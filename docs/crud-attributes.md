@@ -315,12 +315,17 @@ call unattended, it is an action, not an update.
 > **What an action does not give you.** Everything the generated create/update path gives up, an
 > action gives up too — the [validation gap](samples/manual-vs-automated.md#1-request-validation-that-looks-wired-but-never-runs-the-sharpest-gap)
 > (`DataAnnotations` on an action's parameters are forwarded onto the request and never evaluated),
-> no idempotency filter, and the DTO's every-audited-field default. One is worth calling out
-> specifically: **a generated action has nowhere to hang a pre-condition.** A generated handler
-> loads the row, calls the method and saves; an operation that must *refuse* rather than merely run
-> has nowhere to say no. On its own that is not a reason to leave the generated map — the manual
-> sample's `Cancel.cs`, which rejects an already-cancelled order with a domain-specific 400, is the
-> shape to copy when a pre-condition is all you need.
+> no idempotency filter, and the DTO's every-audited-field default.
+>
+> **A pre-condition is not on that list.** A generated action's request is body-bound and passes
+> through the group-level `AddFluentValidationAutoValidation()` filter (`Minimal.Api/Program.cs:50`),
+> so a FluentValidation validator registered for it runs before the generated handler and can read
+> stored data and refuse. The automated sample proves it on the two generated routes that needed it:
+> `CreateProductRequestValidator` refuses a name already taken and `DeleteProductRequestValidator`
+> refuses a product still for sale, both with `409`, with no hand-written route, request or handler.
+> Write the rule as a validator; the manual sample's `Cancel.cs`, which rejects an already-cancelled
+> order with a domain-specific 400 from inside the handler, is the shape to copy only when the
+> refusal has to come from the aggregate itself.
 >
 > **The bar for hand-writing a route is higher: the operation writes more than one aggregate in one
 > transaction**, which the generator cannot express at all. `Discontinue` is this sample's one such
@@ -381,7 +386,7 @@ up unless you exclude it by name.
 | Step | `ManualSample`/`PurchaseOrder` | `AutomatedSample`/`Product` |
 |---|---|---|
 | HTTP endpoint | `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs` — literal `group.MapPost("/", ...)` etc., one call per route | `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` — composite: `group.MapProductCrud(o => …)` first, carrying the per-route scopes and one `Exclude("Discontinue")`, then the two hand-written routes below it |
-| Validation | `CreatePurchaseOrderCommandValidator`/`UpdatePurchaseOrderCommandValidator` (FluentValidation) run and are enforced on every hand-mapped route | `[Range]`/`[Required]` on the `[CrudCreate]`/`[CrudUpdate]` parameters are forwarded onto the generated request but **not evaluated** — `MapProductCrud` routes through `DKNet.AspCore.Extensions`'s generic `Map*<TRequest,TDto>` wrapper, which the .NET 10 minimal-API validation source generator can't see through. A negative price returns `201`, not `400` |
+| Validation | `CreatePurchaseOrderCommandValidator`/`UpdatePurchaseOrderCommandValidator` (FluentValidation) run and are enforced on every hand-mapped route | FluentValidation runs here too — the group filter reaches generated routes, so `CreateProductRequestValidator`/`DeleteProductRequestValidator` refuse with `409` before the generated handler. What is **not evaluated** is a forwarded `[Range]`/`[Required]` on the `[CrudCreate]`/`[CrudUpdate]` parameters: `MapProductCrud` routes through `DKNet.AspCore.Extensions`'s generic `Map*<TRequest,TDto>` wrapper, which the .NET 10 minimal-API validation source generator can't see through. A negative price returns `201`, not `400` |
 | Bus dispatch | `IMessageBus bus` → `bus.Send(req, ...)` in the endpoint delegate | Same `IMessageBus`, dispatched inside the generated route delegate |
 | Handler | `CreatePurchaseOrderCommandHandler`/`UpdatePurchaseOrderCommandHandler` (`Minimal.AppServices/ManualSample/V1/Actions/`) | Generated `CreateProductHandler`/`ChangePriceProductHandler` (`Minimal.AppServices.Crud` namespace) |
 | Domain entity method | `new PurchaseOrder(...)` / `order.ChangeAmount(...)` | `new Product(request.Name, request.Price)` / `product.ChangePrice(request.Price)` |
@@ -392,8 +397,10 @@ up unless you exclude it by name.
 The hand-written path's explicit actions — `Minimal.AppServices/ManualSample/V1/Actions/Create.cs`,
 `Update.cs`, `Cancel.cs`, `Delete.cs` — are the contrast. `Cancel.cs` rejects an already-cancelled
 order with a domain-specific failure, and `Delete.cs` 404s via `NotFoundError` before deleting.
-Neither shape is available on the generated path: a generic delete-by-id either deletes the row or
-404s, with nowhere to hang a pre-delete rule.
+A generic delete-by-id has no handler of its own to fail from, so a hand-written `Delete.cs` is still
+the only way to return a *domain* failure. A pre-delete **rule**, however, needs no hand-written
+route: a validator on the generated `DeleteProductRequest` refuses first — that is how the automated
+sample keeps a product that is still for sale from being deleted.
 
 ## Data seeding
 
