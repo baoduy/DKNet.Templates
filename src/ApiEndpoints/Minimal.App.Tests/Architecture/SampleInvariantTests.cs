@@ -177,6 +177,23 @@ public class SampleInvariantTests
                 n.Contains("UpdatedBy", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void GeneratedDeleteProductRequest_ShouldCarryTheRouteBoundKey()
+    {
+        // DKNet.SlimBus.Generators 10.1.25+ emits a Delete{Entity}Request for every generated entity
+        // (unless a create/update/action member already claims the name); the three-argument
+        // MapDeleteById<TEntity,TKey,TRequest>() overload binds Id from the route.
+        var requestType = typeof(AppSetup).Assembly.GetTypes().SingleOrDefault(t => t.Name == "DeleteProductRequest");
+
+        requestType.ShouldNotBeNull(
+            "DeleteProductRequest is generated at build time (Minimal.AppServices.Crud, DKNet.SlimBus.Generators) — build the solution first.");
+
+        var idProperty = requestType!.GetProperties().SingleOrDefault(p => p.Name == "Id");
+
+        idProperty.ShouldNotBeNull("DeleteProductRequest must expose a route-bound Id property.");
+        idProperty!.PropertyType.ShouldBe(typeof(Guid));
+    }
+
     private static string SrcDir =>
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
 
