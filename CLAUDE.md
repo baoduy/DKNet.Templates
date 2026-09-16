@@ -180,8 +180,10 @@ the authority on that footprint, the out-of-folder touchpoints a delete must als
 migrations, docs links), and the migration rule on removal.
 
 Every scaffolding command takes `mode=manual|auto`, threaded end-to-end by the orchestrator. The mode
-is not a style preference — it changes which files exist, whether validation is enforced, whether
-create is idempotent, and how the acting user is attributed. Commands that omit `mode=` detect it by
+is not a style preference — it changes which files exist, whether an attribute-declared rule is
+enforced, whether create is idempotent, and how the acting user is attributed. A rule that has to
+refuse an operation is not part of that trade: a FluentValidation validator on a generated request
+runs on the generated route (`docs/api-pipeline.md`). Commands that omit `mode=` detect it by
 grepping the entity for `[CrudCreate]`.
 
 | Command | Purpose |
