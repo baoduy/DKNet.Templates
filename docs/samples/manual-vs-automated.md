@@ -188,7 +188,7 @@ emit at compile time — the amber and purple nodes in the diagram:
   (`GrossMargin`, trade-off 3 below). The generator's default is every audited property; the sample
   excludes `OwnedBy`, `LastModifiedBy` and `LastModifiedOn`. What the record holds after that —
   including the two `[SensitiveData]` supplier properties it keeps — is listed once, in
-  [`docs/crud-attributes.md`](../crud-attributes.md#the-four-attributes).
+  [`docs/crud-attributes.md`](../crud-attributes.md#what-the-generated-dto-holds).
 - **Endpoint registration.** `ProductV1Endpoint.cs` registers seven generated routes with one
   `MapProductCrud(o => …)` call plus its per-route options, and hand-writes only the two routes the
   generator cannot express — against ~90 lines of literal `Map*` calls, one per route, in
