@@ -59,7 +59,7 @@ This template ships two complete worked examples of the same shape of feature, b
 | Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — still hand-written, no generator produces this |
 | AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | One `[GenerateDto(typeof(Entity))] public sealed partial record <Feature>Dto;` |
 | AppServices | `<Feature>/V1/Events/`                          | Hand-written consumer for a declared event — the generator raises, it does not consume |
-| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension, nothing hand-mapped |
+| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension first, with any hand-written business routes mapped below it |
 
 Note: the domain entity folder and the `AppServices` slice use the same feature folder name in both samples (`ManualSample`, `AutomatedSample`) — the two namespaces don't have to match in general.
 
@@ -88,7 +88,7 @@ Two worked examples cover all four layers — pick the one matching how your new
 - `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs` (`[RaisesEvent]`, `[CrudCreate]`, `[CrudUpdate]`, `[CrudAction]`)
 - `Minimal.Infra/Features/AutomatedSample/Mappers/` (still hand-written), `ExternalEvents/`
 - `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs` (`[GenerateDto]`), `Events/`
-- `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` (`group.MapProductCrud()`)
+- `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs` (`group.MapProductCrud(o => …)`, then its hand-written routes)
 
 ---
 

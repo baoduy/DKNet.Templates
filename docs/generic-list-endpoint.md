@@ -22,7 +22,8 @@ Worked instance — the automated `Product` sample:
 // src/ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs
 public void Map(RouteGroupBuilder group)
 {
-    group.MapProductCrud();   // generated → group.MapGetList<Product, Guid, ProductDto>()
+    // generated → group.MapGetList<Product, Guid, ProductDto>(), with the scope attached per route
+    group.MapProductCrud(o => o.Configure(CrudOp.GetList, b => b.RequireAuthorization("products.read")));
 }
 ```
 

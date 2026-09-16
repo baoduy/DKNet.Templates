@@ -36,11 +36,17 @@ one DTO line, and a handful of attributes instead of roughly 14 hand-written fil
 stronger acting-user guarantee.
 
 That generated shape is not limited to plain create/update/list/delete: **named domain actions come
-with it.** `[CrudAction]` publishes a business operation — approve, discontinue — at the entity's
-by-id route plus a segment, with the verb and segment under your control, and no hand-written
-request, handler or route registration. The trade-off is the one in the first list above: an action
-still has nowhere to hang a pre-condition, so an operation that must *refuse* (rather than just
-run) is still a reason to copy the manual sample.
+with it.** `[CrudAction]` publishes a business operation — approve, assign a supplier reference — at
+the entity's by-id route plus a segment, with the verb and segment under your control, and no
+hand-written request, handler or route registration. The trade-off is the one in the first list
+above: a generated action still has nowhere to hang a pre-condition.
+
+**The choice is not either/or, and the automated sample no longer pretends it is.** `CrudMapOptions`
+lets one endpoint drop a single generated route by name and hand-write that one route below the
+generated call, so the generator keeps the routes it expresses well and you write only the ones it
+cannot. `ProductV1Endpoint` is exactly that composite: `MapProductCrud(o => …)` first, carrying the
+per-route scopes and `Exclude("Discontinue")`, then two hand-written routes — a discontinue that
+writes two aggregates in one transaction, and a summary query the generator has no shape for.
 
 The rest of this document is the evidence behind that guidance.
 
@@ -76,7 +82,7 @@ flowchart TB
     subgraph AUTO["Automated — Product (declared, then generated)"]
         direction TB
         Areq["HTTP POST /v1/products"]
-        A1["Endpoint: one MapProductCrud() call"]:::gen
+        A1["Endpoint: MapProductCrud(o => ...) call"]:::gen
         A2["CreateProductRequest — generated<br/>[Range] present, NOT enforced"]:::lib
         A3["CreateProductHandler — generated"]:::gen
         A4["Product aggregate<br/>[RaisesEvent] declared"]:::hand
@@ -144,10 +150,13 @@ emit at compile time — the amber and purple nodes in the diagram:
   the same failure shape as the manual handlers.
 - **Domain-action requests, handlers and routes.** `[CrudAction]` on a method publishes a named
   business operation at the entity's by-id route plus one segment, generating its request, handler
-  and route the same way. `Product` carries two: `[CrudAction("approval")] Approve(string byUser)`
+  and route the same way. `Product` publishes two: `[CrudAction("approval")] Approve(string byUser)`
   → `POST /v1/products/{id}/approval`, and
-  `[CrudAction(Verb = CrudActionVerb.Put)] Discontinue()` → `PUT /v1/products/{id}/discontinue`.
-  Both answer `200` with `ProductDto`. The manual sample's equivalent — `Cancel.cs` plus its
+  `[CrudAction("supplier-reference", Verb = CrudActionVerb.Put)] AssignSupplierReference(string)`
+  → `PUT /v1/products/{id}/supplier-reference`. Both answer `200` with `ProductDto`. Its third
+  action, `Discontinue`, is excluded from the generated map by name and hand-written below it,
+  because discontinuing a product also creates its named replacement in the same transaction, and an
+  operation that writes more than one aggregate in one transaction cannot be generated. The manual sample's equivalent — `Cancel.cs` plus its
   literal `MapPost(".../cancel")` — is hand-written in full. See
   [`docs/crud-attributes.md`](../crud-attributes.md#domain-actions-with-crudaction) for declaring
   one, and trade-off 4 below for what a generated action cannot do that `Cancel` does.
@@ -158,8 +167,10 @@ emit at compile time — the amber and purple nodes in the diagram:
   — one declaration. The generator's default is every audited property; the sample excludes
   `OwnedBy`, `LastModifiedBy` and `LastModifiedOn`, leaving `Name`, `Price`, `IsDiscontinued`,
   `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
-- **Endpoint registration.** `ProductV1Endpoint.cs` is 9 lines (one `MapProductCrud()` plus
-  `.WithDescription`) versus ~90 lines of literal `Map*` calls in `PurchaseOrderV1Endpoint.cs`.
+- **Endpoint registration.** `ProductV1Endpoint.cs` registers seven generated routes with one
+  `MapProductCrud(o => …)` call plus its per-route options, and hand-writes only the two routes the
+  generator cannot express — against ~90 lines of literal `Map*` calls, one per route, in
+  `PurchaseOrderV1Endpoint.cs`.
 
 ## The trade-offs
 
@@ -217,7 +228,10 @@ That second reason, not tidiness, is why `LastModifiedBy`/`LastModifiedOn` are e
 
 ### 4. No filtered list, no custom get-by-id, no pre-delete business rule
 
-The generic routes are all-or-nothing:
+The generic routes take what the generator can express, and no more. Where that is not enough, the
+fix is per-route rather than per-entity: `CrudMapOptions.Exclude(string)` drops the one route by
+name and you hand-write it below the generated call — which is what `ProductV1Endpoint` does for
+`Discontinue`. What each generic route cannot do on its own:
 
 - **List** is *not* the gap it once was: the generic route ships a uniform
   `filter`/`search`/`orderBy`/`desc`/`pageNumber`/`pageSize` contract resolved against the DTO, with a
@@ -233,10 +247,14 @@ The generic routes are all-or-nothing:
   check. The manual sample's `Cancel` demonstrates exactly this — rejecting an already-cancelled
   order with a domain-specific 400.
 - **Domain actions** inherit the same gap. A generated `[CrudAction]` handler loads the row, calls
-  the method and saves; there is no place to fail a pre-condition first. `PUT
-  /v1/products/{id}/discontinue` on an already-discontinued product is a `200` no-op, not a domain
-  failure. Everything else the generated path gives up — unenforced validation, no idempotency,
-  the every-audited-field DTO — applies to actions unchanged.
+  the method and saves; there is no place to fail a pre-condition first. This sample's `Discontinue`
+  left the generated map for a different and stricter reason — it writes more than one aggregate in
+  one transaction, which the generator cannot express at all. The hand-written
+  `PUT /v1/products/{id}/discontinue` takes `{ replacementName, replacementPrice }`, discontinues
+  the product and creates its replacement in one transaction, and, being hand-written, also gets to
+  fail a second call as a domain failure instead of repeating a `200`.
+  Everything else the generated path gives up — unenforced validation, no idempotency, the
+  every-audited-field DTO — applies to the actions that stay generated unchanged.
 
 ### 5. Event names follow a convention, and requests can't carry extra fields
 
