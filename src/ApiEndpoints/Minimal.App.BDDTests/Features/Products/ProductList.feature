@@ -136,3 +136,18 @@ Feature: Product list query contract (filter · search · order · page)
     # rather than silently returning an empty page.
     When I list products with a fromDate 1 hours in the future and a toDate 1 hours in the past
     Then the response status is 400
+
+  # --- Customised DTO field (DRK-1430) ------------------------------------------------------------
+
+  Scenario: Sorting by the hand-mapped gross margin field is refused, not a server error
+    # WHY (DRK-1430 R3/R5): GrossMargin is a computed DTO field with no entity counterpart. The list
+    # route's DTO boundary must still 400 it like any unknown field — never a 500 from a query that fails
+    # to translate.
+    When I list products with query "?orderBy=grossMargin"
+    Then the response status is 400
+    And the response names the unsupported field "grossMargin"
+
+  Scenario: Filtering by the hand-mapped gross margin field is refused, not a server error
+    When I list products with query "?filter=grossMargin:GreaterThan:0"
+    Then the response status is 400
+    And the response names the unsupported field "grossMargin"
