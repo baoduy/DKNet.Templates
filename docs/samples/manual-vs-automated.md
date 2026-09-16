@@ -21,8 +21,8 @@ exchange.
 ## At a glance: which one should I copy?
 
 This section is the single statement of which sample to copy. Every other page links here rather than
-paraphrasing it — the per-sample READMEs, [`docs/ddd-implementation-guide.md`](../ddd-implementation-guide.md)
-and [`docs/extension-points.md`](../extension-points.md) all do.
+paraphrasing it — the per-sample READMEs and
+[`docs/ddd-implementation-guide.md`](../ddd-implementation-guide.md) both do.
 
 **Copy the manual sample (`PurchaseOrder`)** when the feature needs any of the following. Each one
 maps to a trade-off explained later in this document:
@@ -183,10 +183,12 @@ emit at compile time — the amber and purple nodes in the diagram:
 - **Get-by-id / list / delete routes.** No per-entity code at all. `MapProductCrud()` wires the
   *generic* `MapGetById`/`MapGetList`/`MapDeleteById<Product, Guid, ...>` extensions from
   `DKNet.AspCore.Extensions`.
-- **DTO.** `[GenerateDto(typeof(Product), Exclude = [...])] public sealed partial record ProductDto;`
-  — one declaration. The generator's default is every audited property; the sample excludes
-  `OwnedBy`, `LastModifiedBy` and `LastModifiedOn`, leaving `Name`, `Price`, `IsDiscontinued`,
-  `CreatedBy`, `CreatedOn`, `UpdatedBy`, `UpdatedOn`, `Id`.
+- **DTO.** `[GenerateDto(typeof(Product), Exclude = [...])] public sealed partial record ProductDto
+  { … }` — one declaration, plus one hand-written property the convention cannot produce
+  (`GrossMargin`, trade-off 3 below). The generator's default is every audited property; the sample
+  excludes `OwnedBy`, `LastModifiedBy` and `LastModifiedOn`. What the record holds after that —
+  including the two `[SensitiveData]` supplier properties it keeps — is listed once, in
+  [`docs/crud-attributes.md`](../crud-attributes.md#the-four-attributes).
 - **Endpoint registration.** `ProductV1Endpoint.cs` registers seven generated routes with one
   `MapProductCrud(o => …)` call plus its per-route options, and hand-writes only the two routes the
   generator cannot express — against ~90 lines of literal `Map*` calls, one per route, in

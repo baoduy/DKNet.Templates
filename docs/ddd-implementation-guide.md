@@ -261,9 +261,10 @@ public sealed partial record ProductDto
 One declaration plus, here, one hand-written property. `[GenerateDto]` (source generator,
 `DKNet.EfCore.DtoGenerator`) emits every audited property from the entity at compile time, so the
 default is "everything audited", not "only what I chose to expose". The sample narrows it with
-`Exclude`, leaving `Name`, `Price`, `IsDiscontinued`, `CreatedBy`, `CreatedOn`, `UpdatedBy`,
-`UpdatedOn` and `Id` — verified against `obj/Generated/.../ProductDto.g.cs` — and adds `GrossMargin`,
-which the convention cannot produce. Decide explicitly what your entity should expose before
+`Exclude` and adds `GrossMargin`, which the convention cannot produce. The resulting field set is
+listed once, in [`docs/crud-attributes.md`](crud-attributes.md#the-four-attributes) — including the
+two `[SensitiveData]` supplier properties, which stay on the DTO and are gated per caller rather than
+excluded. Decide explicitly what your entity should expose before
 reaching for this shape; on a generated CRUD slice the DTO is also the filter/search/order surface,
 so it is a query boundary as well as a response shape.
 
