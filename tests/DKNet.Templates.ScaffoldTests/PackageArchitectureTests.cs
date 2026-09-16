@@ -142,6 +142,22 @@ public class PackageArchitectureTests
     }
 
     [Fact]
+    public void AllDKNetPackages_ShouldBePinnedTo_10_1_26()
+    {
+        var srcDir = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
+
+        var directoryPackagesPath = Path.Combine(srcDir, "Directory.Packages.props");
+        File.Exists(directoryPackagesPath).ShouldBeTrue();
+
+        var doc = XDocument.Load(directoryPackagesPath);
+        var distinctVersions = PackagePinGuard.DistinctDkNetVersions(doc);
+
+        distinctVersions.ShouldBe(["10.1.26"],
+            "DKNet packages must all be pinned to 10.1.26, found: " + string.Join(", ", distinctVersions));
+    }
+
+    [Fact]
     public void AppConfig_ShouldWireIdempotencyToRedisOnlyWhenAConnectionStringIsConfigured()
     {
         // The @redis acceptance scenario ("with Redis configured, deduplication keys are held in Redis")
