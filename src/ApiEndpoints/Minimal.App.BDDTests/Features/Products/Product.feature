@@ -42,7 +42,7 @@ Feature: Product CRUD lifecycle (automated sample)
   Scenario: Deleting a product removes it
     Given a product exists named "Doohickey" with price 5.00
     When I delete that product
-    # The generic MapDeleteById<TEntity,TKey>() library route returns 204 (No Content) — unlike the manual
+    # The generic MapDeleteById<TEntity,TKey,TRequest>() library route returns 204 (No Content) — unlike the manual
     # sample's hand-written delete route, which returns 200 with a body (see PurchaseOrder.feature).
     Then the response status is 204
     When I get that product
