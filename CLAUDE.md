@@ -84,7 +84,7 @@ it states exactly what each layer costs or gives up.
 | Infra       | `Features/<Feature>/Mappers/`                   | `IEntityTypeConfiguration<T>` — still hand-written, no generator produces this |
 | AppServices | `<Feature>/V1/<Feature>Dto.cs`                  | One `[GenerateDto(typeof(Entity))] public sealed partial record <Feature>Dto;` |
 | AppServices | `<Feature>/V1/Events/`                          | Hand-written consumer for a declared event — the generator raises, it does not consume |
-| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension, nothing hand-mapped |
+| Api         | `ApiEndpoints/<Feature>V1Endpoint.cs`           | Implements `IEndpointConfig`; calls the generated `Map<Entity>Crud()` extension first, with any hand-written business routes mapped below it |
 | *(generated)* | `obj/Generated/.../<Entity>CrudRequests.g.cs`, `...Handlers.g.cs`, `...Endpoints.g.cs` | Requests, handlers, and route registration — not committed, inspect after a build |
 
 Note: the domain entity folder and the `AppServices` slice use the same feature folder name in both

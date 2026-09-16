@@ -355,11 +355,20 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
 {
     public int Version => 1;
     public string GroupEndpoint => "/products";
-    public void Map(RouteGroupBuilder group) => group.MapProductCrud();
+    public void Map(RouteGroupBuilder group)
+    {
+        group.MapProductCrud(o => o
+            .Exclude("Discontinue")                                                     // hand-written below
+            .Configure(CrudOp.GetById, b => b.RequireAuthorization("products.read")));  // and so on, per route
+        group.MapPut("{id:guid}/discontinue", /* … */);
+        group.MapGet("summary", /* … */);
+    }
 }
 ```
 
-Nine lines. The generated `Map<Entity>Crud()` extension (`ProductCrudEndpointExtensions` here) maps
+The generated call carries its per-route options and one by-name exclusion, and the two routes the
+generator cannot express are mapped below it — generated and hand-written in one endpoint, not two
+rival samples. The generated `Map<Entity>Crud()` extension (`ProductCrudEndpointExtensions` here) maps
 `GetById`/`GetList`/`Delete` through `DKNet.AspCore.Extensions`'s **generic**
 `MapGetById<TEntity,TKey,TDto>`/`MapGetList`/`MapDeleteById`, and `Create`/`Update` through the same
 package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
