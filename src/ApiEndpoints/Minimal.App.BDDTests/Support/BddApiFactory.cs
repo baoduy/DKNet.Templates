@@ -1,6 +1,8 @@
 using DKNet.AspCore.Idempotency;
 using DKNet.AspCore.Idempotency.RedisStore;
 using DKNet.AspCore.Idempotency.Store;
+using Mapster;
+using MapsterMapper;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Minimal.App.TestSupport;
@@ -27,6 +29,13 @@ public sealed class BddApiFactory(string? redisConnectionString = null) : TestAp
     protected override void ConfigureTestServices(IServiceCollection services)
     {
         base.ConfigureTestServices(services);
+
+        // DRK-1515: swaps in the trigger-aware IMapper so the "unexpected error" scenario can raise a genuine,
+        // HTTP-reachable unhandled exception without touching production code — see
+        // UnexpectedErrorTriggerMapper's remarks.
+        services.RemoveAll<IMapper>();
+        services.AddScoped<IMapper>(sp =>
+            new UnexpectedErrorTriggerMapper(sp, sp.GetRequiredService<TypeAdapterConfig>()));
 
         if (!string.IsNullOrWhiteSpace(redisConnectionString))
         {
