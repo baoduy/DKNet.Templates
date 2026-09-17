@@ -98,11 +98,13 @@ For each entity found in Step 1, verify:
 - Check: `grep -n "GenerateDto\|MapsFrom\|sealed partial record" <dto_file>`
 
 **4.2 Action Request Types**
-- Create request: MUST implement `Fluents.Requests.IWitResponse<TDto>` and extend `RequestBase`
-- Update request: MUST implement `Fluents.Requests.IWitResponse<TDto>` and extend `RequestBase`
-- Delete request: MUST implement `Fluents.Requests.INoResponse` and extend `RequestBase`
+- Create request: MUST implement `Fluents.Requests.IWitResponse<TDto>`
+- Update request: MUST implement `Fluents.Requests.IWitResponse<TDto>`
+- Delete request: MUST implement `Fluents.Requests.INoResponse`
+- A request that needs the acting user MUST declare its own `[FromClaim(ClaimTypes.Name)]` `ByUser`
+  property — `AddContextualRequestPopulation` fills it before validation and before the handler runs
 - MUST have `[MapsFrom(typeof(Entity))]` on Create request
-- Check: `grep -n "IWitResponse\|INoResponse\|RequestBase" <action_files>`
+- Check: `grep -n "IWitResponse\|INoResponse\|FromClaim" <action_files>`
 
 **4.3 Validators**
 - Each request DTO with input fields MUST have a corresponding validator

@@ -112,15 +112,18 @@ For each entity:
 
 2. Create actions (one file per operation):
    - `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Create.cs`
-     - Request: `sealed record` + `RequestBase` + `Fluents.Requests.IWitResponse<{Entity}Dto>`
+     - Request: `sealed record` + `Fluents.Requests.IWitResponse<{Entity}Dto>` + its own
+       `[FromClaim(ClaimTypes.Name)]` `ByUser` property for the acting user
      - Validator: `internal sealed` + `AbstractValidator<T>`
      - Handler: `internal sealed` + `Fluents.Requests.IHandler<TReq, TDto>`
        - Check duplicates → map → persist → add event → `mapper.ResultOf<T>()`
    - `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Update.cs`
-     - Request: `record` + `RequestBase` + `Fluents.Requests.IWitResponse<{Entity}Dto>`
+     - Request: `record` + `Fluents.Requests.IWitResponse<{Entity}Dto>` + its own
+       `[FromClaim(ClaimTypes.Name)]` `ByUser` property for the acting user
      - Handler: fetch via spec → call `entity.Update(...)` → `mapper.Map<T>(entity)`
    - `src/ApiEndpoints/Minimal.AppServices/{Feature}/V1/Actions/Delete.cs`
-     - Request: `record` + `RequestBase` + `Fluents.Requests.INoResponse`
+     - Request: `record` + `Fluents.Requests.INoResponse` + its own
+       `[FromClaim(ClaimTypes.Name)]` `ByUser` property for the acting user
      - Handler: fetch via spec → `repository.Delete(entity)` → `Result.Ok()`
 
 3. Create query specification:
