@@ -50,6 +50,9 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
         return _ownershipKey;
     }
 
+    // Stubbed for the acceptance-tests stage — implemented in the Build stage (§3 row 4).
+    public string? GetCurrentUser() => throw new NotImplementedException();
+
     private void Initialize()
     {
         var context = accessor.HttpContext;
