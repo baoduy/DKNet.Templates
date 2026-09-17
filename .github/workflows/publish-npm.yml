@@ -1,9 +1,17 @@
 name: Publish npm Package
 
+# Temporarily disabled (DRK-1526): every push to `main` failed with
+# `npm error code E404 ... PUT https://registry.npmjs.org/@baoduy%2fdknet-plugin`,
+# an unauthenticated write — `secrets.NPM_TOKEN` is not set on this repository.
+# Manual-only until the owner decides whether `@baoduy/dknet-plugin` is published
+# at all. To re-enable, restore the `push` trigger below and set `NPM_TOKEN`.
+#
+# on:
+#   push:
+#     branches:
+#       - main
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   publish:
