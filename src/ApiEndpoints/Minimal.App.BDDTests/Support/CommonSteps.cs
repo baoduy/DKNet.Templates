@@ -63,7 +63,7 @@ public sealed class CommonSteps(ScenarioState state)
     {
         state.ResponseBody.ShouldNotBeNullOrEmpty();
         using var doc = JsonDocument.Parse(state.ResponseBody!);
-        doc.RootElement.TryGetProperty("trace-id", out var traceId).ShouldBeTrue();
+        doc.RootElement.TryGetProperty("traceId", out var traceId).ShouldBeTrue();
         traceId.GetString().ShouldNotBeNullOrEmpty();
     }
 
@@ -86,12 +86,13 @@ public sealed class CommonSteps(ScenarioState state)
     public void ThenTheResponseNamesTheFieldItRefused()
     {
         // This scenario's only refusal is ListPurchaseOrdersQueryValidator's PageIndex rule — assert the
-        // errors object names that field, not merely that it names some field.
+        // errors list names that field, not merely that it names some field.
         state.ResponseBody.ShouldNotBeNullOrEmpty();
         using var doc = JsonDocument.Parse(state.ResponseBody!);
         doc.RootElement.TryGetProperty("errors", out var errors).ShouldBeTrue();
-        errors.EnumerateObject()
-            .Any(p => p.Name.Contains("pageindex", StringComparison.OrdinalIgnoreCase))
+        errors.EnumerateArray()
+            .Any(e => e.TryGetProperty("field", out var field) &&
+                      field.GetString()!.Contains("pageindex", StringComparison.OrdinalIgnoreCase))
             .ShouldBeTrue();
     }
 }

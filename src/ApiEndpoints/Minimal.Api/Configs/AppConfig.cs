@@ -1,7 +1,6 @@
 ﻿using DKNet.AspCore.Idempotency;
 using DKNet.AspCore.Idempotency.RedisStore;
 using Minimal.Api.Configs.Auth;
-using Minimal.Api.Configs.GlobalExceptions;
 using Minimal.Api.Configs.RateLimits;
 using Minimal.Api.Configs.Swagger;
 
@@ -71,7 +70,6 @@ internal static class AppConfig
 
         return services
             .AddCrosConfig(configuration)
-            .AddGlobalException()
             .AddAllAppServices(configuration, features)
             .AddHealthzConfig(features);
     }
@@ -99,8 +97,7 @@ internal static class AppConfig
         extra?.Invoke(app);
 
         //These have to be after UseEndpoints.
-        app.UseOpenApiDoc()
-            .UseGlobalException();
+        app.UseOpenApiDoc();
 
         return app.RunAsync();
     }

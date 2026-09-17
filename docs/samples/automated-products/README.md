@@ -177,7 +177,7 @@ above zero, and it is absent from a database the API migrated on its own.
 
 ## What the two pre-conditions do and do not promise
 
-Both rules answer with the service's standard problem document — a `trace-id` plus a machine-readable
+Both rules answer with the service's standard problem document — a `traceId` plus a machine-readable
 `code` — from the one shared error-response setting in `Minimal.Api/Configs/FluentValidationConfig.cs`,
 the same setting a failed command already uses. A request refused only on its own values, with no
 stored data read, still answers `400` with today's body.

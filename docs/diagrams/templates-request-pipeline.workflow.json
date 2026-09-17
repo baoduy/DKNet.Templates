@@ -182,7 +182,7 @@
       "col": 5,
       "type": "security",
       "label": "500 problem+json",
-      "sublabel": "GlobalExceptionHandler",
+      "sublabel": "ErrorResponseExceptionHandler",
       "width": 170
     }
   ],

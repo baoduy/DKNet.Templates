@@ -129,7 +129,7 @@ A generated solution is layered onion-style — each layer knows only about the 
 one cross-cutting exception, and `Minimal.AppHost` is the Aspire orchestrator, carrying no business
 logic.
 
-![Workflow diagram of the request pipeline: a request passes the edge middleware that applies forwarded headers, security response headers and CORS, then routing with the request bounds and the rate limiter, then authentication with its default-deny fallback, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 413 for an oversized body, 429 or 504, 401 or 403, 400, and the 500 problem+json the global exception handler writes.](docs/diagrams/templates-request-pipeline.svg)
+![Workflow diagram of the request pipeline: a request passes the edge middleware that applies forwarded headers, security response headers and CORS, then routing with the request bounds and the rate limiter, then authentication with its default-deny fallback, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 413 for an oversized body, 429 or 504, 401 or 403, 400, and the 500 problem+json the library's error handler writes.](docs/diagrams/templates-request-pipeline.svg)
 
 A request reaches an `IEndpointConfig` route, is validated and has its `[FromClaim]` properties
 populated, then dispatches over the in-memory SlimMessageBus to a handler in `Minimal.AppServices`,

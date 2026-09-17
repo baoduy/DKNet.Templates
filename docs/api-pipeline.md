@@ -24,7 +24,7 @@ Where an environment overlay relaxes it, the row says so. Full flag matrix:
 | 8 | Request timeouts | `FeatureManagement:EnableRequestBounds` = `true`; 30 s, then `504` |
 | 9 | Rate limiting | `FeatureManagement:EnableRateLimit` = `true` (`false` in Development/Testing) |
 | 10 | Authentication / authorization | `FeatureManagement:RequireAuthorization` = `true` (`false` in Development/Testing) |
-| 11 | Global exception handling and OpenAPI/Scalar | `EnableSwagger` = `false` |
+| 11 | OpenAPI/Scalar mapping | `EnableSwagger` = `false` |
 | 12 | `[FromClaim]` population (endpoint filter) | — |
 | 13 | FluentValidation auto-validation (endpoint filter) | — |
 | 14 | Idempotency on POST (endpoint filter) | opt-in per route |
@@ -38,12 +38,15 @@ into that sequence — the table is the authority on what runs when. Two consequ
 - **Rate limiting runs before authentication, validation and idempotency.** An over-limit request
   is answered `429` without a token ever being validated, so a throttled caller never reaches a
   handler, a validator, or the idempotency store.
-- **The global exception handler is registered after the endpoints and still wraps them.**
-  `WebApplication` appends endpoint execution at the very end of the pipeline, so anything
-  registered after `UseEndpointConfigs` still sits upstream of the handler at request time.
-- **Forwarded headers and security headers run before everything else.** The first rewrites the
-  caller's address before CORS or the rate limiter reads it; the second must sit upstream of the
-  exception handler, or an unhandled `500` would answer without security headers.
+- **Unhandled exceptions are caught upstream of row 1, and nothing in `UseAppConfig` registers
+  that.** The `AddErrorResponses(...)` registration in
+  `Minimal.Api/Configs/FluentValidationConfig.cs` inserts `UseExceptionHandler()` at the head of the
+  pipeline through a start-up filter of its own, so it wraps every stage in the table — see
+  [Error responses](#error-responses).
+- **Forwarded headers and security headers run before everything else in `UseAppConfig`.** The first
+  rewrites the caller's address before CORS or the rate limiter reads it; the second writes its
+  headers from `HttpResponse.OnStarting`, so an unhandled `500` carries them even though the error
+  handler sits upstream of it.
 
 **Role-aware sensitive-property filtering** is absent from the table for the same reason: it is not
 a middleware but a `JsonSerializerOptions` modifier, so it runs after row 15, while the handler's
@@ -53,7 +56,7 @@ result is serialized — see
 **API versioning** is absent from the table because it is not a middleware. It shapes the route
 template when the group is registered — see [API versioning](#api-versioning) below.
 
-![Workflow diagram of the request pipeline: a request passes the edge middleware that applies forwarded headers, security response headers and CORS, then routing with the request bounds and the rate limiter, then authentication with its default-deny fallback, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 413 for an oversized body, 429 or 504, 401 or 403, 400, and the 500 problem+json the global exception handler writes.](diagrams/templates-request-pipeline.svg)
+![Workflow diagram of the request pipeline: a request passes the edge middleware that applies forwarded headers, security response headers and CORS, then routing with the request bounds and the rate limiter, then authentication with its default-deny fallback, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 413 for an oversized body, 429 or 504, 401 or 403, 400, and the 500 problem+json the library's error handler writes.](diagrams/templates-request-pipeline.svg)
 
 ## Forwarded headers
 
@@ -86,11 +89,11 @@ Entries are single IP addresses parsed with `IPAddress.Parse`; a CIDR range is n
 `X-Permitted-Cross-Domain-Policies`, `Referrer-Policy`, `Cache-Control`, `X-XSS-Protection` and
 `Cross-Origin-Resource-Policy`.
 
-It is registered second — before routing and before the global exception handler — and writes the
-headers from `HttpResponse.OnStarting`, so a `200`, a `404` for an unpublished path and the `500`
-problem+json the exception handler writes all carry them. The `OnStarting` detour is load-bearing:
-the exception-handler path clears the response before writing its own, which would drop headers
-added the ordinary way.
+It is registered second — before routing — and writes the headers from `HttpResponse.OnStarting`,
+so a `200`, a `404` for an unpublished path and the `500` problem+json the error handler writes all
+carry them. The `OnStarting` detour is load-bearing, and it is what keeps the `500` covered even
+though the error handler sits upstream of this middleware: the exception-handler path clears the
+response before writing its own, which would drop headers added the ordinary way.
 
 `Strict-Transport-Security` is **not** emitted here — `Minimal.Api/Configs/HttpsConfig.cs` owns that
 header, with its `max-age` from `Https:HstsMaxAgeDays` (default `365` days, and `preload` requested
@@ -420,26 +423,43 @@ Limits come from the `RateLimit` section. The base `appsettings.json` sets it ex
 section the limiter would fall back to `RateLimitOptions`'s class defaults of 2 requests per second,
 which is an outage rather than a rate limit. Treat the shipped numbers as a placeholder to tune.
 
-## Global exception handling
+## Error responses
 
-`Minimal.Api/Configs/GlobalExceptions/GlobalExceptionHandler.cs` is registered as the app's
-`IExceptionHandler`. Any unhandled exception from a handler becomes a `ProblemDetails` response:
+`Minimal.Api/Configs/FluentValidationConfig.cs` calls `AddErrorResponses(...)` once, and that call is
+the app's only error-handling step. The library it comes from (`DKNet.AspCore.Extensions`) registers
+problem details, its own `IExceptionHandler` and a start-up filter that inserts
+`UseExceptionHandler()` at the head of the pipeline — so the template calls neither
+`UseExceptionHandler()` nor `AddProblemDetails()` anywhere, and there is no second place error
+responses can be configured instead.
 
-- `Status` = `500`
-- `Title` = `"Something went wrong!."`
-- `Detail` and `Type` depend on the hosting environment:
-  - in `Development` — `Detail` is the exception's message and `Type` is the exception's type name;
-  - outside `Development` (Staging, Production) — `Detail` is the fixed generic string
-    `"An unexpected error occurred. Quote the trace-id when reporting this."` and the response
-    carries no `type` member at all.
-- a `trace-id` extension (the request's `TraceIdentifier`)
-- `Instance` = `"{Method} {Path}"`
+That one registered setting answers all three failure kinds — a failed command handler, refused
+validation input and an unhandled exception — with the same body:
 
-The `trace-id` and `Instance` values are added by
-`Minimal.Api/Configs/GlobalExceptions/GlobalExceptionConfigs.cs`'s `CustomizeProblemDetails`. Once
-the detail is generic, that `trace-id` is the correlation handle a caller quotes when reporting the
-error — it is the only way to tie the response back to the logged exception. A client never sees a
-raw stack trace.
+- `title` = `"Error"`, for all three
+- `status` — the same status the response line carries
+- `type` = the **status**'s name (`InternalServerError`, `Conflict`, `Forbidden`), never the
+  exception's type name. It is recomputed whenever the setting overrides the status, so it always
+  names the status actually answered
+- `traceId` — the current `Activity` id, falling back to the request's `TraceIdentifier`
+- `errors` — a JSON **array** of `{ message, code?, field? }`. `code` is the machine-readable
+  discriminator the failure itself carries; `field` is the input member a validation failure names,
+  and is absent for a command failure
+
+An unhandled exception answers `500` with a single `errors` entry. In `Development` that entry's
+`message` is the exception's own message; outside `Development` it is the fixed string
+`"An unexpected error occurred. Quote the trace-id when reporting this."` and nothing else the
+exception carried — no message, no type name, no stack trace. That is what makes `traceId` the
+correlation handle: once the message is generic, quoting it is the only way to tie the response back
+to the logged exception. A client never sees a raw stack trace.
+
+Two branches sit on top of that standard body, both configured in the same registration:
+
+- a failure whose error carries a `PreconditionCodes.Prefix`-prefixed code answers `409` instead of
+  the default `400`, and the body gains that value as a `code` member
+  (`Minimal.AppServices/Share/PreconditionCodes.cs`)
+- `OwnershipRequiredException` answers `403`, so a refused write is a controlled refusal rather than
+  an internal error — see
+  [`auditing-and-data-ownership.md`](auditing-and-data-ownership.md#when-the-caller-cannot-be-attributed)
 
 ## Health checks and OpenAPI/Scalar
 

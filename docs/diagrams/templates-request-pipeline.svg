@@ -484,8 +484,8 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="827" y="636" class="t-muted" font-size="8" text-anchor="middle">a validation rule failed</text>
         </g>
 
-        <g id="node-problem" data-node-id="problem" data-node-label="500 problem+json" tabindex="0" role="button" aria-label="Focus 500 problem+json, GlobalExceptionHandler, Short-circuited › Per-request" aria-pressed="false" data-node-kind="security" data-node-sublabel="GlobalExceptionHandler" data-node-context="Short-circuited › Per-request">
-          <title>500 problem+json · GlobalExceptionHandler · Short-circuited › Per-request</title>
+        <g id="node-problem" data-node-id="problem" data-node-label="500 problem+json" tabindex="0" role="button" aria-label="Focus 500 problem+json, ErrorResponseExceptionHandler, Short-circuited › Per-request" aria-pressed="false" data-node-kind="security" data-node-sublabel="ErrorResponseExceptionHandler" data-node-context="Short-circuited › Per-request">
+          <title>500 problem+json · ErrorResponseExceptionHandler · Short-circuited › Per-request</title>
           <rect x="940" y="598" width="170" height="52" rx="6" class="c-mask"/>
           <rect x="940" y="598" width="170" height="52" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(946 604) scale(0.6875)">
@@ -493,7 +493,7 @@ rect.c-bg-rect { fill: var(--bg); }
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-node-label="" x="1025" y="619" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">500 problem+json</text>
-          <text x="1025" y="636" class="t-muted" font-size="8" text-anchor="middle">GlobalExceptionHandler</text>
+          <text x="1025" y="636" class="t-muted" font-size="8" text-anchor="middle">ErrorResponseExceptionHandler</text>
         </g>
 
         <!-- Edge labels -->
