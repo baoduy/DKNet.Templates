@@ -1,6 +1,6 @@
 # Automated sample: Products
 
-> Every layer the DKNet 10.1.26 generators can produce is declared, not written:
+> Every layer the DKNet 10.1.29 generators can produce is declared, not written:
 > `[RaisesEvent]` for events, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` + `[GenerateDto]` for the
 > generated request/handler/route/DTO shapes.
 
