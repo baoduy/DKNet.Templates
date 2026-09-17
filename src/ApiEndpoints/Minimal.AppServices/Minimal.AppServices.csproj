@@ -34,6 +34,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="DKNet.EfCore.Specifications" />
+        <PackageReference Include="DKNet.EfCore.AuditLogs" />
         <PackageReference Include="FluentValidation" />
         <PackageReference Include="ForEvolve.FluentValidation.AspNetCore.Http"/>
         <PackageReference Include="Mapster.DependencyInjection"/>

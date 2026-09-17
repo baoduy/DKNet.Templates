@@ -46,6 +46,7 @@
     <PackageVersion Include="DKNet.AspCore.Extensions" Version="10.1.29" />
     <PackageVersion Include="DKNet.AspCore.Idempotency" Version="10.1.29" />
     <PackageVersion Include="DKNet.AspCore.Idempotency.RedisStore" Version="10.1.29" />
+    <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="10.1.29" />
     <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="10.1.29" />
     <PackageVersion Include="DKNet.EfCore.Abstractions" Version="10.1.29" />
     <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="10.1.29" />
