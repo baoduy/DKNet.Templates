@@ -44,7 +44,7 @@ Feature: Purchase order lifecycle (manual sample)
     Then the response status is 200
     And the purchase order response status is "cancelled"
     When I cancel that purchase order again
-    Then the response status is 400
+    Then the response status is 409
 
   Scenario: Deleting a purchase order removes it
     Given a purchase order exists for customer "Umbrella Corp" with amount 75.00

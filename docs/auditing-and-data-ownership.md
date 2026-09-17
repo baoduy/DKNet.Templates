@@ -137,6 +137,14 @@ empty while the change set contains a newly-added `IAuditedProperties` entity wh
 column is non-nullable and still unset. If so it throws `OwnershipRequiredException` — a fail-closed
 refusal rather than a row attributed to nobody.
 
-`Minimal.Api/Configs/GlobalExceptions/GlobalExceptionHandler.cs` maps that exception to
-`403 Forbidden` with `Title` `"Request refused."`, deliberately separate from the generic `500` path
-so no EF Core column or entity name leaks into the response.
+The `StatusCode` branch of the `AddErrorResponses(...)` registration in
+`Minimal.Api/Configs/FluentValidationConfig.cs` maps that exception to `403 Forbidden`, deliberately
+separate from the generic `500` path.
+
+No EF Core column or entity name leaks into that response either. The body is the service's standard
+error body — `title` `"Error"`, `status`, `type`, `traceId` and an `errors` array — and outside
+`Development` its single entry carries the fixed message
+`"An unexpected error occurred. Quote the trace-id when reporting this."`, nothing the exception
+carried. `type` names the **status** (`Forbidden`), never the exception's type name, so neither the
+message nor the exception type reaches the caller. Shape and guarantees:
+[`api-pipeline.md`](api-pipeline.md#error-responses).
