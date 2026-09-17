@@ -21,7 +21,10 @@ internal static class ServiceConfigs
             // Also wires DKNet's DataOwnerHook onto CoreDbContext: it stamps CreatedBy/CreatedOn from
             // IDataOwnerProvider on save, never from a request property — a generated create request can
             // never set the acting user (DRK-715 R1).
-            .AddDataOwnerProvider<CoreDbContext, PrincipalProvider>();
+            .AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()
+            // Stamps CreatedBy/UpdatedBy from the signed-in user's subject claim, independently of
+            // OwnedBy (still the tenant ownership key above) — DRK-1466.
+            .AddCurrentUserProvider<CoreDbContext, PrincipalProvider>();
 
         services
             .AddAppServices()

@@ -20,6 +20,7 @@ global using Minimal.Api.Configs.Antiforgery;
 global using Minimal.Api.Configs.Healthz;
 global using SlimMessageBus;
 global using DKNet.EfCore.DataAuthorization;
+global using DKNet.EfCore.AuditLogs;
 global using DKNet.SlimBus.Extensions;
 global using Microsoft.Extensions.Options;
 global using Microsoft.AspNetCore.HttpsPolicy;
