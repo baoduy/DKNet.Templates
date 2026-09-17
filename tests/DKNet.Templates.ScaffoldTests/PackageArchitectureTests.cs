@@ -142,7 +142,7 @@ public class PackageArchitectureTests
     }
 
     [Fact]
-    public void AllDKNetPackages_ShouldBePinnedTo_10_1_26()
+    public void AllDKNetPackages_ShouldBePinnedTo_10_1_29()
     {
         var srcDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
@@ -153,8 +153,8 @@ public class PackageArchitectureTests
         var doc = XDocument.Load(directoryPackagesPath);
         var distinctVersions = PackagePinGuard.DistinctDkNetVersions(doc);
 
-        distinctVersions.ShouldBe(["10.1.26"],
-            "DKNet packages must all be pinned to 10.1.26, found: " + string.Join(", ", distinctVersions));
+        distinctVersions.ShouldBe(["10.1.29"],
+            "DKNet packages must all be pinned to 10.1.29, found: " + string.Join(", ", distinctVersions));
     }
 
     [Fact]

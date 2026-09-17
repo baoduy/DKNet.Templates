@@ -1,8 +1,9 @@
-﻿using DKNet.EfCore.DataAuthorization;
+﻿using DKNet.EfCore.AuditLogs;
+using DKNet.EfCore.DataAuthorization;
 
 namespace Minimal.AppServices.Share;
 
-public interface IPrincipalProvider : IDataOwnerProvider
+public interface IPrincipalProvider : IDataOwnerProvider, ICurrentUserProvider
 {
     #region Properties
 

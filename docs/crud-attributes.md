@@ -36,7 +36,7 @@ public class Product : AggregateRoot, IOwnedBy
     [SensitiveData("pricing")] public decimal? SupplierCostPrice { get; private set; }
     [SensitiveData] public string? SupplierReferenceCode { get; private set; }
 
-    // Stamped by DataOwnerHook from the same ownership key as CreatedBy; makes the row subject to
+    // Stamped by DataOwnerHook from the tenant ownership key; makes the row subject to
     // DataOwnerAuthQuery's global read filter.
     public string OwnedBy { get; private set; } = string.Empty;
 

@@ -125,12 +125,15 @@ registered but applied to no shipped route — attach it with
 from an endpoint's `AuthPolicy`.
 
 **The acting user.** `IPrincipalProvider` (`Minimal.AppServices/Share/IPrincipalProvider.cs`)
-extends DKNet's `IDataOwnerProvider` with `ProfileId`, `Email` and `UserName`. The implementation,
-`Minimal.Api/Configs/Handlers/PrincipalProvider.cs`, resolves the ownership key from the first
-non-empty of `http://schemas.microsoft.com/identity/claims/objectidentifier`, `oid`,
-`ClaimTypes.NameIdentifier`, `sub`. Replace the implementation to change how identity is read;
-`.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()` in `ServiceConfigs.cs` is the single
-registration point. Full behaviour:
+extends DKNet's `IDataOwnerProvider` and `ICurrentUserProvider` with `ProfileId`, `Email` and
+`UserName`. The implementation, `Minimal.Api/Configs/Handlers/PrincipalProvider.cs`, resolves both
+the ownership key (`GetOwnershipKey()`, the source of `OwnedBy`) and the acting user
+(`GetCurrentUser()`, the source of `CreatedBy`/`UpdatedBy`) from the first non-empty of
+`http://schemas.microsoft.com/identity/claims/objectidentifier`, `oid`, `ClaimTypes.NameIdentifier`,
+`sub`. Replace the implementation to change how identity is read;
+`.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()` and
+`.AddCurrentUserProvider<CoreDbContext, PrincipalProvider>()` in `ServiceConfigs.cs` are the two
+registration points. Full behaviour:
 [`auditing-and-data-ownership.md`](auditing-and-data-ownership.md).
 
 **Reading a claim into a request.** Mark a request property `[FromClaim(...)]` and the endpoint

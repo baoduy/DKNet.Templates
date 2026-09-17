@@ -1,10 +1,12 @@
 # Auditing and Data Ownership
 
 How `CreatedBy`/`CreatedOn`/`UpdatedBy`/`UpdatedOn` get populated, and why a caller can never forge
-them. Full API surface for the two packages behind this: `DKNet.EfCore.Abstractions`
-([docs/EfCore/DKNet.EfCore.Abstractions.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.Abstractions.md))
-and `DKNet.EfCore.DataAuthorization`
-([docs/EfCore/DKNet.EfCore.DataAuthorization.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.DataAuthorization.md)).
+them. Full API surface for the three packages behind this: `DKNet.EfCore.Abstractions`
+([docs/EfCore/DKNet.EfCore.Abstractions.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.Abstractions.md)),
+`DKNet.EfCore.DataAuthorization`
+([docs/EfCore/DKNet.EfCore.DataAuthorization.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.DataAuthorization.md))
+and `DKNet.EfCore.AuditLogs`
+([docs/EfCore/DKNet.EfCore.AuditLogs.md](https://github.com/baoduy/DKNet/blob/dev/docs/EfCore/DKNet.EfCore.AuditLogs.md)).
 
 ## The audit fields
 
@@ -30,8 +32,8 @@ Two mechanisms enforce this, depending on which sample you're looking at:
 
 | | `Product` (automated) | `PurchaseOrder` (manual) |
 |---|---|---|
-| Mechanism | `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook`, stamping on `SaveChanges` | `[FromClaim]` populates a request property; the aggregate stamps itself |
-| Where the acting user is read | `IDataOwnerProvider.GetOwnershipKey()` | `ClaimTypes.Name`, via the pipeline's contextual request population |
+| Mechanism | `DKNet.EfCore.AuditLogs`'s audit hook stamps `CreatedBy`/`UpdatedBy` on `SaveChanges`; `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` stamps `OwnedBy` | `[FromClaim]` populates a request property; the aggregate stamps itself |
+| Where the acting user is read | `ICurrentUserProvider.GetCurrentUser()` — the tenant `OwnedBy` key is read separately, from `IDataOwnerProvider.GetOwnershipKey()` | `ClaimTypes.Name`, via the pipeline's contextual request population |
 | Use it when | The entity is plain CRUD and an audit stamp is all you need | A domain method needs the acting user's identity as domain data, not just an audit stamp |
 
 ### Automated sample (`Product`) — the hook stamps it
@@ -40,10 +42,10 @@ Two mechanisms enforce this, depending on which sample you're looking at:
 only `name` and `price`. There is no `createdBy`/`byUser` parameter to spoof, because the generated
 create request's shape comes straight from that constructor's parameter list.
 
-`CreatedBy`/`UpdatedBy` are stamped instead by `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook`,
-wired via:
+`CreatedBy`/`UpdatedBy` are stamped instead on save, from the signed-in user rather than from
+anything the caller sent, wired via:
 
-- `Minimal.AppServices/Share/IPrincipalProvider.cs` — extends `IDataOwnerProvider`, adding
+- `Minimal.AppServices/Share/IPrincipalProvider.cs` — extends `IDataOwnerProvider, ICurrentUserProvider`, adding
   `ProfileId`/`Email`/`UserName` read from the bearer token's claims.
 - `Minimal.Api/Configs/Handlers/PrincipalProvider.cs` — the implementation. `GetOwnershipKey()`
   returns the caller's subject claim, never their name: the first non-empty of
@@ -51,19 +53,28 @@ wired via:
   `ClaimTypes.NameIdentifier`, `sub`. When the caller is not authenticated it returns
   `SharedConsts.SystemAccount` instead. (`ProfileId` on the same class exposes that key parsed as a
   `Guid`, or `Guid.Empty` when it does not parse — it is a convenience for domain code, not what
-  the hook stamps.)
+  the hook stamps.) `GetCurrentUser()` returns that same subject claim today and is deliberately kept
+  as its own method, so the acting user and the ownership key can diverge later without either hook
+  changing.
 - `Minimal.Api/Configs/ServiceConfigs.cs`: `.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`
   registers the provider and wires `DataOwnerHook` onto `CoreDbContext`.
+- `Minimal.Api/Configs/ServiceConfigs.cs`: `.AddCurrentUserProvider<CoreDbContext, PrincipalProvider>()`
+  wires the `DKNet.EfCore.AuditLogs` hook onto the same context, which makes `GetCurrentUser()` — not
+  the ownership key — the source of `CreatedBy`/`UpdatedBy`.
 
-On `SaveChanges`, `DataOwnerHook`:
+On `SaveChanges`, the two hooks split the entity between them:
 
-1. Stamps `CreatedBy`/ownership on every newly-added entity, from `IDataOwnerProvider.GetOwnershipKey()`.
-2. On a modified entity, stamps `UpdatedBy`/`UpdatedOn` from the same ownership key. The hook first
-   checks whether a domain method already called `SetUpdatedBy` explicitly for this change set, by
-   comparing the property's current value against its EF Core `OriginalValue`. If a domain method
-   already set it, the hook leaves both fields untouched rather than overwriting them.
-3. Guards `IOwnedBy.OwnedBy` on a modified entity against reassignment to a key the current context
-   doesn't hold, preventing cross-tenant transfer.
+1. The `DKNet.EfCore.AuditLogs` hook stamps `CreatedBy`/`CreatedOn` on every newly-added entity and
+   `UpdatedBy`/`UpdatedOn` on every modified one, from `ICurrentUserProvider.GetCurrentUser()`. On a
+   modified entity it first checks whether a domain method already called `SetUpdatedBy` explicitly
+   for this change set, by comparing the property's current value against its EF Core
+   `OriginalValue`. If a domain method already set it, both fields are left untouched rather than
+   overwritten.
+2. `DataOwnerHook` stamps ownership on every newly-added entity, from
+   `IDataOwnerProvider.GetOwnershipKey()`. While a current-user provider is registered and returns a
+   non-empty value it stamps `OwnedBy` only, leaving the audit fields to the hook above.
+3. `DataOwnerHook` guards `IOwnedBy.OwnedBy` on a modified entity against reassignment to a key the
+   current context doesn't hold, preventing cross-tenant transfer.
 
 Because the payload has no acting-user field at all, there is nothing for a caller to smuggle in.
 This is proven by `Minimal.App.Tests/Integration/AutomatedSample/V1/ProductSecurityTests.cs`:
@@ -89,7 +100,7 @@ string is discarded unconditionally, never trusted. The handler then passes `req
 the aggregate's constructor (`PurchaseOrder(customerName, amount, byUser)` → `base(byUser)` →
 `SetCreatedBy`), and `PurchaseOrder.ChangeAmount` calls `SetUpdatedBy(userId)` itself on update.
 
-Use this pattern instead of relying on `DataOwnerHook` when a domain method needs the acting user's
+Use this pattern instead of relying on the save-hook stamp when a domain method needs the acting user's
 identity as domain data, not just an audit stamp. For example, to pass it into a further business
 rule, or when the entity's own methods (not just `SaveChanges`) need to record who called them.
 
@@ -102,16 +113,19 @@ name, never the spoofed one.
 ## Row-level ownership filtering
 
 `Minimal.Infra/Contexts/CoreDbContext.cs` implements `IDataOwnerDbContext` directly, exposing
-`AccessibleKeys` from the same `IDataOwnerProvider` used for stamping. `DKNet.EfCore.DataAuthorization`
+`AccessibleKeys` from the same `IDataOwnerProvider` used to stamp `OwnedBy`. `DKNet.EfCore.DataAuthorization`
 uses this to apply a global query filter on any entity implementing `IOwnedBy`, so a caller only
 ever sees rows whose ownership key matches their own. Filtering happens at the query level, not in
 application code.
 
 ## Where in the save pipeline this runs
 
-`DataOwnerHook` runs as part of EF Core's `SaveChanges`/`SaveChangesAsync` pipeline. It's a
-`BeforeSaveAsync` hook, registered via `.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`.
-It runs after change tracking has determined which entities are added or modified, and before the
+Both hooks run as part of EF Core's `SaveChanges`/`SaveChangesAsync` pipeline. Each is a
+`BeforeSaveAsync` hook — `DataOwnerHook` registered via
+`.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`, the audit hook via
+`.AddCurrentUserProvider<CoreDbContext, PrincipalProvider>()`. Neither depends on running before the
+other: each decides what to stamp from `ICurrentUserProvider`'s own value, never from hook run order.
+They run after change tracking has determined which entities are added or modified, and before the
 `UPDATE`/`INSERT` statements are sent — so the stamped values are always part of the same
 transaction as the data change itself.
 

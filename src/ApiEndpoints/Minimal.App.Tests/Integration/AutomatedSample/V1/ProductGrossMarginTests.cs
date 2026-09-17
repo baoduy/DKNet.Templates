@@ -188,7 +188,7 @@ public sealed class ProductGrossMarginTests(AuthOnMultiSubjectApiFixture fixture
         using var response = await SendAsync(client, HttpMethod.Get, "/v1/products?orderBy=grossMargin");
 
         // R3/R5: a computed DTO field with no entity counterpart must 400, never 500 — measured against
-        // DKNet.AspCore.Extensions 10.1.26's ListQuery.TryValidate, which checks Declares<TEntity> too.
+        // DKNet.AspCore.Extensions 10.1.29's ListQuery.TryValidate, which checks Declares<TEntity> too.
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
         body.Contains("grossMargin", StringComparison.OrdinalIgnoreCase).ShouldBeTrue();
