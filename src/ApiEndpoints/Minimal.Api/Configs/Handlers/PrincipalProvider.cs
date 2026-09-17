@@ -50,6 +50,15 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
         return _ownershipKey;
     }
 
+    // DRK-1466: deliberately identical to GetOwnershipKey() today — OwnedBy and CreatedBy/UpdatedBy
+    // share one claim for now. Do not collapse into GetOwnershipKey(): ServiceConfigs.AddCurrentUserProvider
+    // wires this to the audit hook independently of AddDataOwnerProvider, so the two are free to diverge later.
+    public string? GetCurrentUser()
+    {
+        Initialize();
+        return _ownershipKey;
+    }
+
     private void Initialize()
     {
         var context = accessor.HttpContext;

@@ -316,15 +316,16 @@ The generator forwards only `System.ComponentModel.DataAnnotations` attributes, 
 (namespace `DKNet.AspCore.Extensions.ModelBinding`) can never reach a generated property — the
 `[CrudCreate]` constructor takes no acting-user parameter.
 
-Instead, `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` stamps `CreatedBy`/`CreatedOn` on
-insert and `UpdatedBy`/`UpdatedOn` on modify, reading the user from `IDataOwnerProvider`. It is
-wired once at the composition root (`ServiceConfigs.cs`). A payload claiming
+Instead, `DKNet.EfCore.AuditLogs`'s audit hook stamps `CreatedBy`/`CreatedOn` on insert and
+`UpdatedBy`/`UpdatedOn` on modify, reading the user from `ICurrentUserProvider`. It is wired once at
+the composition root (`ServiceConfigs.cs`), alongside `DataOwnerHook`, which stamps the `OwnedBy`
+tenant key from `IDataOwnerProvider`. A payload claiming
 `"createdBy": "someone-else"` has no property to land on, so the forgery guarantee is *identical*
 to the manual sample's `[FromClaim]` population.
 
 What you actually lose is the ability to see *where* attribution happens by reading
-`AutomatedSample/` — it lives in a shared save hook. (As of DKNet `10.1.14`, `DataOwnerHook`
-stamps on modify as well as insert — verified live over `Product`'s `PUT` route.)
+`AutomatedSample/` — it lives in a shared save hook. (The audit hook stamps on modify as well as
+insert — verified live over `Product`'s `PUT` route.)
 
 ### 7. The external-broker path is real but untested here
 

@@ -43,7 +43,7 @@ one attribute or one call. Nothing here needs new infrastructure.
 | Reject bad input before the handler runs | a FluentValidation `AbstractValidator<TRequest>` — auto-discovered | [API pipeline](api-pipeline.md#fluentvalidation-auto-validation), [Extension points](extension-points.md#requests-handlers-and-validators) |
 | Make a replayed `POST` return the first result instead of creating twice | `.RequiredIdempotentKey()` on the route; client sends `X-Idempotency-Key` | [API pipeline](api-pipeline.md#idempotency-on-post) |
 | Fill the acting user into a request from the token | `[FromClaim(...)]` on a request property | [API pipeline](api-pipeline.md#fromclaim-population) |
-| Stamp the acting user onto every entity without touching requests | `DataOwnerHook` — already wired; nothing per-feature | [Auditing and data ownership](auditing-and-data-ownership.md) |
+| Stamp the acting user onto every entity without touching requests | the `DKNet.EfCore.AuditLogs` hook — already wired; nothing per-feature | [Auditing and data ownership](auditing-and-data-ownership.md) |
 | Ship reference rows with the feature | a `DataSeedingConfiguration<T>` subclass — auto-discovered | [CRUD attributes](crud-attributes.md#data-seeding) |
 | Gapless human-readable numbers (order no., invoice no.) | a sequence definition | [CRUD attributes](crud-attributes.md#sequences) |
 | Forward a domain event to an external broker | `Produce`/`Consume` in `ServiceBusSetup` | [SlimMessageBus messaging](slimbus-messaging.md) |
