@@ -1,5 +1,6 @@
 using DKNet.AspCore.Extensions.Responses;
 using FluentValidation;
+using Minimal.Infra.Contexts;
 
 namespace Minimal.Api.Configs;
 
@@ -14,20 +15,29 @@ internal static class FluentValidationConfig
     #region Methods
 
     /// <summary>
-    /// R3: one <see cref="ErrorResponseOptions" /> setting serves both a failed command and refused
-    /// validation input (the generated CRUD routes already resolve it via <c>[FromServices]</c>). A
-    /// refusal whose error carries a <see cref="PreconditionCodes.Prefix" />-prefixed code answers 409;
-    /// every other refusal keeps today's status (R4: the body carries only <c>trace-id</c> and this
-    /// service-chosen code, never a database message).
+    /// R1/R3: the template's one <see cref="ErrorResponseOptions" /> registration — it answers a failed
+    /// command, refused validation input and an unhandled error alike (the generated CRUD routes already
+    /// resolve it via <c>[FromServices]</c>). A refusal whose error carries a
+    /// <see cref="PreconditionCodes.Prefix" />-prefixed code answers 409; an unhandled
+    /// <see cref="OwnershipRequiredException" /> answers 403; every other refusal keeps today's status
+    /// (R4: the body carries only <c>trace-id</c> and this service-chosen code, never a database message).
     /// </summary>
     public static WebApplicationBuilder AddFluentValidationConfig(this WebApplicationBuilder builder)
     {
         builder.Services.AddErrorResponses(o =>
         {
-            o.StatusCode = ctx => ctx.Errors.Any(e =>
-                e.Code is not null && e.Code.StartsWith(PreconditionCodes.Prefix, StringComparison.Ordinal))
-                ? StatusCodes.Status409Conflict
-                : null;
+            o.StatusCode = ctx =>
+            {
+                if (ctx.Source == ErrorSource.Unhandled && ctx.Exception is OwnershipRequiredException)
+                {
+                    return StatusCodes.Status403Forbidden;
+                }
+
+                return ctx.Errors.Any(e =>
+                    e.Code is not null && e.Code.StartsWith(PreconditionCodes.Prefix, StringComparison.Ordinal))
+                    ? StatusCodes.Status409Conflict
+                    : null;
+            };
 
             o.Customize = (problemDetails, ctx) =>
             {

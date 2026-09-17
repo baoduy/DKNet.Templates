@@ -43,7 +43,9 @@ internal sealed class CancelPurchaseOrderCommandHandler(IRepositorySpec reposito
 
         if (order.Status == PurchaseOrderStatus.Cancelled)
         {
-            return Result.Fail<PurchaseOrderDto>($"The purchase order {request.Id} is already cancelled.");
+            return Result.Fail<PurchaseOrderDto>(
+                new Error($"The purchase order {request.Id} is already cancelled.")
+                    .WithMetadata("Code", PreconditionCodes.PurchaseOrderAlreadyCancelled));
         }
 
         order.Cancel(request.ByUser);
