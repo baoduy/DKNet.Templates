@@ -27,7 +27,7 @@ responsible for a specific aspect of API infrastructure, promoting maintainabili
       - [Versioning (`VersioningConfig.cs`)](#versioning-versioningconfigcs)
       - [Endpoints (`Endpoints/`)](#endpoints-endpoints)
       - [Idempotency (`Idempotency/`)](#idempotency-idempotency)
-    - [Error Handling (`GlobalExceptions/`)](#error-handling-globalexceptions)
+    - [Validation \& Error Handling (`FluentValidationConfig.cs`)](#validation--error-handling-fluentvalidationconfigcs)
     - [Monitoring \& Health](#monitoring--health)
       - [Healthz (`Healthz/`)](#healthz-healthz)
     - [Performance \& Reliability](#performance--reliability)
@@ -149,10 +149,11 @@ versioning, documentation, error handling, and more. This modularity enables eas
   `X-Content-Type-Options`, a default `Content-Security-Policy`,
   `X-Permitted-Cross-Domain-Policies`, `Referrer-Policy`, `Cache-Control`, `X-XSS-Protection`,
   `Cross-Origin-Resource-Policy`.
-- Written from `HttpResponse.OnStarting`, registered before routing and before the global exception
-  handler, so a `200`, a `404` for an unpublished path and an unhandled-`500` problem response all
-  carry the headers — the exception-handler path clears the response, which would otherwise drop
-  headers added the ordinary way.
+- Written from `HttpResponse.OnStarting`, registered before routing, so a `200`, a `404` for an
+  unpublished path and an unhandled-`500` problem response all carry the headers — the
+  exception-handler path clears the response, which would otherwise drop headers added the ordinary
+  way, and that also keeps the `500` covered even though the error handler sits upstream of this
+  middleware.
 - Does **not** emit `Strict-Transport-Security`: `HttpsConfig` owns that header, so it is never sent
   twice.
 - Feature flag: `FeatureOptions.EnableSecurityHeaders` (default `true`).
@@ -197,12 +198,22 @@ versioning, documentation, error handling, and more. This modularity enables eas
 - Configurable conflict handling (409 or cached response).
 - Response caching and custom key storage.
 
-### Error Handling (`GlobalExceptions/`)
+### Validation & Error Handling (`FluentValidationConfig.cs`)
 
-- Centralized exception handling via `GlobalExceptionHandler`.
-- Problem Details (RFC 7807) formatting.
-- Trace ID correlation and logging.
-- Standardized error responses.
+- One `AddErrorResponses(...)` registration is the app's only error-handling step: the library
+  (`DKNet.AspCore.Extensions`) wires problem details, its own `IExceptionHandler` and
+  `UseExceptionHandler()` from that single call, so nothing else in `Configs/` registers them.
+- The same setting shapes all three failure kinds — a failed command handler, refused validation
+  input and an unhandled exception — into one body: `title` `"Error"`, `status`, `type` (the
+  **status**'s name, never the exception's type name), `traceId`, and an `errors` array of
+  `{ message, code?, field? }`.
+- Configured branches: `409` for a failure carrying a `PreconditionCodes.Prefix`-prefixed code (also
+  copied onto the body as `code`), and `403` for `OwnershipRequiredException`.
+- Outside `Development` an unhandled exception answers `500` whose single `errors` entry carries a
+  fixed message and nothing the exception carried; `traceId` is the correlation handle.
+- Also registers every `AbstractValidator<T>` in the `AppServices` assembly, internal types
+  included.
+- Full narrative: `docs/api-pipeline.md`.
 
 ### Monitoring & Health
 
@@ -305,17 +316,27 @@ services.AddIdempotency(options => {
 app.MapPost("/api/resource", handler).AddIdempotencyFilter();
 ```
 
-**Global Exception Handling**
+**Validation & Error Responses**
 
 ```csharp
-services.AddGlobalException();
-app.UseGlobalException();
-services.AddProblemDetails(options => {
-    options.CustomizeProblemDetails = ctx => {
-        ctx.ProblemDetails.Instance = $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
-        ctx.ProblemDetails.Extensions["trace-id"] = ctx.HttpContext.TraceIdentifier;
+// The whole error-handling wiring: no UseExceptionHandler(), no AddProblemDetails().
+builder.Services.AddErrorResponses(o =>
+{
+    o.StatusCode = ctx => ctx.Errors.Any(e =>
+        e.Code is not null && e.Code.StartsWith(PreconditionCodes.Prefix, StringComparison.Ordinal))
+        ? StatusCodes.Status409Conflict
+        : null;
+
+    o.Customize = (problemDetails, ctx) =>
+    {
+        var code = ctx.Errors.Select(e => e.Code).FirstOrDefault(c => c is not null);
+        if (code is not null)
+        {
+            problemDetails.Extensions["code"] = code;
+        }
     };
 });
+builder.Services.AddValidatorsFromAssembly(typeof(AppSetup).Assembly, includeInternalTypes: true);
 ```
 
 **Endpoint Configuration**
@@ -372,8 +393,7 @@ Configs/
 ├── Auth/
 ├── Endpoints/
 ├── Idempotency/
-├── Swagger/
-└── GlobalExceptions/
+└── Swagger/
 ```
 
 ---
@@ -386,7 +406,7 @@ each stage is skipped entirely when its flag is off:
 | # | Stage | Gate | Why here |
 |---|---|---|---|
 | 1 | Forwarded headers | `EnableForwardedHeaders` + `Security:TrustedProxies` | Must rewrite `RemoteIpAddress`/`Scheme` before anything decides on the caller |
-| 2 | Security response headers | `EnableSecurityHeaders` | Ahead of routing and of the global exception handler, so `200`, `404` and unhandled `500` responses all carry the headers |
+| 2 | Security response headers | `EnableSecurityHeaders` | Ahead of routing, and written from `OnStarting`, so `200`, `404` and unhandled `500` responses all carry the headers |
 | 3 | Antiforgery | `EnableAntiforgery` | — |
 | 4 | CORS | `Cors:AllowedOrigins` non-empty | Before routing, so the preflight `OPTIONS` is covered too |
 | 5 | HSTS + HTTPS redirection | `EnableHttps` | — |
@@ -397,7 +417,10 @@ each stage is skipped entirely when its flag is off:
 | 10 | Authentication + authorization | `RequireAuthorization` | Must follow `UseRouting()`; the fallback policy makes every non-anonymous endpoint default-deny |
 | 11 | Endpoints (`UseEndpointConfigs`) | always | — |
 | 12 | OpenAPI + Scalar mapping | `EnableSwagger` | — |
-| 13 | Global exception handler | always | Registered last but still upstream of the handler at request time — `WebApplication` appends endpoint execution at the very end of the pipeline |
+
+Unhandled-exception handling is absent from the table because `UseAppConfig()` does not register it:
+the `AddErrorResponses(...)` call in `FluentValidationConfig.cs` inserts `UseExceptionHandler()` at
+the head of the pipeline through a start-up filter, upstream of stage 1.
 
 The two body-size and header-timeout bounds are not middleware at all: they are Kestrel server
 limits set in `AddRequestBoundsConfig`, enforced by the server before any of the above runs.

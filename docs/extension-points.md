@@ -222,8 +222,9 @@ Mapping and seeding classes must be `internal sealed`
 
 `CoreDbContext` itself carries one guard you can rely on but should not bypass:
 `EnsureOwnershipResolvable` throws `OwnershipRequiredException` before EF Core attempts an insert
-that would leave a required `CreatedBy` unset, and the global exception handler turns that into a
-`403`, not a `500`.
+that would leave a required `CreatedBy` unset, and the `StatusCode` branch of the
+`AddErrorResponses(...)` registration in `Minimal.Api/Configs/FluentValidationConfig.cs` turns that
+into a `403`, not a `500`.
 
 ## Domain services
 
