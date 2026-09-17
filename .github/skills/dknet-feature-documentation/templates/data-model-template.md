@@ -41,7 +41,7 @@ erDiagram
 | `Field3` | `string?` | `Field3` | Nullable, max {N} chars |
 | `Status` | `string` | `Status` | Not null, max 50 chars |
 | `IsDeleted` | `bool` | `IsDeleted` | Default: `false` |
-| `CreatedBy` | `string` | `CreatedBy` | Not null (from `RequestBase.ByUser`) |
+| `CreatedBy` | `string` | `CreatedBy` | Not null (from the request's `[FromClaim(ClaimTypes.Name)]` `ByUser`) |
 | `CreatedAt` | `DateTime` | `CreatedAt` | UTC, auto-set on insert |
 | `UpdatedBy` | `string?` | `UpdatedBy` | Nullable |
 | `UpdatedAt` | `DateTime?` | `UpdatedAt` | UTC, auto-updated |
