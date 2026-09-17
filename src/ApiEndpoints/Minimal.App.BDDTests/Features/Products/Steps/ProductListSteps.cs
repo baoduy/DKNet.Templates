@@ -84,8 +84,8 @@ public sealed class ProductListSteps(HttpClient client, ScenarioState state)
     public void ThenTheResponseNamesTheUnsupportedField(string field)
     {
         // The generic list route answers an unusable filter/order field via Results.Problem(error, 400) —
-        // ProblemDetails' "detail" carries the field name, not an "errors" dictionary (that shape is
-        // FluentValidation's, a different refusal path this route never goes through).
+        // ProblemDetails' "detail" carries the field name, not an "errors" array of { message, code?, field? }
+        // (that shape is AddErrorResponses', a different refusal path this route never goes through).
         state.ResponseBody.ShouldNotBeNullOrEmpty();
         using var doc = JsonDocument.Parse(state.ResponseBody!);
         doc.RootElement.TryGetProperty("detail", out var detail).ShouldBeTrue();

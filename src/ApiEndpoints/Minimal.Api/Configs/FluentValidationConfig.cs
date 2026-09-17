@@ -20,7 +20,7 @@ internal static class FluentValidationConfig
     /// resolve it via <c>[FromServices]</c>). A refusal whose error carries a
     /// <see cref="PreconditionCodes.Prefix" />-prefixed code answers 409; an unhandled
     /// <see cref="OwnershipRequiredException" /> answers 403; every other refusal keeps today's status
-    /// (R4: the body carries only <c>trace-id</c> and this service-chosen code, never a database message).
+    /// (R4: the body carries only <c>traceId</c> and this service-chosen code, never a database message).
     /// </summary>
     public static WebApplicationBuilder AddFluentValidationConfig(this WebApplicationBuilder builder)
     {
