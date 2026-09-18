@@ -4,10 +4,10 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
 {
     #region Fields
 
-    private string _email = null!;
+    private string _email = string.Empty;
     private bool _initialized;
     private string? _ownershipKey;
-    private string _userName = null!;
+    private string _userName = string.Empty;
 
     #endregion
 
@@ -79,7 +79,7 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
             return;
         }
 
-        _userName = context.User.Identity.Name!;
+        _userName = context.User.Identity.Name ?? string.Empty;
 
         //Get ownership key from subject claims, first non-empty wins
         string[] subjectClaimTypes =
