@@ -21,9 +21,20 @@ internal static class AppConfig
             services.AddAntiforgeryConfig();
         }
 
+        if (features.RequireAuthorization && features.EnableDemoAuthentication)
+        {
+            throw new InvalidOperationException(
+                $"{nameof(FeatureOptions.RequireAuthorization)} and {nameof(FeatureOptions.EnableDemoAuthentication)} " +
+                "cannot both be enabled: the demonstration identity is never a real caller.");
+        }
+
         if (features.RequireAuthorization)
         {
             services.AddAuthConfig();
+        }
+        else if (features.EnableDemoAuthentication)
+        {
+            services.AddDemoAuthConfig();
         }
 
         if (features.EnableSwagger)

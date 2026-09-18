@@ -7,12 +7,19 @@ namespace Minimal.App.Tests.Integration.AutomatedSample.V1;
 
 /// <summary>
 /// The anonymous half of <see cref="ProductSensitiveDataTests"/>'s scenarios — kept in its own test class on
-/// a bare <see cref="ApiFixture"/> (never combined with <see cref="AuthOnMultiSubjectApiFixture"/> in the same
-/// class): that fixture's constructor flips <c>FeatureManagement:RequireAuthorization</c> on via a process-wide
-/// environment variable, cleared only at class teardown (see its own remarks) — sharing a class with it would
-/// leak "requires auth" into this fixture's host before it boots.
+/// <see cref="DemoAuthenticationOffApiFixture"/> (never combined with <see cref="AuthOnMultiSubjectApiFixture"/>
+/// in the same class): that fixture's constructor flips <c>FeatureManagement:RequireAuthorization</c> on via a
+/// process-wide environment variable, cleared only at class teardown (see its own remarks) — sharing a class
+/// with it would leak "requires auth" into this fixture's host before it boots.
 /// </summary>
-public sealed class ProductSensitiveDataAnonymousTests(ApiFixture fixture) : IClassFixture<ApiFixture>
+/// <remarks>
+/// Uses <see cref="DemoAuthenticationOffApiFixture"/> rather than a bare <see cref="ApiFixture"/>: the built-in
+/// demonstration authentication provider is on by default in the Testing overlay (DRK-1579), so a bare
+/// <see cref="ApiFixture"/> caller is no longer unauthenticated. Switching it off here on purpose is what keeps
+/// this scenario a true test of the unauthenticated-caller path.
+/// </remarks>
+public sealed class ProductSensitiveDataAnonymousTests(DemoAuthenticationOffApiFixture fixture)
+    : IClassFixture<DemoAuthenticationOffApiFixture>
 {
     private const string ProductName = "Espresso Machine";
     private const decimal ProductPrice = 899.00m;
@@ -46,7 +53,7 @@ public sealed class ProductSensitiveDataAnonymousTests(ApiFixture fixture) : ICl
     /// columns explicitly sidesteps <c>DataOwnerHook</c>'s need for an <c>HttpContext</c>, which a bare
     /// <see cref="IServiceScope"/> never has.
     /// </summary>
-    private static async Task<Guid> SeedProductDirectlyAsync(ApiFixture apiFixture, string name)
+    private static async Task<Guid> SeedProductDirectlyAsync(DemoAuthenticationOffApiFixture apiFixture, string name)
     {
         using var scope = apiFixture.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CoreDbContext>();

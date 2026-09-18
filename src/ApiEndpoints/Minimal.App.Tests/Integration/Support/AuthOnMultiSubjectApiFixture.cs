@@ -14,8 +14,13 @@ namespace Minimal.App.Tests.Integration.Support;
 public sealed class AuthOnMultiSubjectApiFixture : TestApiFactoryBase, IAsyncLifetime
 {
     private const string RequireAuthorizationEnvKey = "FeatureManagement__RequireAuthorization";
+    private const string EnableDemoAuthenticationEnvKey = "FeatureManagement__EnableDemoAuthentication";
 
-    public AuthOnMultiSubjectApiFixture() => Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, "true");
+    public AuthOnMultiSubjectApiFixture()
+    {
+        Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, "true");
+        Environment.SetEnvironmentVariable(EnableDemoAuthenticationEnvKey, "false");
+    }
 
     #region Methods
 
@@ -36,6 +41,7 @@ public sealed class AuthOnMultiSubjectApiFixture : TestApiFactoryBase, IAsyncLif
     protected override void Dispose(bool disposing)
     {
         Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, null);
+        Environment.SetEnvironmentVariable(EnableDemoAuthenticationEnvKey, null);
         base.Dispose(disposing);
     }
 

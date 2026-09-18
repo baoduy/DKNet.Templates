@@ -203,21 +203,27 @@ remarks on `Minimal.App.Tests/Integration/Support/AuthOnApiFixture.cs`.
 
 ## `[FromClaim]` population
 
-Registered once via
-`.AddContextualRequestPopulation(o => o.SystemAccountFallback = SharedConsts.SystemAccount)` in
-`Minimal.Api/Program.cs`, and applied automatically by `UseEndpointConfigs` for every mapped
-endpoint. Any request property marked `[FromClaim(...)]` — for example `ByUser` on
-`Minimal.AppServices/ManualSample/V1/Actions/Create.cs` — is **overwritten** from the caller's claim
-before validation and before the handler runs. This is a security property, not a model-binding
-convenience: whatever the caller put in the body or query string for that member is always
-discarded.
+Registered once via `.AddContextualRequestPopulation()` in `Minimal.Api/Program.cs`, and applied
+automatically by `UseEndpointConfigs` for every mapped endpoint. Any request property marked
+`[FromClaim(...)]` — for example `ByUser` on `Minimal.AppServices/ManualSample/V1/Actions/Create.cs`
+— is **overwritten** from the caller's claim before validation and before the handler runs. This is
+a security property, not a model-binding convenience: whatever the caller put in the body or query
+string for that member is always discarded.
 
-`SystemAccountFallback` only substitutes a value when `RequireAuthorization` is `false` *and* the
-claim resolver couldn't resolve a value — with the shipped defaults that means local Development and
-the test suites, never a deployed service running the base file. An authenticated caller with a
-genuinely missing claim never gets the fallback — the member holds its type's default instead, and the handler must reject
-it explicitly (see `CreatePurchaseOrderCommandHandler.OnHandle`'s `IsNullOrEmpty(request.ByUser)`
-check). Pinned by `AuthorizationOff_CreateIsAttributedToSystemAccount` and
+There is no configured fallback in the population pipeline itself — a `[FromClaim]` member is only
+ever set from an authenticated principal's claims. What makes that true even with
+`RequireAuthorization` off — local Development and the test suites — is the built-in demonstration
+authentication provider (`FeatureManagement:EnableDemoAuthentication`,
+`Minimal.Api/Configs/Auth/DemoAuthConfig.cs`): when it is enabled it authenticates every caller under
+its own `"Demo"` scheme, issuing `ClaimTypes.Name` as `SharedConsts.DemoAccount`
+(`"demo-user@not-a-real-identity.invalid"`), so `[FromClaim(ClaimTypes.Name)]` resolves that value
+instead of going unset. `RequireAuthorization` and `EnableDemoAuthentication` can never both be
+`true` — `Minimal.Api/Configs/AppConfig.cs` throws an `InvalidOperationException` at start-up rather
+than silently preferring one provider over the other. An authenticated caller with a genuinely
+missing claim still never gets a fallback — the member holds its type's default instead, and the
+handler must reject it explicitly (see `CreatePurchaseOrderCommandHandler.OnHandle`'s
+`IsNullOrEmpty(request.ByUser)` check). Pinned by
+`DemoAuthentication_CreateIsAttributedToTheDemoIdentity` and
 `AuthenticatedCallerWithNoNameClaim_CreateIsRefused_NeverAttributedToSystemAccount` in
 `Minimal.App.Tests/Integration/EndpointConfig/PurchaseOrderStampingAndVersioningTests.cs`.
 

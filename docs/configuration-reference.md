@@ -71,6 +71,18 @@ source and both meant to be replaced:
 `SampleScopePolicy` policy backed by `HasScopeRequirement`/`HasScopeHandler`. Neither is applied to
 any shipped route. See [`extension-points.md`](extension-points.md#authorization-and-claims).
 
+### Built-in demonstration authentication provider
+
+`FeatureManagement:EnableDemoAuthentication` (shipped default and class default both `false`; see
+the full row in [`template-features.md`](template-features.md#featuremanagement-flags)) registers a
+`"Demo"` authentication scheme, `Minimal.Api/Configs/Auth/DemoAuthConfig.cs`, only while
+`RequireAuthorization` is `false`. Every caller is authenticated as one fixed, self-evidently fake
+identity — `ClaimTypes.Name` = `SharedConsts.DemoAccount` (`"demo-user@not-a-real-identity.invalid"`,
+on the `.invalid` TLD reserved by RFC 2606 so it can never resolve), `ClaimTypes.NameIdentifier` =
+`SharedConsts.SystemAccount`. `RequireAuthorization` and `EnableDemoAuthentication` are mutually
+exclusive: both `true` throws `InvalidOperationException` from `Minimal.Api/Configs/AppConfig.cs` at
+start-up. **Development/demonstration only — never enable this flag in a deployed service.**
+
 ## `Cors`
 
 | Key | Type | Base `appsettings.json` | `appsettings.Development.json` | Effect |

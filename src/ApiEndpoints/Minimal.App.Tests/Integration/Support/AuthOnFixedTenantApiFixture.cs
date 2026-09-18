@@ -18,11 +18,16 @@ namespace Minimal.App.Tests.Integration.Support;
 public sealed class AuthOnFixedTenantApiFixture : TestApiFactoryBase, IAsyncLifetime
 {
     private const string RequireAuthorizationEnvKey = "FeatureManagement__RequireAuthorization";
+    private const string EnableDemoAuthenticationEnvKey = "FeatureManagement__EnableDemoAuthentication";
 
     /// <summary>The tenant-ownership key every request resolves to, regardless of the signed-in subject.</summary>
     public const string TenantKey = "5c81ab90-3d62-4f17-9e04-1b6f8a2d5347";
 
-    public AuthOnFixedTenantApiFixture() => Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, "true");
+    public AuthOnFixedTenantApiFixture()
+    {
+        Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, "true");
+        Environment.SetEnvironmentVariable(EnableDemoAuthenticationEnvKey, "false");
+    }
 
     #region Methods
 
@@ -46,6 +51,7 @@ public sealed class AuthOnFixedTenantApiFixture : TestApiFactoryBase, IAsyncLife
     protected override void Dispose(bool disposing)
     {
         Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, null);
+        Environment.SetEnvironmentVariable(EnableDemoAuthenticationEnvKey, null);
         base.Dispose(disposing);
     }
 

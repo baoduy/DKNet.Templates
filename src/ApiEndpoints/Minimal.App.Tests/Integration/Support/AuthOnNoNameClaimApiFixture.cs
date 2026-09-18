@@ -7,8 +7,7 @@ namespace Minimal.App.Tests.Integration.Support;
 /// <see cref="AuthOnApiFixture" />, but authenticates every request via <see cref="NoNameClaimAuthHandler" />
 /// instead — a caller who is authenticated but whose token carries no <see cref="System.Security.Claims.ClaimTypes.Name" />
 /// claim. Proves the missing-claim-while-authenticated path: the declared member holds its default
-/// (<see langword="null" />), never the <c>SystemAccountFallback</c> (that fallback only applies when
-/// authorization is off).
+/// (<see langword="null" />).
 /// </summary>
 /// <remarks>
 /// See <see cref="AuthOnApiFixture" />'s remarks for why the early-bind env var is required here too.
@@ -16,8 +15,13 @@ namespace Minimal.App.Tests.Integration.Support;
 public sealed class AuthOnNoNameClaimApiFixture : TestApiFactoryBase, IAsyncLifetime
 {
     private const string RequireAuthorizationEnvKey = "FeatureManagement__RequireAuthorization";
+    private const string EnableDemoAuthenticationEnvKey = "FeatureManagement__EnableDemoAuthentication";
 
-    public AuthOnNoNameClaimApiFixture() => Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, "true");
+    public AuthOnNoNameClaimApiFixture()
+    {
+        Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, "true");
+        Environment.SetEnvironmentVariable(EnableDemoAuthenticationEnvKey, "false");
+    }
 
     #region Methods
 
@@ -38,6 +42,7 @@ public sealed class AuthOnNoNameClaimApiFixture : TestApiFactoryBase, IAsyncLife
     protected override void Dispose(bool disposing)
     {
         Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, null);
+        Environment.SetEnvironmentVariable(EnableDemoAuthenticationEnvKey, null);
         base.Dispose(disposing);
     }
 
