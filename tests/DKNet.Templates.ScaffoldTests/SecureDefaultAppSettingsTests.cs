@@ -94,18 +94,25 @@ public class SecureDefaultAppSettingsTests
     /// <summary>
     /// DRK-1570 (S6): the base <c>appsettings.json</c> must declare <c>Security:TrustedNetworks</c> as an
     /// array, alongside the existing single-IP <c>Security:TrustedProxies</c>, so a CIDR range can be trusted
-    /// without an operator inventing the key from documentation alone.
+    /// without an operator inventing the key from documentation alone. Asserted on the raw JSON, not
+    /// <see cref="IConfiguration" />: the shipped default is an empty array, and
+    /// <c>Microsoft.Extensions.Configuration.Json</c> emits no key for an empty array, so an
+    /// <see cref="IConfiguration" />-based <c>Exists()</c>/<c>Get&lt;string[]&gt;()</c> assertion could never
+    /// go green (the same reason <c>ForwardedHeadersConfig.cs:21</c> needs <c>?? []</c> against the
+    /// already-shipped empty <c>TrustedProxies</c>) — same convention as
+    /// <see cref="BaseAppSettings_RateLimitSection_DeclaresExplicitValues_NotClassDefaults" />.
     /// </summary>
     [Fact]
     public void BaseAppSettings_DeclaresTrustedNetworksKey_AsArray()
     {
-        var config = LoadBaseConfig();
-        var section = config.GetSection("Security:TrustedNetworks");
+        using var json = JsonDocument.Parse(File.ReadAllText(AppsettingsPath()));
 
-        section.Exists().ShouldBeTrue(
+        json.RootElement.TryGetProperty("Security", out var security).ShouldBeTrue(
+            "the base appsettings.json must declare a Security section (DRK-1570).");
+        security.TryGetProperty("TrustedNetworks", out var trustedNetworks).ShouldBeTrue(
             "the base appsettings.json must declare Security:TrustedNetworks (DRK-1570).");
-        section.Get<string[]>().ShouldNotBeNull(
-            "Security:TrustedNetworks must bind as a string array (DRK-1570).");
+        trustedNetworks.ValueKind.ShouldBe(JsonValueKind.Array,
+            "Security:TrustedNetworks must be declared as a JSON array (DRK-1570).");
     }
 
     #endregion
