@@ -54,7 +54,7 @@ internal static class ForwardedHeadersConfig
         if (app.Services.IsConfigAdded(nameof(ForwardedHeadersConfig)))
         {
             app.UseForwardedHeaders();
-            Console.WriteLine("Forwarded Headers enabled.");
+            app.Logger.LogInformation("{Feature} enabled", nameof(ForwardedHeadersConfig));
         }
 
         return app;

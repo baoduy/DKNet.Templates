@@ -1,6 +1,7 @@
 ﻿using DKNet.AspCore.Idempotency;
 using DKNet.AspCore.Idempotency.RedisStore;
 using Minimal.Api.Configs.Auth;
+using Minimal.Api.Configs.AzureAppConfig;
 using Minimal.Api.Configs.RateLimits;
 using Minimal.Api.Configs.Swagger;
 
@@ -90,7 +91,8 @@ internal static class AppConfig
         // Forwarded headers and security headers run first: forwarded headers must rewrite RemoteIpAddress
         // before anything (CORS, rate limiting) makes a decision based on it, and security headers must wrap
         // everything downstream, including the global exception handler, for 200/404/500 responses alike (R5).
-        app.UseForwardedHeadersConfig()
+        app.UseAzureAppConfig()
+            .UseForwardedHeadersConfig()
             .UseSecurityHeadersConfig()
             .UseAntiforgeryConfig()
             .UseCrosConfig()

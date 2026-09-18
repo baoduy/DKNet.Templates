@@ -43,7 +43,7 @@ internal static class CrosConfig
         if (app.Services.IsConfigAdded(nameof(CrosConfig)))
         {
             app.UseCors();
-            Console.WriteLine("CROS enabled.");
+            app.Logger.LogInformation("{Feature} enabled", nameof(CrosConfig));
         }
 
         return app;
