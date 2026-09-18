@@ -30,6 +30,12 @@ public static class SharedConsts
     /// </summary>
     public static string SystemAccount => "System";
 
+    /// <summary>
+    ///     Gets the demonstration authentication provider's fixed acting-user identity. Uses the
+    ///     <c>.invalid</c> TLD (reserved by RFC 2606) so it can never resolve to a real address.
+    /// </summary>
+    public static string DemoAccount => "demo-user@not-a-real-identity.invalid";
+
     #endregion
 
     /// <summary>

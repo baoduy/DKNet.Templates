@@ -42,7 +42,7 @@ Contains extension methods for configuring Azure App Configuration:
 ```json
 {
   "ConnectionStrings": {
-    "AzureAppConfiguration": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
+    "AzureAppConfig": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
   },
   "FeatureManagement": {
     "EnableAzureAppConfig": false
@@ -61,7 +61,7 @@ Contains extension methods for configuring Azure App Configuration:
 
 ```bash
 # Connection string should be stored as environment variable for security
-ConnectionStrings__AzureAppConfiguration="Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
+ConnectionStrings__AzureAppConfig="Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
 
 # Enable the feature
 FeatureManagement__EnableAzureAppConfig=true
@@ -85,7 +85,7 @@ AzureAppConfiguration__Label="Production"
 ```json
 {
   "ConnectionStrings": {
-    "AzureAppConfiguration": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
+    "AzureAppConfig": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
   }
 }
 ```
@@ -93,7 +93,7 @@ AzureAppConfiguration__Label="Production"
 **For Production (using environment variables):**
 
 ```bash
-export ConnectionStrings__AzureAppConfiguration="Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
+export ConnectionStrings__AzureAppConfig="Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
 ```
 
 ### 3. Enable the Feature
@@ -239,7 +239,7 @@ The integration includes robust error handling:
 
 **Issue**: "Azure App Configuration connection string is not provided"
 
-- **Solution**: Ensure the connection string is set in `ConnectionStrings:AzureAppConfiguration`
+- **Solution**: Ensure the connection string is set in `ConnectionStrings:AzureAppConfig`
 
 **Issue**: Configuration values not updating
 

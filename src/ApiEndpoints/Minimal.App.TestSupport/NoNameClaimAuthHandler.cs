@@ -9,9 +9,8 @@ namespace Minimal.App.TestSupport;
 /// <summary>
 /// Fake authentication scheme standing in for a real caller who is authenticated but whose token carries no
 /// <see cref="ClaimTypes.Name" /> claim — e.g. a service-to-service token or an identity provider that omits it.
-/// Used to prove <c>[FromClaim]</c> population holds its declared member at its default (never the
-/// <c>SystemAccountFallback</c>, which only applies when authorization is off) when the caller is authenticated
-/// but the claim itself is missing.
+/// Used to prove <c>[FromClaim]</c> population holds its declared member at its default when the caller is
+/// authenticated but the claim itself is missing.
 /// </summary>
 public sealed class NoNameClaimAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,

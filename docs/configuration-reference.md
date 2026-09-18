@@ -38,14 +38,10 @@ early enough.
 
 | Key | Type | Shipped default | Effect | Read by |
 |---|---|---|---|---|
-| `AppDb` | string | `""` in the `Development` overlay; absent from the base file | The PostgreSQL connection for `CoreDbContext`. Without it the API cannot open a database connection. Supplied automatically when you launch through the Aspire host, which injects it from the `AppDb` resource. | `SharedConsts.DbConnectionString`; `Minimal.Infra/Extensions/InfraSetup.cs` (`AddInfraServices`) and `Minimal.Api/Configs/DbMigration.cs` (`RunMigrationAsync`) |
+| `AppDb` | string | `""` in the base file and the `Development` overlay | The PostgreSQL connection for `CoreDbContext`. Without it the API cannot open a database connection. Supplied automatically when you launch through the Aspire host, which injects it from the `AppDb` resource. | `SharedConsts.DbConnectionString`; `Minimal.Infra/Extensions/InfraSetup.cs` (`AddInfraServices`) and `Minimal.Api/Configs/DbMigration.cs` (`RunMigrationAsync`) |
 | `Redis` | string | not shipped in any file | Selects the distributed-cache backing store **and** the idempotency-key store. Set → `AddStackExchangeRedisCache` plus `AddIdempotencyWithRedisStore`. Unset → `AddDistributedMemoryCache` plus the in-process `AddIdempotentKey()` fallback, which is correct only for a single instance. Injected by the Aspire host from the `Redis` resource. | `SharedConsts.RedisConnectionString`; `Minimal.Api/Configs/CacheConfig.cs` and `Minimal.Api/Configs/AppConfig.cs` |
 | `AzureBus` | string | `""` in the `Development` overlay | The Azure Service Bus namespace connection string. Non-empty **and** `FeatureManagement:EnableServiceBus` true is what adds the `AzureBus` child bus; either one missing leaves external messaging off while in-memory dispatch keeps working. | `SharedConsts.AzureBusConnectionString`; `Minimal.Infra/Extensions/ServiceBusSetup.cs` |
-| `AzureAppConfig` | string | **not shipped** | The Azure App Configuration endpoint URI. `AzureAppConfigSetup` looks it up under the name in `AzureAppConfig:ConnectionStringName`, which defaults to `AzureAppConfig`. Without it the integration silently no-ops even with the flag on. | `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` |
-
-> The base `appsettings.json` also ships `TEMPDb`, `AppConfig` and `AzureAppConfiguration` under
-> `ConnectionStrings`. **No code reads any of the three** — see
-> [Keys that ship but are never read](#keys-that-ship-but-are-never-read).
+| `AzureAppConfig` | string | `""` in the base file | The Azure App Configuration endpoint URI. `AzureAppConfigSetup` looks it up under the name in `AzureAppConfig:ConnectionStringName`, which defaults to `AzureAppConfig`. Without it the integration silently no-ops even with the flag on. | `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs` |
 
 ## `Authentication:Schemes:Bearer`
 
@@ -70,6 +66,18 @@ source and both meant to be replaced:
 `Minimal.Api/Configs/Auth/SampleClaimsTransformation.cs` (an `IClaimsTransformation`) and the
 `SampleScopePolicy` policy backed by `HasScopeRequirement`/`HasScopeHandler`. Neither is applied to
 any shipped route. See [`extension-points.md`](extension-points.md#authorization-and-claims).
+
+### Built-in demonstration authentication provider
+
+`FeatureManagement:EnableDemoAuthentication` (shipped default and class default both `false`; see
+the full row in [`template-features.md`](template-features.md#featuremanagement-flags)) registers a
+`"Demo"` authentication scheme, `Minimal.Api/Configs/Auth/DemoAuthConfig.cs`, only while
+`RequireAuthorization` is `false`. Every caller is authenticated as one fixed, self-evidently fake
+identity — `ClaimTypes.Name` = `SharedConsts.DemoAccount` (`"demo-user@not-a-real-identity.invalid"`,
+on the `.invalid` TLD reserved by RFC 2606 so it can never resolve), `ClaimTypes.NameIdentifier` =
+`SharedConsts.SystemAccount`. `RequireAuthorization` and `EnableDemoAuthentication` are mutually
+exclusive: both `true` throws `InvalidOperationException` from `Minimal.Api/Configs/AppConfig.cs` at
+start-up. **Development/demonstration only — never enable this flag in a deployed service.**
 
 ## `Cors`
 
@@ -263,15 +271,13 @@ setting them changes no behaviour.
 
 | Key | File | Why it is dead |
 |---|---|---|
-| `ConnectionStrings:TEMPDb` | base `appsettings.json` | A leftover name. The database connection is read from `AppDb` (`SharedConsts.DbConnectionString`). |
-| `ConnectionStrings:AppConfig` | base `appsettings.json` | `AzureAppConfigOptions.ConnectionStringName` defaults to `AzureAppConfig`, not `AppConfig`. |
-| `ConnectionStrings:AzureAppConfiguration` | base `appsettings.json` | Same reason — the looked-up name is `AzureAppConfig`. |
 | The whole `AzureAppConfiguration` section (`KeyPrefix`, `Label`, `CacheExpirationInSeconds`, `LoadFeatureFlags`, `FeatureFlagPrefix`) | base `appsettings.json` | `AzureAppConfigOptions.Name` is `AzureAppConfig`. Nothing binds a section called `AzureAppConfiguration`, and `KeyPrefix`/`CacheExpirationInSeconds` are not properties on the options class at all. |
 | `OTEL_SERVICE_NAME` | base `appsettings.json` | No template code reads it. The OpenTelemetry SDK resolves the service name from the environment variable of the same name, not from this configuration entry. |
 | `ApplicationInsights:InstrumentationKey` | `appsettings.Development.json` | Azure Monitor is wired from `AzureMonitor:ConnectionString`; instrumentation keys are not read anywhere. |
 
-Removing them is a source change to the shipped `appsettings*.json` files, out of scope for this
-documentation page and recorded on the ticket instead.
+Removing the `AzureAppConfiguration` section is a source change to the shipped
+`appsettings*.json` files, out of scope for this documentation page and recorded on the ticket
+instead.
 
 ## Overriding a key without editing a file
 

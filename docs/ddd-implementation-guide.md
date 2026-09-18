@@ -438,13 +438,15 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
   `X-Idempotency-Key: {Guid.NewGuid()}` header per request, generated in the `[When]` step.
   Reusing a key across scenarios returns the first call's cached result. The automated sample's
   generated create route has no such requirement.
-- The BDD host runs with `RequireAuthorization = false`, so `[FromClaim]` properties fall back to
-  the system-account default (`SharedConsts.SystemAccount`) rather than a real claim. That `false`
-  comes from `Minimal.Api/appsettings.Testing.json` — the base `appsettings.json` ships
-  `RequireAuthorization: true`, and `TestApiFactoryBase` boots the host with
-  `UseEnvironment("Testing")`. `BddApiFactory.AddFeatureOverrides` also sets the key, but that
-  in-memory entry is merged after `Program.cs` has already bound `FeatureOptions`, so the overlay
-  file is what actually takes effect.
+- The BDD host runs with `RequireAuthorization = false`, so `[FromClaim]` properties carry the
+  built-in demonstration authentication provider's identity (`ClaimTypes.Name` =
+  `SharedConsts.DemoAccount`) rather than a real caller's claim. Both `false`/`true` come from
+  `Minimal.Api/appsettings.Testing.json` — the base `appsettings.json` ships
+  `RequireAuthorization: true` and no `EnableDemoAuthentication` entry at all, and
+  `TestApiFactoryBase` boots the host with `UseEnvironment("Testing")`.
+  `BddApiFactory.AddFeatureOverrides` also sets the keys, but that in-memory entry is merged after
+  `Program.cs` has already bound `FeatureOptions`, so the overlay file is what actually takes
+  effect.
 - Use the `@redis` / Redis-backed variant only when a scenario specifically needs a Redis-backed
   idempotency store.
 - `Features/PurchaseOrders/PurchaseOrder.feature` and `Features/Products/Product.feature` exist

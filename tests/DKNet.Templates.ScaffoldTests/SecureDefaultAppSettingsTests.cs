@@ -14,11 +14,7 @@ public class SecureDefaultAppSettingsTests
 {
     #region Methods
 
-    private static string AppsettingsPath()
-    {
-        var srcDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
-        return Path.Combine(srcDir, "ApiEndpoints/Minimal.Api/appsettings.json");
-    }
+    private static string AppsettingsPath() => AppSettingsScanner.BaseAppSettingsPath();
 
     private static IConfigurationRoot LoadBaseConfig()
     {
@@ -58,6 +54,22 @@ public class SecureDefaultAppSettingsTests
     }
 
     /// <summary>
+    /// DRK-1579 (R5): the base <c>appsettings.json</c> must never enable the built-in demonstration
+    /// authentication provider — it authenticates every caller as a fixed, non-real identity and is a
+    /// development/demonstration-only switch, never a Production default.
+    /// </summary>
+    [Fact]
+    public void BaseAppSettings_DoesNotEnableDemoAuthentication()
+    {
+        var config = LoadBaseConfig();
+        var features = config.GetSection(FeatureOptions.Name).Get<FeatureOptions>();
+
+        features.ShouldNotBeNull();
+        features.EnableDemoAuthentication.ShouldBeFalse(
+            $"{nameof(FeatureOptions.EnableDemoAuthentication)}=true in the template's base appsettings.json " +
+            "would ship an anonymous-as-demo-identity default to every Production-shaped host (DRK-1579 R5).");
+    }
+
     /// <summary>
     /// The base file's explicit <c>RateLimit</c> section must survive: without it a host with
     /// <c>EnableRateLimit: true</c> silently falls back to <c>RateLimitOptions</c>' class defaults

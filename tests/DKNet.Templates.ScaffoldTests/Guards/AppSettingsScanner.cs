@@ -8,6 +8,14 @@ namespace DKNet.Templates.ScaffoldTests;
 /// </summary>
 internal static class AppSettingsScanner
 {
+    /// <summary>The repo's <c>src</c> directory, resolved from the test assembly's output directory.</summary>
+    internal static string SrcDir() =>
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
+
+    /// <summary>The base (non-overlay) <c>Minimal.Api/appsettings.json</c> path.</summary>
+    internal static string BaseAppSettingsPath() =>
+        Path.Combine(SrcDir(), "ApiEndpoints/Minimal.Api/appsettings.json");
+
     /// <summary>Every appsettings*.json file's Authentication:Schemes:Bearer section under <paramref name="srcDir" />, skipping bin/obj.</summary>
     internal static IEnumerable<(string Path, JsonElement Bearer)> BearerSectionsInAppSettings(string srcDir)
     {

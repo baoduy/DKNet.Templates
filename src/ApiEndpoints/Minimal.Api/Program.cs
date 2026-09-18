@@ -38,9 +38,9 @@ await builder.RunMigrationAsync(feature);
 builder.Services
     .AddOptions(builder.Configuration)
     .AddAppConfig(feature, builder.Configuration)
-    // Populates [FromClaim] members (e.g. ByUser) before validation and before the handler; the fallback below
-    // only applies when RequireAuthorization is off, never per-caller.
-    .AddContextualRequestPopulation(o => o.SystemAccountFallback = SharedConsts.SystemAccount);
+    // Populates [FromClaim] members (e.g. ByUser) before validation and before the handler, from the
+    // authenticated caller's own claims.
+    .AddContextualRequestPopulation();
 
 await builder.Build()
     .UseAppConfig(a => a.UseEndpointConfigs(o =>
