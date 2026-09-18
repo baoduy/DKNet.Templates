@@ -239,7 +239,7 @@ The integration includes robust error handling:
 
 **Issue**: "Azure App Configuration connection string is not provided"
 
-- **Solution**: Ensure the connection string is set in `ConnectionStrings:AzureAppConfiguration`
+- **Solution**: Ensure the connection string is set in `ConnectionStrings:AzureAppConfig`
 
 **Issue**: Configuration values not updating
 
