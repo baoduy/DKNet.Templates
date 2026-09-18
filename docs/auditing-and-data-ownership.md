@@ -50,8 +50,13 @@ anything the caller sent, wired via:
 - `Minimal.Api/Configs/Handlers/PrincipalProvider.cs` — the implementation. `GetOwnershipKey()`
   returns the caller's subject claim, never their name: the first non-empty of
   `http://schemas.microsoft.com/identity/claims/objectidentifier`, `oid`,
-  `ClaimTypes.NameIdentifier`, `sub`. When the caller is not authenticated it returns
-  `SharedConsts.SystemAccount` instead. (`ProfileId` on the same class exposes that key parsed as a
+  `ClaimTypes.NameIdentifier`, `sub`. `SharedConsts.SystemAccount` is still the value this method
+  returns when the caller is not authenticated, but with the built-in demonstration authentication
+  provider on (`FeatureManagement:EnableDemoAuthentication`) there is no unauthenticated caller on a
+  local request: the demonstration identity issues `ClaimTypes.NameIdentifier` as
+  `SharedConsts.SystemAccount` directly, so `GetOwnershipKey()` resolves it from that subject claim
+  instead of falling through to the unauthenticated branch — and row-level ownership filtering keeps
+  working unchanged, because the value is the same either way. (`ProfileId` on the same class exposes that key parsed as a
   `Guid`, or `Guid.Empty` when it does not parse — it is a convenience for domain code, not what
   the hook stamps.) `GetCurrentUser()` returns that same subject claim today and is deliberately kept
   as its own method, so the acting user and the ownership key can diverge later without either hook
