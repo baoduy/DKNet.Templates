@@ -102,26 +102,41 @@ default, so a preflight for any method (or header) then fails. Read by
 
 | Key | Type | Base `appsettings.json` | `appsettings.Development.json` | Effect |
 |---|---|---|---|---|
-| `Security:TrustedProxies` | string array of IP addresses | `[]` | — | The proxies whose `X-Forwarded-For` / `X-Forwarded-Proto` the service believes. **Empty — as shipped — means no forwarded information is honoured at all**: `Minimal.Api/Configs/ForwardedHeadersConfig.cs` sets `ForwardedHeaders.None`, so `Connection.RemoteIpAddress` stays the immediate peer and rate limiting partitions on it. Non-empty → `XForwardedFor | XForwardedProto` are applied, but only when the immediate peer is one of the listed addresses. |
+| `Security:TrustedProxies` | string array of IP addresses | `[]` | — | The proxies whose `X-Forwarded-For` / `X-Forwarded-Proto` the service believes, by exact address. **Empty — as shipped — means no forwarded information is honoured at all, unless `Security:TrustedNetworks` below is set**: with both empty, `Minimal.Api/Configs/ForwardedHeadersConfig.cs` sets `ForwardedHeaders.None`, so `Connection.RemoteIpAddress` stays the immediate peer and rate limiting partitions on it. Non-empty → `XForwardedFor | XForwardedProto` are applied, but only when the immediate peer is one of the listed addresses. |
+| `Security:TrustedNetworks` | string array of CIDR ranges | `[]` | — | The same trust, expressed as a CIDR range instead of a literal address — for a proxy whose address is not fixed (a Kubernetes ingress, Container Apps). Non-empty → `XForwardedFor | XForwardedProto` are applied for any immediate peer inside one of the listed ranges. Independent of `TrustedProxies`: either key alone is enough to enable forwarded headers; both together are both honoured. |
 
-This is the one key a production host behind an ingress, load balancer or CDN **must** supply — until
-it does, every request appears to come from that ingress and shares one rate-limit partition. List
-the address the ingress connects from, one entry per proxy:
+This is the one pair of keys a production host behind an ingress, load balancer or CDN **must**
+supply — until one of them does, every request appears to come from that ingress and shares one
+rate-limit partition. A proxy with a fixed address goes in `TrustedProxies`, one entry per proxy:
 
 ```json
 "Security": {
-  "TrustedProxies": [ "10.0.0.4", "10.0.0.5" ]
+  "TrustedProxies": [ "10.0.0.4", "10.0.0.5" ],
+  "TrustedNetworks": []
 }
 ```
 
-Entries are parsed with `IPAddress.Parse`, so each must be a single literal IPv4 or IPv6 address —
-a CIDR range such as `10.0.0.0/8` is **not** accepted and fails at startup with a `FormatException`.
-`KnownProxies` and `KnownIPNetworks` are cleared before the list is applied, so ASP.NET Core's
-seeded loopback entry is gone too: `127.0.0.1` is trusted only if you list it.
+A proxy whose address moves — a Kubernetes ingress or Container Apps environment — goes in
+`TrustedNetworks` as a CIDR range instead:
+
+```json
+"Security": {
+  "TrustedProxies": [],
+  "TrustedNetworks": [ "10.244.0.0/16" ]
+}
+```
+
+`TrustedProxies` entries are parsed with `IPAddress.Parse`, so each must be a single literal IPv4 or
+IPv6 address — a CIDR range such as `10.0.0.0/8` is **not** accepted there and fails at startup with
+a `FormatException`. Use `TrustedNetworks` instead when the trust boundary is a range: those entries
+are parsed with `IPNetwork.Parse` and populate `ForwardedHeadersOptions.KnownIPNetworks`, and a
+malformed entry there fails at startup the same way. `KnownProxies` and `KnownIPNetworks` are cleared
+before either list is applied, so ASP.NET Core's seeded loopback entry is gone too: `127.0.0.1` is
+trusted only if you list it.
 
 The whole module is gated on `FeatureManagement:EnableForwardedHeaders` (default `true`, `false` in
-the `Development` overlay). Turning the flag off and leaving the list empty are equivalent in effect;
-the flag exists so the middleware can be taken out of the pipeline entirely for local work.
+the `Development` overlay). Turning the flag off and leaving both lists empty are equivalent in
+effect; the flag exists so the middleware can be taken out of the pipeline entirely for local work.
 
 ## `Https`
 
@@ -173,10 +188,11 @@ Both limiters use `QueueLimit = 0`, so an over-limit request is rejected immedia
 limited per IP and authenticated callers per user.
 
 That remote IP is `Connection.RemoteIpAddress` *after* the forwarded-headers middleware has had its
-say, which is why [`Security:TrustedProxies`](#security) matters to rate limiting: list your ingress
-and each client behind it gets its own budget; leave it empty and they all share the ingress's. The
-provider never reads `X-Forwarded-For` itself, so a peer that is not a configured trusted proxy
-cannot claim another client's identity and spend its budget.
+say, which is why [`Security:TrustedProxies` / `Security:TrustedNetworks`](#security) matter to rate
+limiting: list your ingress — by address if it is fixed, by CIDR range in `TrustedNetworks` if it is
+not — and each client behind it gets its own budget; leave both empty and they all share the
+ingress's. The provider never reads `X-Forwarded-For` itself, so a peer that is not a configured
+trusted proxy or inside a trusted range cannot claim another client's identity and spend its budget.
 
 The base file must carry this section explicitly, because the class defaults are 2 requests per
 second — an outage, not a rate limit.

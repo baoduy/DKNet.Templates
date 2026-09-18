@@ -217,6 +217,29 @@ leaving a pod that came up and quietly serves an un-migrated schema. Sequence th
 tooling prefers — a Helm pre-upgrade hook, an Argo CD sync wave, or simply applying the `Job` and
 waiting for it before the `Deployment` rollout.
 
+The `Deployment` above sits behind an ingress whose address is not fixed — a pod IP the cluster
+assigns from its pod CIDR, not a stable proxy address — so `Security:TrustedProxies` cannot express
+it. List the cluster's pod CIDR in `Security:TrustedNetworks` instead, either as an environment
+variable on the container (`__` separates the nested keys):
+
+```yaml
+          env:
+            - name: Security__TrustedNetworks__0
+              value: "10.244.0.0/16"
+```
+
+or in `appsettings.json`:
+
+```json
+"Security": {
+  "TrustedNetworks": [ "10.244.0.0/16" ]
+}
+```
+
+Find the real range for a cluster with `kubectl cluster-info dump | grep -m1 cluster-cidr`, or from
+the CNI/cloud provider's networking settings — it is not something the template can default, since
+it differs per cluster. Details: [`configuration-reference.md`](configuration-reference.md#security).
+
 ### `FeatureManagement:RunDbMigrationWhenAppStart`
 
 The other way to migrate. With the flag on, a serving process migrates the database in-process
