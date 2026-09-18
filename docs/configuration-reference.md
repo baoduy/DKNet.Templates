@@ -139,8 +139,8 @@ before either list is applied, so ASP.NET Core's seeded loopback entry is gone t
 trusted only if you list it.
 
 The whole module is gated on `FeatureManagement:EnableForwardedHeaders` (default `true`, `false` in
-the `Development` overlay). Turning the flag off and leaving the list empty are equivalent in effect;
-the flag exists so the middleware can be taken out of the pipeline entirely for local work.
+the `Development` overlay). Turning the flag off and leaving both lists empty are equivalent in
+effect; the flag exists so the middleware can be taken out of the pipeline entirely for local work.
 
 ## `Https`
 
