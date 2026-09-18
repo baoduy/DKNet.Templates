@@ -13,11 +13,12 @@ namespace Minimal.App.Tests.Integration.EndpointConfig;
 /// Re-homes the platform coverage <c>EndpointStampingAndVersioningTests</c> (deleted with the removed demo
 /// entity's teardown) onto <c>PurchaseOrder</c>: the versioning gate governing route shape, and acting-user
 /// attribution — sourced entirely from <c>[FromClaim]</c> + <c>AddContextualRequestPopulation</c>, never
-/// stamped by the endpoint itself. <see cref="SharedConsts.SystemAccount" /> is only ever the resolved value
-/// when <c>RequireAuthorization</c> is off (anonymous caller); an authenticated caller whose token carries no
-/// <see cref="System.Security.Claims.ClaimTypes.Name" /> claim gets an unresolved (null) <c>ByUser</c> and the
-/// write is refused — never attributed to <see cref="SharedConsts.SystemAccount" />. Payload-spoofing
-/// resistance is already covered by <c>PurchaseOrderSecurityTests</c>; this class does not duplicate it.
+/// stamped by the endpoint itself. <see cref="SharedConsts.SystemAccount" /> is no longer ever the resolved
+/// <c>ByUser</c>: with <c>RequireAuthorization</c> off, the caller is the built-in demonstration provider
+/// (<see cref="SharedConsts.DemoAccount" />), never an unauthenticated system fallback. An authenticated
+/// caller whose token carries no <see cref="System.Security.Claims.ClaimTypes.Name" /> claim still gets an
+/// unresolved (null) <c>ByUser</c> and the write is refused. Payload-spoofing resistance is already covered
+/// by <c>PurchaseOrderSecurityTests</c>; this class does not duplicate it.
 /// </summary>
 public sealed class PurchaseOrderStampingAndVersioningTests
 {
@@ -53,12 +54,13 @@ public sealed class PurchaseOrderStampingAndVersioningTests
     }
 
     /// <summary>
-    /// <c>RequireAuthorization</c> off → <c>Identity?.Name</c> is null on the anonymous caller, so contextual
-    /// population resolves <c>ByUser</c> to its configured <c>SystemAccountFallback</c> (<c>Program.cs:23</c>) —
-    /// the endpoint stamps nothing itself.
+    /// <c>RequireAuthorization</c> off and the built-in demonstration provider on → the caller is
+    /// authenticated as the demonstration identity, so contextual population resolves <c>ByUser</c> to
+    /// <see cref="SharedConsts.DemoAccount" />, never <see cref="SharedConsts.SystemAccount" /> — the endpoint
+    /// stamps nothing itself.
     /// </summary>
     [Fact]
-    public async Task AuthorizationOff_CreateIsAttributedToSystemAccount()
+    public async Task DemoAuthentication_CreateIsAttributedToTheDemoIdentity()
     {
         using var fixture = new ApiFixture();
         await fixture.InitializeAsync();
@@ -68,17 +70,15 @@ public sealed class PurchaseOrderStampingAndVersioningTests
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
         var dto = await response.Content.ReadFromJsonAsync<PurchaseOrderDto>(SharedConsts.JsonSerializerOptions);
-        dto!.CreatedBy.ShouldBe(SharedConsts.SystemAccount);
+        dto!.CreatedBy.ShouldBe(SharedConsts.DemoAccount);
     }
 
     /// <summary>
     /// <c>RequireAuthorization</c> on but the caller's token carries no <c>ClaimTypes.Name</c> claim → the
-    /// <c>[FromClaim]</c> resolver cannot resolve <c>ByUser</c>, and an authenticated-but-unresolved member never
-    /// receives the <see cref="SharedConsts.SystemAccount" /> fallback (that only applies when authorization is
-    /// off — see <see cref="AuthorizationOff_CreateIsAttributedToSystemAccount" />) — it holds its default
-    /// (<see langword="null" />) instead, so the handler's own <c>string.IsNullOrEmpty(ByUser)</c> guard refuses
-    /// the write. Distinct from the automated sample's <c>DataOwnerHook</c> path (see
-    /// <c>ProductSecurityTests</c>).
+    /// <c>[FromClaim]</c> resolver cannot resolve <c>ByUser</c>. There is no configured fallback for it to
+    /// receive — <c>ByUser</c> holds its default (<see langword="null" />) instead, so the handler's own
+    /// <c>string.IsNullOrEmpty(ByUser)</c> guard refuses the write. Distinct from the automated sample's
+    /// <c>DataOwnerHook</c> path (see <c>ProductSecurityTests</c>).
     /// </summary>
     [Fact]
     public async Task AuthenticatedCallerWithNoNameClaim_CreateIsRefused_NeverAttributedToSystemAccount()

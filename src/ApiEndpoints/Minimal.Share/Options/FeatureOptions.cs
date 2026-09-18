@@ -58,6 +58,13 @@ public class FeatureOptions
     public bool RequireAuthorization { get; set; }
 
     /// <summary>
+    ///     Gets or sets a value indicating whether the built-in demonstration authentication provider is
+    ///     enabled. Development/demonstration only: it authenticates every caller as a fixed, self-evidently
+    ///     fake identity and must never be combined with <see cref="RequireAuthorization" />.
+    /// </summary>
+    public bool EnableDemoAuthentication { get; set; }
+
+    /// <summary>
     ///     Gets or sets a value indicating whether database migrations should run when the application starts.
     /// </summary>
     public bool RunDbMigrationWhenAppStart { get; set; }
