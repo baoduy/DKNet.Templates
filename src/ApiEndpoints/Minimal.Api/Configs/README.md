@@ -133,11 +133,13 @@ versioning, documentation, error handling, and more. This modularity enables eas
 
 - Honours `X-Forwarded-For` / `X-Forwarded-Proto` so `Connection.RemoteIpAddress` and
   `Request.Scheme` describe the real caller instead of the ingress.
-- Trusted proxies come from `Security:TrustedProxies` — **empty in the shipped base file**. Empty
-  means forwarded values are ignored outright (`ForwardedHeaders.None`), because
-  `ForwardedHeadersMiddleware` treats "no known proxy" as "trust any peer", which is the opposite of
-  what a service wants.
-- `KnownProxies` and `KnownIPNetworks` are cleared before the configured list is applied, so
+- Trusted proxies come from `Security:TrustedProxies` (single IP addresses) and
+  `Security:TrustedNetworks` (CIDR ranges, for a proxy with no fixed address — a Kubernetes ingress,
+  Container Apps) — **both empty in the shipped base file**. Both empty means forwarded values are
+  ignored outright (`ForwardedHeaders.None`), because `ForwardedHeadersMiddleware` treats "no known
+  proxy" as "trust any peer", which is the opposite of what a service wants. Either key alone is
+  enough to enable forwarded headers.
+- `KnownProxies` and `KnownIPNetworks` are cleared before the configured lists are applied, so
   ASP.NET Core's seeded loopback entry is not silently trusted.
 - Registered first in `UseAppConfig` — everything that decides on the caller's address (CORS, rate
   limiting) must run after the rewrite.
@@ -405,7 +407,7 @@ each stage is skipped entirely when its flag is off:
 
 | # | Stage | Gate | Why here |
 |---|---|---|---|
-| 1 | Forwarded headers | `EnableForwardedHeaders` + `Security:TrustedProxies` | Must rewrite `RemoteIpAddress`/`Scheme` before anything decides on the caller |
+| 1 | Forwarded headers | `EnableForwardedHeaders` + `Security:TrustedProxies` / `Security:TrustedNetworks` | Must rewrite `RemoteIpAddress`/`Scheme` before anything decides on the caller |
 | 2 | Security response headers | `EnableSecurityHeaders` | Ahead of routing, and written from `OnStarting`, so `200`, `404` and unhandled `500` responses all carry the headers |
 | 3 | Antiforgery | `EnableAntiforgery` | — |
 | 4 | CORS | `Cors:AllowedOrigins` non-empty | Before routing, so the preflight `OPTIONS` is covered too |

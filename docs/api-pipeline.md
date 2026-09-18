@@ -14,7 +14,7 @@ Where an environment overlay relaxes it, the row says so. Full flag matrix:
 | # | Stage | Default |
 |---|---|---|
 | 0 | Kestrel request limits — max body size, header-read timeout, no `Server` header | `FeatureManagement:EnableRequestBounds` = `true` (`false` in Development); server-level, not middleware |
-| 1 | Forwarded headers (`X-Forwarded-For`, `X-Forwarded-Proto`) | `FeatureManagement:EnableForwardedHeaders` = `true` (`false` in Development), `Security:TrustedProxies` empty — forwarded values ignored |
+| 1 | Forwarded headers (`X-Forwarded-For`, `X-Forwarded-Proto`) | `FeatureManagement:EnableForwardedHeaders` = `true` (`false` in Development), `Security:TrustedProxies` and `Security:TrustedNetworks` both empty — forwarded values ignored |
 | 2 | Security response headers | `FeatureManagement:EnableSecurityHeaders` = `true` (`false` in Development) |
 | 3 | Antiforgery cookie middleware | `FeatureManagement:EnableAntiforgery` = `false` — not wired |
 | 4 | CORS | `Cors:AllowedOrigins` empty — CORS not wired |
@@ -62,24 +62,28 @@ template when the group is registered — see [API versioning](#api-versioning) 
 
 `Minimal.Api/Configs/ForwardedHeadersConfig.cs` is the first middleware in the pipeline, gated on
 `FeatureManagement:EnableForwardedHeaders` (default `true`; `false` in the `Development` overlay). It
-reads the trusted-proxy list from `Security:TrustedProxies` — **empty in the shipped base file** —
-and:
+reads the trusted-proxy list from `Security:TrustedProxies` and the trusted-range list from
+`Security:TrustedNetworks` — **both empty in the shipped base file** — and:
 
-- **empty list** → `ForwardedHeaders.None`. Nothing is honoured: `Connection.RemoteIpAddress` stays
-  the immediate peer and `Request.Scheme` stays what the peer actually used. This is deliberate.
-  `ForwardedHeadersMiddleware`'s own restriction check is a no-op when `KnownProxies` and
+- **both lists empty** → `ForwardedHeaders.None`. Nothing is honoured: `Connection.RemoteIpAddress`
+  stays the immediate peer and `Request.Scheme` stays what the peer actually used. This is
+  deliberate. `ForwardedHeadersMiddleware`'s own restriction check is a no-op when `KnownProxies` and
   `KnownIPNetworks` are both empty — it then trusts the header from *any* peer — so "no trusted
   proxy configured" has to switch the feature off outright to actually mean "trust nobody".
-- **non-empty list** → `X-Forwarded-For` and `X-Forwarded-Proto` are applied, but only when the
-  immediate peer is one of the listed addresses. `KnownProxies` and `KnownIPNetworks` are cleared
-  first, so ASP.NET Core's seeded loopback entry is gone unless you list `127.0.0.1` yourself.
+- **either list non-empty** → `X-Forwarded-For` and `X-Forwarded-Proto` are applied, but only when
+  the immediate peer is a listed address (`TrustedProxies`) or inside a listed range
+  (`TrustedNetworks`). `KnownProxies` and `KnownIPNetworks` are cleared first, so ASP.NET Core's
+  seeded loopback entry is gone unless you list `127.0.0.1` yourself.
 
-A caller that is not a listed proxy therefore cannot claim another client's address — its
-`X-Forwarded-For` is ignored and it is rate-limited as itself. Behind an ingress you *do* list,
-each client gets its own rate-limit partition instead of all of them sharing the ingress's.
+A caller that is not a listed proxy or inside a listed range therefore cannot claim another client's
+address — its `X-Forwarded-For` is ignored and it is rate-limited as itself. Behind an ingress you
+*do* list, each client gets its own rate-limit partition instead of all of them sharing the
+ingress's.
 
-Entries are single IP addresses parsed with `IPAddress.Parse`; a CIDR range is not accepted. Keys:
-[`configuration-reference.md`](configuration-reference.md#security).
+`TrustedProxies` entries are single IP addresses parsed with `IPAddress.Parse`; a CIDR range there is
+not accepted and fails at startup. For a proxy whose address is not fixed — a Kubernetes ingress,
+Container Apps — list its CIDR range in `TrustedNetworks` instead, parsed with `IPNetwork.Parse`.
+Keys: [`configuration-reference.md`](configuration-reference.md#security).
 
 ## Security response headers
 
@@ -417,10 +421,12 @@ already authenticated by an earlier middleware — in practice the shipped pipel
 
 That IP is `Connection.RemoteIpAddress` as the [forwarded-headers
 middleware](#forwarded-headers) left it: the real client when the immediate peer is a proxy listed
-in `Security:TrustedProxies`, and the immediate peer itself otherwise. The provider never parses
-`X-Forwarded-For` on its own, so an untrusted peer's forwarded claim spends that peer's own budget
-rather than someone else's. Behind an ingress that is not listed — the shipped default, since the
-list is empty — every client shares one partition; list the ingress and they are separated again.
+in `Security:TrustedProxies` or inside a range listed in `Security:TrustedNetworks`, and the
+immediate peer itself otherwise. The provider never parses `X-Forwarded-For` on its own, so an
+untrusted peer's forwarded claim spends that peer's own budget rather than someone else's. Behind an
+ingress that is not listed — the shipped default, since both lists are empty — every client shares
+one partition; list the ingress's address, or its CIDR range if it has no fixed address, and they
+are separated again.
 Both providers are public interfaces you can replace; see
 [`extension-points.md`](extension-points.md#rate-limiting).
 
