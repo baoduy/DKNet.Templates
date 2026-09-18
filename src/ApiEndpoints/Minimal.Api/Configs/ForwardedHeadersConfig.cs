@@ -22,6 +22,10 @@ internal static class ForwardedHeadersConfig
             .Select(IPAddress.Parse)
             .ToArray();
 
+        var trustedNetworks = (configuration.GetSection("Security:TrustedNetworks").Get<string[]>() ?? [])
+            .Select(System.Net.IPNetwork.Parse)
+            .ToArray();
+
         services.Configure<ForwardedHeadersOptions>(options =>
         {
             // ASP.NET Core seeds KnownProxies/KnownIPNetworks with loopback — clear first so "no trusted proxy
@@ -29,7 +33,7 @@ internal static class ForwardedHeadersConfig
             options.KnownProxies.Clear();
             options.KnownIPNetworks.Clear();
 
-            if (trustedProxies.Length == 0)
+            if (trustedProxies.Length == 0 && trustedNetworks.Length == 0)
             {
                 // With no trusted proxy, ForwardedHeadersMiddleware's own restriction check is a no-op when both
                 // lists are empty (it trusts the header from ANY peer, not none) — so forwarded headers must be
@@ -42,6 +46,11 @@ internal static class ForwardedHeadersConfig
             foreach (var proxy in trustedProxies)
             {
                 options.KnownProxies.Add(proxy);
+            }
+
+            foreach (var network in trustedNetworks)
+            {
+                options.KnownIPNetworks.Add(network);
             }
         });
 
