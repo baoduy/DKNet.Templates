@@ -14,11 +14,7 @@ public class SecureDefaultAppSettingsTests
 {
     #region Methods
 
-    private static string AppsettingsPath()
-    {
-        var srcDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
-        return Path.Combine(srcDir, "ApiEndpoints/Minimal.Api/appsettings.json");
-    }
+    private static string AppsettingsPath() => AppSettingsScanner.BaseAppSettingsPath();
 
     private static IConfigurationRoot LoadBaseConfig()
     {

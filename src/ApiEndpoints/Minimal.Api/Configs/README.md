@@ -89,7 +89,7 @@ versioning, documentation, error handling, and more. This modularity enables eas
 ```json
 {
   "ConnectionStrings": {
-    "AzureAppConfiguration": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
+    "AzureAppConfig": "Endpoint=https://your-app-config.azconfig.io;Id=your-id;Secret=your-secret"
   },
   "FeatureManagement": {
     "EnableAzureAppConfig": true
