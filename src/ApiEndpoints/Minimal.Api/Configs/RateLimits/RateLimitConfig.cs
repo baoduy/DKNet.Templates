@@ -49,7 +49,6 @@ internal static class RateLimitConfig
         });
 
         services.MarkConfigAdded(nameof(RateLimitConfig));
-        Console.WriteLine("Rate Limiting enabled.");
         return services;
     }
 
@@ -66,6 +65,7 @@ internal static class RateLimitConfig
         }
 
         app.UseRateLimiter();
+        app.Logger.LogInformation("{Feature} enabled", nameof(RateLimitConfig));
         return app;
     }
 

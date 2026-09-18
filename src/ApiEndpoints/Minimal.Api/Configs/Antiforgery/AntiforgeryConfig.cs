@@ -32,7 +32,7 @@ internal static class AntiforgeryConfig
         {
             app.UseMiddleware<AntiforgeryCookieMiddleware>();
             app.UseCookiePolicy();
-            Console.WriteLine("Antiforgery enabled.");
+            app.Logger.LogInformation("{Feature} enabled", nameof(AntiforgeryConfig));
         }
 
         return app;

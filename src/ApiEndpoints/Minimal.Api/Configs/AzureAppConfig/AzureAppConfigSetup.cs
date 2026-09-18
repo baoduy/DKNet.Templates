@@ -42,9 +42,24 @@ internal static class AzureAppConfigSetup
             op.Select(KeyFilter.Any, label);
         });
 
-        Console.WriteLine("Azure App Configuration is enabled.");
+        builder.Services.MarkConfigAdded(nameof(AzureAppConfigSetup));
 
         return builder;
+    }
+
+    /// <summary>
+    ///     Announces Azure App Configuration through <c>ILogger</c> once a host (and its logging pipeline) exists —
+    ///     the source is already read at builder time in <see cref="AddAzureAppConfig" />, before any logger is
+    ///     available.
+    /// </summary>
+    public static WebApplication UseAzureAppConfig(this WebApplication app)
+    {
+        if (app.Services.IsConfigAdded(nameof(AzureAppConfigSetup)))
+        {
+            app.Logger.LogInformation("{Feature} enabled", nameof(AzureAppConfigSetup));
+        }
+
+        return app;
     }
 
     #endregion

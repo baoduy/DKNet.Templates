@@ -25,7 +25,7 @@ solution renames them to `<YourApp>.*`. For the configuration keys these seams r
 | Rate-limit partitioning | `IRateLimitKeyProvider` | `Minimal.Api/Configs/RateLimits/` | Explicit DI registration |
 | Rate-limit values | `IRateLimitOptionsProvider` | `Minimal.Api/Configs/RateLimits/` | Explicit DI registration |
 | Domain service | `IDomainService` and friends | `Minimal.Domains/Services/` + `Minimal.Infra/Services/` | Explicit DI registration |
-| Launch-time job | `Func<IConfiguration, Task<int>>` | `Minimal.Api/Configs/Jobs/` | One entry in `JobRegistry.Jobs` |
+| Launch-time job | `Func<WebApplicationBuilder, Task<int>>` | `Minimal.Api/Configs/Jobs/` | One entry in `JobRegistry.Jobs` |
 | Test host | `TestApiFactoryBase` | `Minimal.App.TestSupport/` | Subclass it |
 
 ## Endpoints
@@ -274,20 +274,22 @@ migration`, or the same container image with `args: ["migration"]`. Which names 
 `Minimal.Api/Configs/Jobs/JobRegistry.cs`, and adding a second job is one entry in that dictionary:
 
 ```csharp
-public static IReadOnlyDictionary<string, Func<IConfiguration, Task<int>>> Jobs { get; } =
-    new Dictionary<string, Func<IConfiguration, Task<int>>>(StringComparer.OrdinalIgnoreCase)
+public static IReadOnlyDictionary<string, Func<WebApplicationBuilder, Task<int>>> Jobs { get; } =
+    new Dictionary<string, Func<WebApplicationBuilder, Task<int>>>(StringComparer.OrdinalIgnoreCase)
     {
         ["migration"] = MigrationJob.RunAsync,
         ["reindex"] = ReindexJob.RunAsync
     };
 ```
 
-A job is a `Func<IConfiguration, Task<int>>`: it is handed the configuration the process was started
-with, does its work, and returns the process exit code — `0` for success, anything else for failure,
-which is what a Kubernetes `Job` acts on. It runs before any host is built, so there is no DI
-container to resolve from: build what you need out of the configuration you are given, the way
-`MigrationJob` does. Keep it as small as `MigrationJob` is — a job that needs the full application
-is a request the service should be serving, not a job.
+A job is a `Func<WebApplicationBuilder, Task<int>>`: it is handed the builder as it stood right after
+`AddLogConfig` ran (`Program.cs`), so it reads both the configuration the process was started with
+(`builder.Configuration`) and the logging pipeline already configured on it, does its work, and
+returns the process exit code — `0` for success, anything else for failure, which is what a
+Kubernetes `Job` acts on. It runs before any host is built, so there is no DI container to resolve
+from: build what you need out of the builder you are given, the way `MigrationJob` does. Keep it as
+small as `MigrationJob` is — a job that needs the full application is a request the service should
+be serving, not a job.
 
 Nothing else changes when you add one. The start-up path gains no branch, the solution gains no
 project, and the deployment gains no second image — the new name is simply recognised. How a name is

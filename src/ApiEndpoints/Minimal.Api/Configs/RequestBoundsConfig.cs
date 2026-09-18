@@ -61,7 +61,7 @@ internal static class RequestBoundsConfig
         if (app.Services.IsConfigAdded(nameof(RequestBoundsConfig)))
         {
             app.UseRequestTimeouts();
-            Console.WriteLine("Request Bounds enabled.");
+            app.Logger.LogInformation("{Feature} enabled", nameof(RequestBoundsConfig));
         }
 
         return app;

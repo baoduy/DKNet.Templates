@@ -7,8 +7,8 @@ namespace Minimal.Api.Configs.Jobs;
 /// </summary>
 internal static class JobRegistry
 {
-    public static IReadOnlyDictionary<string, Func<IConfiguration, Task<int>>> Jobs { get; } =
-        new Dictionary<string, Func<IConfiguration, Task<int>>>(StringComparer.OrdinalIgnoreCase)
+    public static IReadOnlyDictionary<string, Func<WebApplicationBuilder, Task<int>>> Jobs { get; } =
+        new Dictionary<string, Func<WebApplicationBuilder, Task<int>>>(StringComparer.OrdinalIgnoreCase)
         {
             ["migration"] = MigrationJob.RunAsync
         };
