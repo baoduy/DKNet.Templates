@@ -77,8 +77,9 @@ public class FeatureOptions
 
     /// <summary>
     ///     Gets or sets a value indicating whether <c>X-Forwarded-For</c>/<c>X-Forwarded-Proto</c> are honoured
-    ///     from the proxies listed in <c>Security:TrustedProxies</c>. Default is true; with an empty trusted-proxy
-    ///     list, forwarded values are ignored regardless of this flag.
+    ///     from the proxies listed in <c>Security:TrustedProxies</c> and the ranges listed in
+    ///     <c>Security:TrustedNetworks</c>. Default is true; with both lists empty, forwarded values are
+    ///     ignored regardless of this flag.
     /// </summary>
     public bool EnableForwardedHeaders { get; set; } = true;
 

@@ -22,6 +22,8 @@ internal static class ForwardedHeadersConfig
             .Select(IPAddress.Parse)
             .ToArray();
 
+        // Fully qualified: Microsoft.AspNetCore.HttpOverrides (imported above) also exports an IPNetwork,
+        // so the bare name is ambiguous (CS0104) — ForwardedHeadersOptions.KnownIPNetworks needs System.Net's.
         var trustedNetworks = (configuration.GetSection("Security:TrustedNetworks").Get<string[]>() ?? [])
             .Select(System.Net.IPNetwork.Parse)
             .ToArray();
