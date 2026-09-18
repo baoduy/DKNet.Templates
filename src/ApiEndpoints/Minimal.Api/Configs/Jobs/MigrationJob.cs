@@ -10,14 +10,20 @@ internal static class MigrationJob
     [SuppressMessage("Design", "CA1031:Do not catch general exception types",
         Justification = "This is a process job boundary: any failure must become a non-zero exit code with the " +
                          "failure visible on output (R5), not an unhandled crash.")]
-    public static async Task<int> RunAsync(IConfiguration configuration)
+    public static async Task<int> RunAsync(WebApplicationBuilder builder)
     {
+        // Disposing the built provider is what flushes the OTel exporter before process exit (R3) — no host is
+        // built (builder.Build() is never called), so the job still connects to no message bus and binds no
+        // HTTP listener (R4).
+        await using var provider = builder.Services.BuildServiceProvider();
+        var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(MigrationJob));
+
         try
         {
-            Console.WriteLine("Running Db migration...");
-            var connectionString = configuration.GetConnectionString(SharedConsts.DbConnectionString);
+            logger.LogInformation("Running Db migration...");
+            var connectionString = builder.Configuration.GetConnectionString(SharedConsts.DbConnectionString);
             await InfraMigration.MigrateDb(connectionString!);
-            Console.WriteLine("Db migration is completed");
+            logger.LogInformation("Db migration is completed");
             return 0;
         }
         catch (Exception ex)

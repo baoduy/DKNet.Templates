@@ -61,7 +61,7 @@ internal static class SecurityHeadersConfig
             await next();
         });
 
-        Console.WriteLine("Security Headers enabled.");
+        app.Logger.LogInformation("{Feature} enabled", nameof(SecurityHeadersConfig));
         return app;
     }
 

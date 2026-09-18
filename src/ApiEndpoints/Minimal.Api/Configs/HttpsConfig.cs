@@ -45,7 +45,7 @@ internal static class HttpsConfig
         {
             app.UseHsts()
                 .UseHttpsRedirection();
-            Console.WriteLine("Hsts enabled.");
+            app.Logger.LogInformation("{Feature} enabled", nameof(HttpsConfig));
         }
 
         return app;

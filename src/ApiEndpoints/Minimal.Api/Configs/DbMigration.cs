@@ -20,7 +20,7 @@ internal static class DbMigration
             return;
         }
 
-        var exitCode = await MigrationJob.RunAsync(builder.Configuration);
+        var exitCode = await MigrationJob.RunAsync(builder);
         if (exitCode != 0)
         {
             throw new InvalidOperationException("Startup database migration failed.");

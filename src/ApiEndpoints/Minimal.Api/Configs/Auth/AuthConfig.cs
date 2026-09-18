@@ -76,13 +76,13 @@ internal static class AuthConfig
         {
             app.UseAuthentication();
             app.UseAuthorization();
-            Console.WriteLine("Authentication enabled.");
+            app.Logger.LogInformation("{Feature} enabled", nameof(AuthConfig));
         }
 
         if (app.Services.IsConfigAdded(nameof(DemoAuthConfig)))
         {
             app.UseAuthentication();
-            Console.WriteLine("Demo authentication enabled.");
+            app.Logger.LogInformation("{Feature} enabled", nameof(DemoAuthConfig));
         }
 
         return app;

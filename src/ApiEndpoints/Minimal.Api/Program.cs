@@ -26,7 +26,7 @@ if (jobSelection.HasJobName)
         return 1;
     }
 
-    return await JobRegistry.Jobs[jobSelection.RequestedJobName!](builder.Configuration);
+    return await JobRegistry.Jobs[jobSelection.RequestedJobName!](builder);
 }
 
 builder.AddFluentValidationConfig();

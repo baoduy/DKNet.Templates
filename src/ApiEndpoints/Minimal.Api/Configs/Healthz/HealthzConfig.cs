@@ -65,7 +65,7 @@ internal static class HealthzConfig
             detail.RequireAuthorization();
         }
 
-        Console.WriteLine("Healthz enabled.");
+        endpoints.Logger.LogInformation("{Feature} enabled", nameof(HealthzConfig));
 
         return endpoints;
     }
