@@ -79,6 +79,12 @@ internal static class AuthConfig
             Console.WriteLine("Authentication enabled.");
         }
 
+        if (app.Services.IsConfigAdded(nameof(DemoAuthConfig)))
+        {
+            app.UseAuthentication();
+            Console.WriteLine("Demo authentication enabled.");
+        }
+
         return app;
     }
 
