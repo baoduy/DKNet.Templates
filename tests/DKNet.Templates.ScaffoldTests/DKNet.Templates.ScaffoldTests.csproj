@@ -9,13 +9,17 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+        <!-- The FrameworkReference below (needed for ForwardedHeadersOptions) makes NuGet consider the
+             explicit Configuration.Json/Configuration.Binder PackageReferences below redundant with what
+             Microsoft.AspNetCore.App already provides. Kept explicit per DECISION-A; NU1510 is informational. -->
+        <NoWarn>$(NoWarn);NU1510</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
         <PackageReference Include="Shouldly" Version="4.3.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
             <PrivateAssets>all</PrivateAssets>
@@ -33,6 +37,16 @@
          shipped types they assert against. Reference-only; nothing here ships to consumers. -->
     <ItemGroup>
         <ProjectReference Include="..\..\src\ApiEndpoints\Minimal.Share\Minimal.Share.csproj" />
+        <ProjectReference Include="..\..\src\ApiEndpoints\Minimal.Api\Minimal.Api.csproj" />
+    </ItemGroup>
+
+    <!-- Minimal.Api's Sdk.Web FrameworkReference does not flow transitively over ProjectReference
+         (confirmed: absent from this project's restored frameworkReferences) — needed to resolve
+         Microsoft.AspNetCore.Builder.ForwardedHeadersOptions, the type §3's tests assert on. Web SDK
+         projects get it via an implicit global using; this plain Sdk project does not, so tests spell
+         out `using Microsoft.AspNetCore.Builder;` explicitly. -->
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
 </Project>

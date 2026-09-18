@@ -91,5 +91,22 @@ public class SecureDefaultAppSettingsTests
         config["TimeWindowInSeconds"].ShouldBe("1");
     }
 
+    /// <summary>
+    /// DRK-1570 (S6): the base <c>appsettings.json</c> must declare <c>Security:TrustedNetworks</c> as an
+    /// array, alongside the existing single-IP <c>Security:TrustedProxies</c>, so a CIDR range can be trusted
+    /// without an operator inventing the key from documentation alone.
+    /// </summary>
+    [Fact]
+    public void BaseAppSettings_DeclaresTrustedNetworksKey_AsArray()
+    {
+        var config = LoadBaseConfig();
+        var section = config.GetSection("Security:TrustedNetworks");
+
+        section.Exists().ShouldBeTrue(
+            "the base appsettings.json must declare Security:TrustedNetworks (DRK-1570).");
+        section.Get<string[]>().ShouldNotBeNull(
+            "Security:TrustedNetworks must bind as a string array (DRK-1570).");
+    }
+
     #endregion
 }
