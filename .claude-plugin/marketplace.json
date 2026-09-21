@@ -7,24 +7,16 @@
     "url": "https://github.com/baoduy"
   },
   "metadata": {
-    "description": "Claude Code plugins for the DKNet ecosystem — currently ships the DKNet.Minimal.Template scaffolding plugin.",
-    "version": "0.1.0"
+    "description": "Claude Code plugins for the DKNet ecosystem — ships dknet-minimal, the agent skills and subagents for solutions generated from DKNet.Minimal.Template."
   },
   "plugins": [
     {
       "name": "dknet-minimal",
       "source": ".",
-      "description": "Slash commands, subagents, and skills for shipping vertical-slice features end-to-end on the DKNet.Minimal.Template.",
-      "version": "0.1.0",
+      "description": "Skills (Claude Code plugin + Agent Skills standard) and subagents for building vertical-slice features on the DKNet.Minimal.Template: endpoints, actions, queries, validation, DTO mapping, entities, seeding, SlimMessageBus/Azure Service Bus events, auth/ownership, platform flags, tests, and end-to-end /dknet-feature workflows.",
+      "category": "development",
       "homepage": "https://github.com/baoduy/DKNet.Templates",
-      "keywords": [
-        "dotnet",
-        "ddd",
-        "cqrs",
-        "efcore",
-        "aspire",
-        "scaffold"
-      ]
+      "keywords": ["dotnet","csharp","ddd","cqrs","efcore","aspire","slimmessagebus","scaffold","agent-skills"]
     }
   ]
 }
