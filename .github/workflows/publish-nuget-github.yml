@@ -138,6 +138,17 @@ jobs:
         # `npm version` updates package.json and runs the "version" script (scripts/sync-version.mjs).
         run: npm version "${VERSION}" --no-git-tag-version --allow-same-version
 
+      - name: Assert the npm version equals the NuGet template version
+        # The three manifests must now carry exactly the version the publish job packed into the nuspec.
+        run: |
+          set -euo pipefail
+          [ -n "${VERSION}" ] || { echo "VERSION output from the publish job is empty"; exit 1; }
+          for f in package.json plugin.json .claude-plugin/plugin.json; do
+            v=$(node -p "require('./$f').version")
+            [ "$v" = "${VERSION}" ] || { echo "$f is $v, NuGet template is ${VERSION}"; exit 1; }
+          done
+          echo "npm and NuGet both at ${VERSION}"
+
       - name: Validate every skill against the Agent Skills spec
         run: |
           set -euo pipefail
