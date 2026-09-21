@@ -1,11 +1,11 @@
 # AGENTS.md
 
 ## Scope
-- This repository template is centered on `src/ApiEndpoints` and the solution `src/DKNet.Templates.sln`.
+- The solution is centered on `ApiEndpoints/` (six `Minimal.*` projects) with the solution file at the solution root. Every path below is relative to that root.
 - Prefer code-verified patterns in this guide over older README statements when they differ.
 
 ## Architecture at a glance
-- API startup is in `src/ApiEndpoints/Minimal.Api/Program.cs`: bind `FeatureOptions`, then `AddLogConfig` -> `AddAzureAppConfig` -> `AddFluentValidationConfig` -> `RunMigrationAsync` -> `AddAppConfig` -> `AddContextualRequestPopulation` -> `UseAppConfig(a => a.UseEndpointConfigs(...))`.
+- API startup is in `ApiEndpoints/Minimal.Api/Program.cs`: bind `FeatureOptions`, then `AddLogConfig` -> `AddAzureAppConfig` -> job dispatch (`JobSelector`: a `migration` argument runs `MigrationJob` and exits) -> `AddFluentValidationConfig` -> `RunMigrationAsync` (only when `FeatureManagement:RunDbMigrationWhenAppStart`) -> `AddAppConfig` -> `AddContextualRequestPopulation` -> `UseAppConfig(a => a.UseEndpointConfigs(...))`.
 - Middleware/service composition is orchestrated by `Minimal.Api/Configs/AppConfig.cs` and `Minimal.Api/Configs/ServiceConfigs.cs`.
 - Layer boundaries are strict: `Api` -> `AppServices` -> `Domains`, with infra wiring from `Minimal.Infra/Extensions/InfraSetup.cs`.
 - `Minimal.AppHost/AppHost.cs` is Aspire host orchestration (Redis + PostgreSQL + API project), not business logic.
@@ -39,24 +39,27 @@ The template carries two side-by-side vertical slices demonstrating opposite end
 - Lazy mapping result helpers are `DKNet.SlimBus.Extensions.LazyMapper`'s `ResultOf<T>`/`LazyMap<T>` (the template's former local copy under `AppServices/Extensions/LazyMapper` was removed — both samples use the package's version now).
 
 ## Build, run, and migration workflow
-- SDK/framework are pinned centrally (`src/global.json`, `src/Directory.Packages.props`) and target `net10.0`.
+- SDK/framework are pinned centrally (`global.json`, `Directory.Packages.props`) and target `net10.0`.
 - Core commands:
-  - `dotnet restore src/DKNet.Templates.sln`
-  - `dotnet build src/DKNet.Templates.sln -c Release`
-  - `dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage"`
+  - `dotnet restore`
+  - `dotnet build -c Release`
+  - `dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"`
 - Local host options:
-  - API only: `dotnet run --project src/ApiEndpoints/Minimal.Api`
-  - Aspire host: `dotnet run --project src/ApiEndpoints/Minimal.AppHost`
-- EF migrations scripts from `src/ApiEndpoints`: `./add-migration.sh <Name>` and `./remove-migration.sh <Name>`.
+  - API only: `dotnet run --project ApiEndpoints/Minimal.Api`
+  - Aspire host: `dotnet run --project ApiEndpoints/Minimal.AppHost`
+- EF migrations, run from `ApiEndpoints/`: `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj` and `dotnet ef migrations remove -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`.
+
+## AI agent skills
+- The `dknet-minimal` plugin (Claude Code marketplace `baoduy/DKNet.Templates`, or `npx skills add baoduy/DKNet.Templates` for any agent) carries the full skill set: `dknet-project-structure` first, then `dknet-entity`, `dknet-efcore-config`, `dknet-crud`, `dknet-queries-specs`, `dknet-dto-mapping`, `dknet-endpoint`, `dknet-messaging-events`, `dknet-auth-and-ownership`, `dknet-platform-config`, `dknet-unit-tests`, `dknet-bdd-tests`; `/dknet-feature <Feature> <Entity> mode=manual|auto` scaffolds a slice end to end.
 
 ## Testing and quality constraints
 - **Both suites are business-domain tests only.** Write tests for your entities, validators, specs, handlers, CRUD routes and domain events. Do not add tests for logging, telemetry, health probes, Swagger/OpenAPI documents, CORS, HSTS, security headers, rate limiting, JWT configuration, host startup plumbing or config binding — that is framework behaviour covered upstream, and it buries the examples a new team member reads to learn the conventions. The only non-business tests that belong here are the `Architecture/` layer rules.
-- Tests currently live mainly under `src/ApiEndpoints/Minimal.App.Tests/` (Shouldly + xUnit patterns) and `src/ApiEndpoints/Minimal.App.BDDTests/` (Reqnroll + NUnit).
+- Tests currently live mainly under `ApiEndpoints/Minimal.App.Tests/` (Shouldly + xUnit patterns) and `ApiEndpoints/Minimal.App.BDDTests/` (Reqnroll + NUnit).
 - `Minimal.App.Tests.csproj` disables analyzers for tests; production projects enforce strict warnings-as-errors from `Directory.Packages.props`.
-- Coverage filters are defined in `src/coverage.runsettings`; avoid placing real logic in excluded paths (`bin/`, `obj/`, `*Test*.cs`).
+- Coverage filters are defined in `coverage.runsettings`; avoid placing real logic in excluded paths (`bin/`, `obj/`, `*Test*.cs`).
 
 ## BDD Testing (Reqnroll + NUnit)
-- BDD tests live in `src/ApiEndpoints/Minimal.App.BDDTests/`.
+- BDD tests live in `ApiEndpoints/Minimal.App.BDDTests/`.
 - `Support/BddApiFactory.cs` boots `WebApplicationFactory<Program>` once per test run using Reqnroll `[BeforeTestRun]` hook in `ApiHooks.cs`.
 - In-memory EF Core + disabled migrations/AzureAppConfig — no external services required.
 - Each scenario resets the DB in `[BeforeScenario(Order=0)]`; `HttpClient` and `ScenarioState` are injected into step defs via Reqnroll's BoDi `IObjectContainer`.
@@ -66,5 +69,5 @@ The template carries two side-by-side vertical slices demonstrating opposite end
 ## Project-specific gotchas
 - `FeatureOptions` section name is `FeatureManagement`, and its JSON keys match the `FeatureOptions` property names one-for-one. `Get<FeatureOptions>()` ignores unknown keys, so a misspelled key silently falls back to the property default rather than throwing — when adding or renaming a flag, change `Minimal.Share/Options/FeatureOptions.cs` and every `appsettings*.json` together.
 - Prefer adding new feature slices by mirroring `ManualSample/PurchaseOrder` (hand-written) or `AutomatedSample/Product` (generator-driven) across Domains -> Infra -> AppServices -> Api.
-- When adding repos/services in Infra, keep classes `sealed` and under `.Repos` or `.Services` namespaces so Scrutor scanning picks them up.
+- When adding a service in Infra, register it explicitly in `InfraSetup.AddInfraServices` (there is no Scrutor scan — `IMembershipService` is an explicit `AddScoped` line); keep implementations `internal sealed` under `Minimal.Infra/Services/`.
 - A generated CRUD request's DataAnnotations rules (e.g. `[Range]` on `Price`) are **not enforced** when the entity is mapped through the generated `MapProductCrud()`-style route, because .NET 10's automatic validation source generator can't see through `DKNet.AspCore.Extensions`'s generic `Map*<TRequest,TDto>` wrapper. Don't assume a `[Range]`/`[Required]` on a `[CrudCreate]` parameter is enforced without checking whether the entity's endpoint is hand-mapped (enforced) or generator-mapped (not enforced).

@@ -44,7 +44,7 @@ you change a flag — never turn a security switch off in the base file.
 | **Scalar / OpenAPI** | OpenAPI 3.0 document + Scalar UI at `/docs` with a Bearer-auth preset. Anonymous in `Development`; outside it both require an authenticated caller, so the API surface is not readable by anyone who finds the URL. | `FeatureManagement:EnableSwagger`; `Minimal.Api/Configs/Swagger/SwaggerConfig.cs` |
 | **Reqnroll + NUnit BDD** | Gherkin feature files exercised against a real `WebApplicationFactory<Program>` host, in-memory DB. | `Minimal.App.BDDTests/` |
 | **EF Core migration scripts** | `./add-migration.sh <Name>` / `./remove-migration.sh <Name>`, always targeting `CoreDbContext`. | Run from `src/ApiEndpoints/` |
-| **AI-assistant agents, skills, prompts** | Same Claude Code / GitHub Copilot agents, skills, and slash commands the template authors use, copied into every generated solution. | `.claude/agents/`, `.claude/skills/`, `.claude/commands/`; `.github/agents/`, `.github/skills/` (see `.github/skills/CATALOG.md`); `extensions/dknet-implement/` (Spec-Kit validator/implementer for the four DDD layers) |
+| **AI-assistant agents and skills** | Claude Code plugin (`dknet-minimal`) and GitHub Copilot skills the template authors use. Not copied into a generated solution (only `AGENTS.md` ships) — install into the generated repo via `/plugin install dknet-minimal@dknet-marketplace`, `npx skills add baoduy/DKNet.Templates`, or Copilot's plugin marketplace. | `skills/`, `agents/`, `.claude-plugin/` (the repo root is the plugin; index in `skills/README.md`) |
 
 ## Also always on
 
