@@ -84,7 +84,7 @@ internal sealed class GetPurchaseOrderByIdQueryHandler(IRepositorySpec repositor
 
 `OnHandle` returns `TDto?`, not a `Result`. A `null` return is the "not found" signal — the calling
 endpoint turns it into `404` (`dto is null ? Results.NotFound() : Results.Ok(dto)`; see the
-`dknet-endpoint-config` skill). There is no failure channel beyond that; a query handler doesn't
+`dknet-endpoint` skill). There is no failure channel beyond that; a query handler doesn't
 refuse with an error code the way a command handler does.
 
 ### Paged list — `IWitPageResponse<TDto>` / `IPageHandler<TQuery,TDto>`
@@ -288,7 +288,7 @@ so a caller always sees the full status set. `GenericStatusCountsParameters.From
 optional and **unbounded by default** — omitting both reports counts over all history, not a rolling
 window; pass explicit bounds for something like "the last 30 days". No shipped endpoint config calls
 this today; wire it into a `Map(RouteGroupBuilder)` like any other route (see the
-`dknet-endpoint-config` skill) if a status breakdown is useful for your entity.
+`dknet-endpoint` skill) if a status breakdown is useful for your entity.
 
 ## 5. Decision table — generic list vs. hand-written query
 

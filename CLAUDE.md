@@ -194,13 +194,13 @@ field, and `agentskills validate` rejects unknown keys) plus a `Usage:` line, an
 |---|---|
 | `/dknet-feature <Feature> <Entity> [mode=…] [props…]` | Add a slice end-to-end (plan → domain → CRUD → endpoint → tests → BDD → docs) |
 | `/dknet-feature-remove <Feature>` | Retire a slice end-to-end, including touchpoints and a drop migration |
-| `/dknet-entity`, `/dknet-crud`, `/dknet-endpoint`, `/dknet-unit-tests`, `/dknet-bdd-test`, `/dknet-docs` | Individual phases, same `mode=` contract |
+| `/dknet-entity`, `/dknet-crud`, `/dknet-endpoint`, `/dknet-unit-tests`, `/dknet-bdd-tests`, `/dknet-docs` | Individual phases, same `mode=` contract |
 
 Reference skills (no arguments) back them: `dknet-project-structure` (read first),
-`dknet-ddd-principles`, `dknet-feature-lifecycle`, `dknet-scaffold`, `dknet-domain-entity`,
-`dknet-efcore-config`, `dknet-appservices-actions`, `dknet-queries-specs`, `dknet-dto-mapping`,
-`dknet-endpoint-config`, `dknet-messaging-events`, `dknet-auth-and-ownership`,
-`dknet-platform-config`, `dknet-unit-test`, `dknet-bdd-tests`, `dknet-feature-documentation`,
+`dknet-ddd-principles`, `dknet-feature-lifecycle`, `dknet-scaffold`, `dknet-entity`,
+`dknet-efcore-config`, `dknet-crud`, `dknet-queries-specs`, `dknet-dto-mapping`,
+`dknet-endpoint`, `dknet-messaging-events`, `dknet-auth-and-ownership`,
+`dknet-platform-config`, `dknet-unit-tests`, `dknet-bdd-tests`, `dknet-docs`,
 `dknet-package-adoption`. Subagents live in `agents/` and are listed one file each in
 `.claude-plugin/plugin.json` (`agents` must be an array of file paths — a directory string fails
 `claude plugin validate`).
@@ -211,7 +211,7 @@ deliberately no registry file to drift out of sync.
 ### Skill authoring rules (enforced by `./validate-plugin.sh` check 6)
 
 Skills are copied verbatim into other repositories (plugin cache, `npx skills add` targets,
-`node_modules/@drunkcoding/dknet-minimal-skills`), so every `skills/<x>/SKILL.md`:
+`node_modules/@drunkcoding/dknet-implementation-skills`), so every `skills/<x>/SKILL.md`:
 
 - has frontmatter `name` equal to its folder, a single-line `description` (≤ 1024 chars), and only
   Agent Skills spec keys (`allowed-tools`, `license`, `compatibility`, `metadata`) — workflow skills put

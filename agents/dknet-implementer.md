@@ -19,10 +19,10 @@ Read these in order, every time:
 2. the `dknet-ddd-principles` skill — apply this if the architect's plan leaves any aggregate boundary, entity-vs-value-object, or event-vs-direct-call choice implicit.
 3. `CLAUDE.md` — layer rules and gotchas.
 4. The skills for each layer you'll touch:
-   - the `dknet-domain-entity` skill
+   - the `dknet-entity` skill
    - the `dknet-efcore-config` skill
-   - the `dknet-appservices-actions` skill
-   - the `dknet-endpoint-config` skill
+   - the `dknet-crud` skill
+   - the `dknet-endpoint` skill
 5. The exemplar slice for any layer where you're unsure — this template ships two, and the `dknet-feature-lifecycle` skill §1 is the authoritative layer-by-layer comparison between them:
    - **Hand-written (primary walkthrough below)** — `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`, `Minimal.Infra/Features/ManualSample/Mappers/`, `Minimal.AppServices/ManualSample/V1/Actions/`, `Specs/`, `Queries/`, `Events/`, `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`.
    - **Generator-driven (faster path, plain CRUD only — see below)** — `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`, `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`, `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs`.
@@ -37,7 +37,7 @@ This is the hand-written path — follow it when the plan calls for idempotent w
 4. **EF migration** — `cd ApiEndpoints && dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`. Inspect the generated migration before continuing.
 5. **AppServices** — hand-written DTO record (no `[GenerateDto]`; see `PurchaseOrderDto` — exposes exactly the fields you write into it), `Create*Request` / `Update*Request` / `Delete*Request` (`Fluents.Requests.IWitResponse<TDto>` or `INoResponse`, `[FromClaim(ClaimTypes.Name)] ByUser` for the acting user — never trust a payload value for it), `AbstractValidator`, `internal sealed` handlers using `IRepositorySpec` + `IMapper`, `SpecGet<Entity>`, domain event record + handler.
 6. **Api endpoint** — new `*V1Endpoint : IEndpointConfig`; map every route with literal `group.MapPost/MapGet/MapPut/MapDelete(...)` calls against the raw minimal-API surface (see `PurchaseOrderV1Endpoint`). Add `.RequiredIdempotentKey()` to the POST chain — clients then send `X-Idempotency-Key: {Guid}`; a replayed key returns the original response instead of creating a duplicate.
-7. **Tests** — invoke `/dknet-unit-tests` and `/dknet-bdd-test` (or follow the corresponding skills directly). Don't claim done until both pass.
+7. **Tests** — invoke `/dknet-unit-tests` and `/dknet-bdd-tests` (or follow the corresponding skills directly). Don't claim done until both pass.
 
 ## Declarative alternative — faster path for plain CRUD (`Product`)
 

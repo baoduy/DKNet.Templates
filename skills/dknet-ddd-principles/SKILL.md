@@ -1,11 +1,11 @@
 ---
 name: dknet-ddd-principles
-description: DDD tactical judgment for this codebase — aggregate boundaries, entity vs. value object, invariant enforcement, when to use a domain event, avoiding anemic domain models. Use before dknet-domain-entity and dknet-appservices-actions whenever the aggregate shape or business-rule placement isn't obvious.
+description: DDD tactical judgment for this codebase — aggregate boundaries, entity vs. value object, invariant enforcement, when to use a domain event, avoiding anemic domain models. Use before dknet-entity and dknet-crud whenever the aggregate shape or business-rule placement isn't obvious.
 ---
 
 # Skill: DDD Tactical Principles
 
-This codebase already gives you the class shapes (`AggregateRoot`, `DomainEntity`, `AddEvent`) — see `dknet-domain-entity`. This skill covers the judgment calls those shapes don't make for you: what belongs in one aggregate, what's an entity vs. a value object, where an invariant lives, and when a domain event is the right tool.
+This codebase already gives you the class shapes (`AggregateRoot`, `DomainEntity`, `AddEvent`) — see `dknet-entity`. This skill covers the judgment calls those shapes don't make for you: what belongs in one aggregate, what's an entity vs. a value object, where an invariant lives, and when a domain event is the right tool.
 
 This template is a single microservice / single bounded context — these are tactical patterns, not strategic (bounded-context) design.
 
@@ -31,7 +31,7 @@ Keep aggregates small. A large aggregate means more contention (every mutation l
 ## Entity vs. Value Object
 
 - **Entity** (in this codebase: `AggregateRoot` for the root, `DomainEntity` for non-root entities): has identity and a lifecycle. Two entities with identical property values are still different entities if their `Id` differs. `PurchaseOrder` is an entity — two orders with the same customer name and amount are still two different orders.
-- **Value object** (owned type, plain class with no `Id`): defined entirely by its values. Two value objects with identical properties are interchangeable. If a type never needs to be looked up or referenced independently of its parent entity, it's a value object — model it as a plain owned type (see `dknet-domain-entity` "Step 3: Create Owned Value Objects"), not as another `DomainEntity`.
+- **Value object** (owned type, plain class with no `Id`): defined entirely by its values. Two value objects with identical properties are interchangeable. If a type never needs to be looked up or referenced independently of its parent entity, it's a value object — model it as a plain owned type (see `dknet-entity` "Step 3: Create Owned Value Objects"), not as another `DomainEntity`.
 
 Ask: "Do I ever need to fetch or reference this thing on its own, independent of its parent?" Yes → entity. No → value object.
 
@@ -40,9 +40,9 @@ Ask: "Do I ever need to fetch or reference this thing on its own, independent of
 An invariant is a rule that must always hold true for an entity (e.g. "amount is never negative," "a cancelled order stays cancelled"). In this codebase, invariants are enforced by construction and by the entity's own mutation methods — never by a public setter:
 
 - Properties are `{ get; private set; }`. Nothing outside the entity can put it into an invalid state directly.
-- The constructor establishes the invariant for a new entity. Named mutation methods (`ChangeAmount`, `Cancel` — see `PurchaseOrder` in `dknet-domain-entity`) re-establish it for every mutation, and are the *only* path to changing mutable state.
+- The constructor establishes the invariant for a new entity. Named mutation methods (`ChangeAmount`, `Cancel` — see `PurchaseOrder` in `dknet-entity`) re-establish it for every mutation, and are the *only* path to changing mutable state.
 - A rule that depends on the entity's **own current state** belongs on the entity, or right next to the fetch in the handler when it must read the stored row first. `PurchaseOrder.Cancel(string userId)` is the clearest example: `CancelPurchaseOrderCommandHandler` (`ApiEndpoints/Minimal.AppServices/ManualSample/V1/Actions/Cancel.cs`) checks `order.Status == PurchaseOrderStatus.Cancelled` and fails the request *before* calling `Cancel`; the transition itself still lives on the entity. Note the weakness this leaves — the guard is one call away from being bypassed by a second caller who skips it, so treat handler-side guards as a boundary check, not as the invariant's home.
-- If a rule needs data external to the entity (e.g. "customer name must be unique across all orders"), that's not an entity invariant — it's a cross-entity business rule, and it belongs in the command handler as a duplicate-check `Specification` query (see `dknet-appservices-actions`), because the entity has no way to see other entities.
+- If a rule needs data external to the entity (e.g. "customer name must be unique across all orders"), that's not an entity invariant — it's a cross-entity business rule, and it belongs in the command handler as a duplicate-check `Specification` query (see `dknet-crud`), because the entity has no way to see other entities.
 
 ## When to Use a Domain Event
 
@@ -83,5 +83,5 @@ The handler's job is orchestration: fetch the entity (via `IRepositorySpec` + a 
 
 ## Next Steps
 
-→ `dknet-domain-entity` — apply these decisions to actual entity code
-→ `dknet-appservices-actions` — apply the handler-orchestration boundary to CQRS actions
+→ `dknet-entity` — apply these decisions to actual entity code
+→ `dknet-crud` — apply the handler-orchestration boundary to CQRS actions

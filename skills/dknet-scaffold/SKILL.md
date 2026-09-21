@@ -176,7 +176,7 @@ them to the generated repo separately, whichever tool you work in:
 npx skills add baoduy/DKNet.Templates
 ```
 
-GitHub Copilot: install through `npx skills add baoduy/DKNet.Templates -a github-copilot` (writes `.agents/skills/`, which Copilot reads) or `npm i -D @drunkcoding/dknet-minimal-skills` + `npx skills experimental_sync`
+GitHub Copilot: install through `npx skills add baoduy/DKNet.Templates -a github-copilot` (writes `.agents/skills/`, which Copilot reads) or `npm i -D @drunkcoding/dknet-implementation-skills` + `npx skills experimental_sync`
 once either directory exists in the cloned repo (e.g. after one of the two commands above has run
 in that repo, or after cloning a repo that already committed them).
 
@@ -189,7 +189,7 @@ in that repo, or after cloning a repo that already committed them).
 | Remove a feature | `/dknet-feature-remove <Feature>` |
 | Layer boundaries and auto-discovery wiring | `dknet-project-structure` |
 | Start-up order, flags, config sections, jobs, Aspire, test hosts | `dknet-platform-config` |
-| BDD scenarios | `dknet-bdd-tests`, `/dknet-bdd-test` |
+| BDD scenarios | `dknet-bdd-tests`, `/dknet-bdd-tests` |
 
 ## Gotchas
 

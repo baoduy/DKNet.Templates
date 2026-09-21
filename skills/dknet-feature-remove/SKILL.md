@@ -26,7 +26,7 @@ ls ApiEndpoints/Minimal.Domains/Features/
 
 ## Required reading
 
-1. the `dknet-feature-lifecycle` skill — §2 footprint, §3 touchpoints, §4 migration
+1. The `dknet-feature-lifecycle` skill — §2 footprint, §3 touchpoints, §4 migration
    rules, §5 removal order. This command is the executable form of that skill; do not improvise a
    different order.
 

@@ -244,7 +244,7 @@ merged everything else).
   (`AddIdempotencyWithRedisStore`) when `ConnectionStrings:Redis` is set, else in-memory
   (`AddIdempotentKey`), both with `ConflictHandling = IdempotentConflictHandling.ConflictResponse`
   (not `CachedResult` — verify against source if a doc says otherwise). Per-route opt-in only; see
-  `dknet-appservices-actions` and `dknet-endpoint-config` for `.RequiredIdempotentKey()`.
+  `dknet-crud` and `dknet-endpoint` for `.RequiredIdempotentKey()`.
 - **JSON options** (`ServiceConfigs.AddOptions`) — naming policy, ignore conditions and converters
   come from `SharedConsts.JsonSerializerOptions`; role-aware sensitive-data filtering
   (`[SensitiveData]`) is wired onto the same `JsonOptions` instance via a factory registration. Full
@@ -252,7 +252,7 @@ merged everything else).
 - **Error responses** (`Configs/FluentValidationConfig.cs`, `AddErrorResponses`) — one registration
   answers every refusal: an error code prefixed `precondition.` (`PreconditionCodes.Prefix`) → `409`;
   an unhandled `OwnershipRequiredException` → `403`; everything else keeps its existing status. Full
-  detail in `dknet-appservices-actions`.
+  detail in `dknet-crud`.
 - **Auth and ownership** — see `dknet-auth-and-ownership` for `AuthConfig`/`DemoAuthConfig`, scope
   policies, `[FromClaim]`, and `IDataOwnerProvider`/`ICurrentUserProvider`.
 
@@ -339,4 +339,4 @@ different combination adds its own fixture subclass rather than changing these d
   `400` vs `201`. **What actually happens for platform wiring specifically**: FluentValidation runs
   on every endpoint group via `AddFluentValidationAutoValidation()` in `ConfigureGroup` — that part
   always works. What silently doesn't work is a DataAnnotations attribute on a **generated** CRUD
-  request; see `dknet-appservices-actions` and `dknet-endpoint-config` for the enforcement gap.
+  request; see `dknet-crud` and `dknet-endpoint` for the enforcement gap.

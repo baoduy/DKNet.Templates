@@ -1,12 +1,12 @@
 ---
 name: dknet-dto-mapping
-description: Design response DTOs and Mapster mapping for a DKNet.Minimal feature — hand-written vs [GenerateDto] shapes, custom Mapster IRegister mappings for values the generator's convention can't produce, LazyMapper, and the JSON/sensitive-data contract. Use after (or alongside) dknet-appservices-actions when a handler needs a DTO to return.
+description: Design response DTOs and Mapster mapping for a DKNet.Minimal feature — hand-written vs [GenerateDto] shapes, custom Mapster IRegister mappings for values the generator's convention can't produce, LazyMapper, and the JSON/sensitive-data contract. Use after (or alongside) dknet-crud when a handler needs a DTO to return.
 ---
 
 # DTO and Mapster mapping
 
 Response DTO shape and how it gets filled from the entity. For request contracts, validators and
-handlers, load `dknet-appservices-actions`. For paged query projections, load `dknet-queries-specs`.
+handlers, load `dknet-crud`. For paged query projections, load `dknet-queries-specs`.
 
 ## Two DTO shapes
 
@@ -274,5 +274,5 @@ the DTO doubles as the generic CRUD/list contract.
   used as part of a create/update request shape (rare, but seen when a hand-written request and its
   response DTO are conflated) it becomes caller-settable.
   **Why**: DTOs and requests are different concerns — a DTO is response-only; acting-user
-  attribution belongs on the request (`dknet-appservices-actions`) or a save hook, never inferred
+  attribution belongs on the request (`dknet-crud`) or a save hook, never inferred
   from a response type reused as input.

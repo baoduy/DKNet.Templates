@@ -28,11 +28,17 @@ jobs:
       # Versioning
       - name: Calculate version
         id: version
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.2
         with:
           tag_prefix: "v"
-          major_pattern: "(MAJOR)"
-          minor_pattern: "(MINOR)"
+          # Major is never bumped by this pipeline. It is the repository owner's
+          # decision, taken by hand: tag `main` with `v<N>.0.0`, then re-run this
+          # workflow. This sentinel matches no commit, so `!:`, `BREAKING CHANGE:`
+          # and the retired `(MAJOR)` marker all bump nothing.
+          major_pattern: "DKNET_MAJOR_IS_TAGGED_BY_HAND_NEVER_BY_CI"
+          # minor_pattern is deliberately absent — the action's own default is
+          # /feat(\(.+\))?:/, which is the Conventional Commit style already used
+          # on dev. Do not re-add an override.
           version_format: "${major}.${minor}.${patch}"
           bump_each_commit: false
           search_commit_body: false
@@ -102,7 +108,7 @@ jobs:
   #
   # Releases from `main` only. A version already on npm is skipped, so a re-run of the same commit is a no-op.
   # Auth: npm Trusted Publishing (OIDC) — https://docs.npmjs.com/trusted-publishers. No NPM_TOKEN secret.
-  # One-time setup on npmjs.com → package @drunkcoding/dknet-minimal-skills → Settings → Trusted Publisher →
+  # One-time setup on npmjs.com → package @drunkcoding/dknet-implementation-skills → Settings → Trusted Publisher →
   # GitHub Actions, owner/repo `baoduy/DKNet.Templates`, workflow filename `publish-nuget-github.yml` (exact,
   # case-sensitive, with the extension), environment left blank. Then set publishing access to "Require
   # two-factor authentication and disallow tokens". npm generates the provenance attestation automatically.

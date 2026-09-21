@@ -199,8 +199,8 @@ npx skills add baoduy/DKNet.Templates -s '*' -y  # everything, no prompts
 **From npm (pins the version with your project)**
 
 ```bash
-npm i -D @drunkcoding/dknet-minimal-skills
-claude --plugin-dir node_modules/@drunkcoding/dknet-minimal-skills   # Claude Code
+npm i -D @drunkcoding/dknet-implementation-skills
+claude --plugin-dir node_modules/@drunkcoding/dknet-implementation-skills   # Claude Code
 npx skills experimental_sync -a '*'                                  # any agent: node_modules -> .agents/skills/ etc.
 ```
 
@@ -219,7 +219,7 @@ claude --plugin-dir .          # loads skills/ and agents/ from the checkout
 | `/dknet-crud <Feature> <Entity> [mode=…]` | AppServices CRUD (DTO + Create/Update/Delete + spec + event), or the generator attributes |
 | `/dknet-endpoint <Feature> <Entity> [mode=…]` | Minimal API `IEndpointConfig` — hand-mapped with idempotency, or `Map<Entity>Crud()` |
 | `/dknet-unit-tests <Feature> <Entity> [mode=…]` | xUnit + Shouldly tests through `ApiFixture` + `IMessageBus` |
-| `/dknet-bdd-test <Feature>` | Reqnroll + NUnit BDD scenarios |
+| `/dknet-bdd-tests <Feature>` | Reqnroll + NUnit BDD scenarios |
 | `/dknet-docs <Feature>` | Feature documentation under `docs/features/<feature>/` |
 
 | Reference skill | Teaches |
@@ -228,24 +228,24 @@ claude --plugin-dir .          # loads skills/ and agents/ from the checkout
 | `dknet-ddd-principles` | Aggregate boundaries, invariants, when an event is warranted |
 | `dknet-feature-lifecycle` | Manual vs automated flow decision, feature footprint, removal rules |
 | `dknet-scaffold` | `dotnet new dknet-minimal`, parameters, first run, deleting the samples, installing this plugin |
-| `dknet-domain-entity` | `AggregateRoot` entities, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`/`[RaisesEvent]`, `IOwnedBy`, `[SensitiveData]` |
+| `dknet-entity` | `AggregateRoot` entities, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`/`[RaisesEvent]`, `IOwnedBy`, `[SensitiveData]` |
 | `dknet-efcore-config` | Mappers, static data seeding (both wiring paths), `CoreDbContext`, migrations |
-| `dknet-appservices-actions` | Commands, FluentValidation (incl. 409 preconditions), handlers, generated requests |
+| `dknet-crud` | Commands, FluentValidation (incl. 409 preconditions), handlers, generated requests |
 | `dknet-queries-specs` | `Specification<T>`, query handlers, paging, the generic filter/search/order list route |
 | `dknet-dto-mapping` | Hand-written vs `[GenerateDto]` DTOs, Mapster config and `IRegister` custom mapping, `ResultOf` |
-| `dknet-endpoint-config` | `IEndpointConfig`; raw routes, `Map<Entity>Crud()` + `CrudMapOptions`, generic helpers; idempotency; scopes |
+| `dknet-endpoint` | `IEndpointConfig`; raw routes, `Map<Entity>Crud()` + `CrudMapOptions`, generic helpers; idempotency; scopes |
 | `dknet-messaging-events` | SlimMessageBus in-memory bus, domain events (manual/declared), Azure Service Bus Produce/Consume |
 | `dknet-auth-and-ownership` | JWT + scopes, demo auth, `[FromClaim]`, `DataOwnerHook`, row-level isolation, sensitive data |
 | `dknet-platform-config` | Start-up order, every `FeatureManagement` flag and config section, Aspire, jobs, health, OpenAPI |
-| `dknet-unit-test` / `dknet-bdd-tests` | What each suite owns, fixtures, worked examples, the business-tests-only rule |
-| `dknet-feature-documentation` | README + Mermaid architecture + API reference for a finished feature |
+| `dknet-unit-tests` / `dknet-bdd-tests` | What each suite owns, fixtures, worked examples, the business-tests-only rule |
+| `dknet-docs` | README + Mermaid architecture + API reference for a finished feature |
 | `dknet-package-adoption` | Using DKNet packages in a project not created from the template |
 
 **Release.** Versions stay `0.0.0` in git. `publish-nuget-github.yml` computes the release version from
 tags on `main`, packs and publishes the NuGet template, creates the GitHub release, then stamps the same
 version into `package.json` / `plugin.json` / `.claude-plugin/plugin.json` (`npm version` →
 `scripts/sync-version.mjs`), validates the skills (`agentskills validate`, `claude plugin validate`,
-`npx skills add --list`, `./validate-plugin.sh`) and publishes `@drunkcoding/dknet-minimal-skills` to npm
+`npx skills add --list`, `./validate-plugin.sh`) and publishes `@drunkcoding/dknet-implementation-skills` to npm
 with OIDC trusted publishing. A version already on npm is skipped.
 
 ## Release notes

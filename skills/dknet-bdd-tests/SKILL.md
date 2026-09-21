@@ -1,14 +1,20 @@
 ---
 name: dknet-bdd-tests
-description: Create and maintain Reqnroll + NUnit BDD .feature scenarios and step bindings in Minimal.App.BDDTests — request/status/response-body scenarios and domain-event side effects observed via log capture, for the hand-written PurchaseOrder and generator-driven Product samples. Use when adding or updating HTTP-facing scenarios for a DKNet.Templates feature. Result-level Result-object assertions, architecture rules and pure functional tests belong in the `dknet-unit-test` skill instead — do not duplicate a behavior here that xUnit already covers.
+description: Create and maintain Reqnroll + NUnit BDD .feature scenarios and step bindings in Minimal.App.BDDTests — request/status/response-body scenarios and domain-event side effects observed via log capture, for the hand-written PurchaseOrder and generator-driven Product samples. Use when adding or updating HTTP-facing scenarios for a DKNet.Templates feature. Result-level Result-object assertions, architecture rules and pure functional tests belong in the `dknet-unit-tests` skill instead — do not duplicate a behavior here that xUnit already covers. Invoke as `/dknet-bdd-tests <Feature>` to scaffold it for a feature.
+metadata:
+  kind: workflow
+  arguments: "<Feature> e.g. Orders"
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
+
+Usage: `/dknet-bdd-tests <Feature> e.g. Orders`
 
 # BDD tests (Minimal.App.BDDTests)
 
 ## What BDD owns vs xUnit
 
 BDD owns user-facing HTTP behavior: request → status code → response body, and domain-event side effects
-observed through captured log lines. xUnit (`dknet-unit-test`) owns architecture/convention rules, pure
+observed through captured log lines. xUnit (`dknet-unit-tests`) owns architecture/convention rules, pure
 functional tests (entity methods, validators, specs), and result-level integration assertions on the
 handler's `IResult`/`IResultBase` object. Schema/model/migration assertions never belong in BDD. Don't
 write a BDD scenario for a rule already proven at the `Result` level in xUnit unless it's the one place
@@ -22,7 +28,7 @@ headers, rate limits, or config binding.
 ## Infrastructure
 
 `Support/BddApiFactory : TestApiFactoryBase("bdd-tests")` (built on the same base as the xUnit suite's
-`ApiFixture` — see `dknet-unit-test` for what the base class provides) overrides two things:
+`ApiFixture` — see `dknet-unit-tests` for what the base class provides) overrides two things:
 
 - `AddFeatureOverrides` sets `FeatureManagement:RequireAuthorization = "false"` unconditionally, and
   `ConnectionStrings:Redis` only for the one `@redis`-tagged scenario.
@@ -242,7 +248,7 @@ dotnet test ApiEndpoints/Minimal.App.BDDTests/Minimal.App.BDDTests.csproj --filt
 ## Step-by-step
 
 1. Confirm the behavior is HTTP-shaped (request → status → body) or an event side-effect via log capture —
-   otherwise it belongs in `dknet-unit-test`.
+   otherwise it belongs in `dknet-unit-tests`.
 2. Add `Features/<Domain>/<Name>.feature` under the right tag; reuse `CommonSteps` wording before coining
    new phrasing for something already covered (rejected request, status code, trace id, precondition code).
 3. Add `Features/<Domain>/Steps/<Name>Steps.cs`, `[Binding]`, constructor-inject `HttpClient`,
@@ -272,3 +278,78 @@ dotnet test ApiEndpoints/Minimal.App.BDDTests/Minimal.App.BDDTests.csproj --filt
 - **What you might expect**: forgetting `X-Idempotency-Key` on a manual-sample create just needs a retry.
   **What actually happens**: the request is rejected outright (400/`the request is rejected`) — the header
   is required, not merely deduplicating.
+
+---
+
+# Workflow: `/dknet-bdd-tests`
+
+The procedure an agent follows when invoked with arguments. The reference sections above are the rules it applies.
+
+You are DKNet BDD Test Engineer.
+
+Your job is to create, update, and validate BDD scenarios for this repository with contract-first assertions and deterministic step bindings.
+
+### User Input
+
+$ARGUMENTS
+
+### Required Skill Loading
+
+Before any BDD design or edits:
+1. Load and follow the BDD skill at the reference sections above.
+2. Use this skill's `checklist.md` as the completion gate.
+
+### Scope
+
+Work only on BDD test artifacts and closely related support wiring:
+- `ApiEndpoints/Minimal.App.BDDTests/Features/**/*.feature`
+- `ApiEndpoints/Minimal.App.BDDTests/Features/**/Steps/*.cs`
+- `ApiEndpoints/Minimal.App.BDDTests/Support/*.cs`
+- `ApiEndpoints/Minimal.App.BDDTests/*.csproj`
+
+### Constraints
+
+- Use `specs/<feature>/contracts/*` as the assertion source of truth.
+- Treat `docs/features/**` and `specs/**` as reference context for scenario coverage and wording.
+- Keep step phrases and `[Given]/[When]/[Then]` attributes exactly matched.
+- Validate response at three levels whenever applicable:
+  - HTTP status code
+  - response structure (`isSuccess`, `value`, `errors`, required objects/arrays)
+  - key data fields and expected values
+- Use `SharedConsts.JsonSerializerOptions` for request serialization.
+- Include required request headers when contracts require them. A **manual-flow** create route
+  requires a fresh `Guid.NewGuid()` `X-Idempotency-Key` per `[When]` step; an **automated-flow**
+  generated create route has no idempotency filter, so do not assert replay behavior against it.
+- Assert only behavior the endpoint actually has. An automated-flow route does not enforce its
+  forwarded DataAnnotations — a scenario expecting `400` from an out-of-range value will fail against
+  a `201`. Cover that gap by asserting what happens, or leave it to the manual flow.
+- Do not implement unrelated domain/business logic outside BDD test scope.
+
+### Workflow
+
+1. Build context map from:
+   - `docs/features/<feature>/`
+   - `specs/<feature>/spec.md`
+   - `specs/<feature>/contracts/*`
+2. Produce or update `.feature` scenarios:
+   - Happy path
+   - Business-rule failure
+   - Validation failure
+3. Implement/adjust step bindings in `Steps/*.cs`.
+4. Run validation:
+   - `dotnet build -c Release`
+   - `dotnet test ApiEndpoints/Minimal.App.BDDTests`
+5. Report:
+   - changed files
+   - scenario count
+   - pass/fail results
+   - unresolved contract gaps (if any)
+
+### Output Format
+
+Always provide:
+1. BDD phase status
+2. Artifacts changed
+3. Assertion coverage summary (status + shape + key fields)
+4. Test results summary
+5. Remaining risks or blockers

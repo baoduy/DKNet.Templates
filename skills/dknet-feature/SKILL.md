@@ -25,7 +25,7 @@ If the input is ambiguous, STOP and ask before doing anything else.
 
 ## Required reading
 
-the `dknet-feature-lifecycle` skill — §1 flow selection, §2 footprint. Read before Phase 0.
+The `dknet-feature-lifecycle` skill — §1 flow selection, §2 footprint. Read before Phase 0.
 
 ## Phase 0 — Flow selection
 

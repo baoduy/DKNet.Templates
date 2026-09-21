@@ -34,7 +34,7 @@ successfully.
 `Minimal.AppServices` assembly and declares every request/handler pair it finds by convention;
 `AddServicesFromAssembly(serviceAssembly)` registers the discovered handler classes in DI. Adding a
 new `*Request` + `*Handler` pair needs no wiring beyond writing the two classes — see the
-`dknet-appservices-actions` skill for how requests, validators, and handlers are shaped.
+`dknet-crud` skill for how requests, validators, and handlers are shaped.
 
 ## Wiring: `Minimal.Infra/Extensions/ServiceBusSetup.cs`
 
@@ -91,7 +91,7 @@ consumer does not block the HTTP response.
 
 ## Domain events: two styles, same publisher
 
-Both styles are covered in full in the `dknet-domain-entity` skill; here only what matters for
+Both styles are covered in full in the `dknet-entity` skill; here only what matters for
 messaging.
 
 - **Manual** — `PurchaseOrder`'s constructor calls `AddEvent(new PurchaseOrderCreatedEvent(...))` by
@@ -380,7 +380,7 @@ that path as untested until you add integration coverage against a real namespac
   "only after a committed write" guarantee.
 - **What you might expect:** an `[RaisesEvent(EventOperations.Updated, ...)]` fires on every call to
   the method that touches that property. **What actually happens:** it only fires when the value
-  actually changed on that save — see `dknet-domain-entity` for the mechanics.
+  actually changed on that save — see `dknet-entity` for the mechanics.
 - **What you might expect:** placing a new event consumer in `Minimal.Api` gets it discovered like
   the others. **What actually happens:** discovery only scans the `Minimal.AppServices` assembly
   (internal) and the `Minimal.Infra` assembly (external, inside `AddAzureBus`). A consumer in

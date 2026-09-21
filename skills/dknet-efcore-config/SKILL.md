@@ -7,7 +7,7 @@ description: Create EF Core entity type configurations (mappers), static data se
 
 Create the persistence-layer configuration for a domain entity — mapper, optional static seed data,
 and (rarely) an infra domain-service implementation. This layer is **hand-written identically for
-both entity shapes** (`dknet-domain-entity`'s `mode=manual`/`mode=auto`): no generator in this
+both entity shapes** (`dknet-entity`'s `mode=manual`/`mode=auto`): no generator in this
 template — not `[RaisesEvent]`, not `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`, not
 `[GenerateDto]` — touches `IEntityTypeConfiguration<T>`. `ProductConfigs` (for the generator-driven
 `Product`) is exactly as hand-written as `PurchaseOrderConfigs`.
@@ -65,7 +65,7 @@ below, for what Scrutor actually is and isn't used for here). This call is wired
   numeric key, or `ValueGeneratedOnAdd().HasValueGenerator<GuidV7ValueGenerator>()` for a `Guid` key
   (a time-ordered GUID assigned at insert, distinct from the plain `Guid.NewGuid()` an
   `AggregateRoot(string createdBy)` constructor assigns eagerly in memory — see
-  `dknet-domain-entity`).
+  `dknet-entity`).
 - If the entity implements `IAuditedProperties`: `CreatedBy`/`CreatedOn` required, `CreatedBy`
   max length 255, both locked against change after insert (`SetAfterSaveBehavior`); `UpdatedBy` max
   length 255, nullable; `UpdatedOn` nullable.
@@ -200,7 +200,7 @@ private void EnsureOwnershipResolvable()
 Fails closed, before EF Core attempts the insert, when the ownership key can't be resolved and a new
 row would be left with no `CreatedBy` — otherwise EF Core's own required-property check throws a raw
 `DbUpdateException` that leaks column/entity names into the response. Mapped to `403 Forbidden` by
-the `StatusCode` branch of `AddErrorResponses(...)` (see `dknet-endpoint-config`), not `500`.
+the `StatusCode` branch of `AddErrorResponses(...)` (see `dknet-endpoint`), not `500`.
 
 `InfraSetup.AddInfraServices` — the DI wiring, in full:
 
@@ -374,6 +374,6 @@ implementation in `Minimal.Infra/Services/`, one `AddScoped` line in `AddInfraSe
 | Wiring `UseAutoDataSeeding`/`UseAutoConfigModel` into only `InfraSetup.AddInfraServices` | Also wire it into `InfraMigration.MigrateDb` — that path builds its own `CoreDbContext`; seed data silently never appears over HTTP otherwise. Real bug this template already hit once. |
 | Expecting re-running seeding to update a changed fixed row | `DataSeedingConfiguration<T>` only inserts rows missing by primary key; it never updates an existing row. Change the fixed data via a migration, not by editing `GetDataAsync` and re-running. |
 | Seeding via the entity's public constructor | Use the `internal` rehydration constructor — the public one re-raises the entity's created event, which a seed insert should never do. |
-| Assuming `[SensitiveData]`/`[Range]`/etc. need mapper configuration | They don't — those are entity/DTO-level concerns (`dknet-domain-entity`, `dknet-appservices-actions`). The mapper only configures storage shape. |
+| Assuming `[SensitiveData]`/`[Range]`/etc. need mapper configuration | They don't — those are entity/DTO-level concerns (`dknet-entity`, `dknet-crud`). The mapper only configures storage shape. |
 | Forgetting `.Property(p => p.OwnedBy).HasMaxLength(...).IsRequired()` on an `IOwnedBy` entity | Implementing the interface doesn't size or require the column — `ProductConfigs` configures it explicitly. |
 | Editing an already-applied migration file by hand | Add a new migration instead; the applied one is a record of what ran against real databases. |

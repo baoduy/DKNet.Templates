@@ -21,7 +21,7 @@ Always start by reading:
 - The two existing exemplar slices, and the `dknet-feature-lifecycle` skill §1 for the layer-by-layer trade-off between them:
   - Hand-written — `Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`, `Minimal.Infra/Features/ManualSample/`, `Minimal.AppServices/ManualSample/V1/`, `Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs`.
   - Generator-driven — `Minimal.Domains/Features/AutomatedSample/Entities/Product.cs` (`[RaisesEvent]`/`[CrudCreate]`/`[CrudUpdate]`), `Minimal.AppServices/AutomatedSample/V1/ProductDto.cs` (`[GenerateDto]`), `Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs`.
-- The skill that matches the layer you're planning (the `dknet-domain-entity` skill, `dknet-efcore-config`, `dknet-appservices-actions`, `dknet-endpoint-config`, `dknet-bdd-tests`, `dknet-unit-test`).
+- The skill that matches the layer you're planning (the `dknet-entity` skill, `dknet-efcore-config`, `dknet-crud`, `dknet-endpoint`, `dknet-bdd-tests`, `dknet-unit-tests`).
 
 ## Output contract
 

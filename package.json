@@ -1,5 +1,5 @@
 {
-  "name": "@drunkcoding/dknet-minimal-skills",
+  "name": "@drunkcoding/dknet-implementation-skills",
   "version": "0.0.0",
   "description": "Agent skills (Claude Code plugin + Agent Skills standard) that teach coding agents how to build features on solutions generated from DKNet.Minimal.Template. Install with `npx skills add baoduy/DKNet.Templates`.",
   "keywords": [

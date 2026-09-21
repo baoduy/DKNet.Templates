@@ -94,7 +94,7 @@ if (requireAuthorization) discontinue.RequireAuthorization(ProductScopes.Discont
 ```
 
 `o.Configure(CrudOp, ...)` targets a generated composite route by operation kind (see
-`dknet-endpoint-config`); `o.Configure("RouteName", ...)` targets a specific `[CrudAction]` route by
+`dknet-endpoint`); `o.Configure("RouteName", ...)` targets a specific `[CrudAction]` route by
 its C# member name. A hand-mapped route (`discontinue` above) calls `.RequireAuthorization(scope)`
 directly on the `RouteHandlerBuilder` the same way.
 
@@ -325,7 +325,7 @@ that two callers are judged independently in either request order), `ProductSens
 POST routes are not idempotent unless the route calls `.RequiredIdempotentKey()` explicitly, with
 callers sending `X-Idempotency-Key`. The store is Redis when `ConnectionStrings:Redis` is set, else
 an in-process in-memory store; both use `ConflictHandling = IdempotentConflictHandling.ConflictResponse`
-(`Minimal.Api/Configs/AppConfig.cs`). See `dknet-appservices-actions` for how a handler's `Result`
+(`Minimal.Api/Configs/AppConfig.cs`). See `dknet-crud` for how a handler's `Result`
 maps to a response body, and `dknet-platform-config` for CORS, security headers, and rate limiting.
 Status mapping: 400 validation, 401 no/invalid credential, 403 `OwnershipRequiredException` or a
 failed authorization policy, 404 not found or filtered out by ownership, 409 a

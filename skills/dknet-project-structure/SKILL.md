@@ -113,18 +113,18 @@ Reference (read, don't invoke with args):
 | `dknet-ddd-principles` | Aggregate boundaries, entity vs. value object, when to raise a domain event |
 | `dknet-feature-lifecycle` | Choosing manual vs. auto, a feature's full file footprint, add/remove order |
 | `dknet-scaffold` | Installing the template, generating a solution, first run, deleting the samples |
-| `dknet-domain-entity` | Entity class mechanics (`AggregateRoot`, ctor rules, mutation methods) |
+| `dknet-entity` | Entity class mechanics (`AggregateRoot`, ctor rules, mutation methods) |
 | `dknet-efcore-config` | `IEntityTypeConfiguration<T>` mappers, seed data, domain-service wiring |
-| `dknet-appservices-actions` | Commands: requests, validators, handlers, both flows |
+| `dknet-crud` | Commands: requests, validators, handlers, both flows |
 | `dknet-queries-specs` | Queries: specs, hand-written read handlers, the generic list route |
 | `dknet-dto-mapping` | DTO shape, Mapster config, `[GenerateDto]` vs. hand-written record |
-| `dknet-endpoint-config` | `IEndpointConfig`, literal routes vs. `Map<Entity>Crud()`, idempotency |
+| `dknet-endpoint` | `IEndpointConfig`, literal routes vs. `Map<Entity>Crud()`, idempotency |
 | `dknet-messaging-events` | Domain events, `[RaisesEvent]`, in-memory vs. Azure Service Bus |
 | `dknet-auth-and-ownership` | Auth policies, `[FromClaim]`, `IDataOwnerProvider`/`ICurrentUserProvider` |
 | `dknet-platform-config` | Everything else the template wires: start-up order, flags, config sections, jobs, Aspire, test hosts |
-| `dknet-unit-test` / `dknet-unit-tests` | xUnit + `ApiFixture` integration tests |
-| `dknet-bdd-tests` / `dknet-bdd-test` | Reqnroll + NUnit scenarios |
-| `dknet-feature-documentation` / `dknet-docs` | Feature README + architecture diagrams |
+| `dknet-unit-tests` | xUnit + `ApiFixture` integration tests |
+| `dknet-bdd-tests` | Reqnroll + NUnit scenarios |
+| `dknet-docs` | Feature README + architecture diagrams |
 | `dknet-package-adoption` | Adopting DKNet packages into a non-template project |
 
 Workflow (invoke with `/`, takes arguments):
@@ -133,7 +133,7 @@ Workflow (invoke with `/`, takes arguments):
 |---|---|
 | `/dknet-feature <Feature> <Entity> [mode=manual\|auto] [props…]` | End-to-end slice: plan → domain → CRUD → endpoint → tests → BDD → docs |
 | `/dknet-feature-remove <Feature>` | Retire a slice end-to-end, including touchpoints and a drop migration |
-| `/dknet-entity`, `/dknet-crud`, `/dknet-endpoint`, `/dknet-unit-tests`, `/dknet-bdd-test`, `/dknet-docs` | Individual phases of the same lifecycle |
+| `/dknet-entity`, `/dknet-crud`, `/dknet-endpoint`, `/dknet-unit-tests`, `/dknet-bdd-tests`, `/dknet-docs` | Individual phases of the same lifecycle |
 
 Subagents (Claude Code only, used by the workflow commands): `dknet-architect` (plans),
 `dknet-implementer` (writes code across layers), `dknet-bdd-engineer` (BDD scenarios).
@@ -143,6 +143,6 @@ Subagents (Claude Code only, used by the workflow commands): `dknet-architect` (
 1. This skill.
 2. `dknet-ddd-principles`, if the aggregate shape or event placement isn't obvious.
 3. `dknet-feature-lifecycle` §1, to pick manual vs. auto.
-4. The layer skill for whatever you're about to write (`dknet-domain-entity` → `dknet-efcore-config`
-   → `dknet-appservices-actions`/`dknet-queries-specs`/`dknet-dto-mapping` → `dknet-endpoint-config`).
+4. The layer skill for whatever you're about to write (`dknet-entity` → `dknet-efcore-config`
+   → `dknet-crud`/`dknet-queries-specs`/`dknet-dto-mapping` → `dknet-endpoint`).
 5. `dknet-platform-config` only when the change is cross-cutting, not feature-scoped.

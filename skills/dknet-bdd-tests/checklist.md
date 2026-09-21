@@ -5,7 +5,7 @@ Use this checklist before considering BDD scenario work complete.
 ## Context Coverage
 
 - [ ] Confirmed the behavior is HTTP-shaped (request → status → body) or an event side effect via log
-      capture — otherwise it belongs in the `dknet-unit-test` skill instead
+      capture — otherwise it belongs in the `dknet-unit-tests` skill instead
 - [ ] Reviewed the feature's AppServices request/handler code as the assertion source of truth (status
       codes, error codes, response fields)
 - [ ] Checked `CommonSteps` for an existing step with the same meaning before writing a new one
