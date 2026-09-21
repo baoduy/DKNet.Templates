@@ -147,11 +147,11 @@ jobs:
             [ "$lines" -le 500 ] || { echo "$d/SKILL.md has $lines lines (> 500)"; exit 1; }
           done
 
-      - name: Validate the Claude Code plugin, skills and agents
+      - name: Validate the Claude Code plugin (skills/ and agents/ are covered by validate-plugin.sh below)
         run: |
-          npx -y @anthropic-ai/claude-code@latest plugin validate . --strict
-          npx -y @anthropic-ai/claude-code@latest plugin validate skills --strict
-          npx -y @anthropic-ai/claude-code@latest plugin validate agents --strict
+          npm install -g @anthropic-ai/claude-code@latest
+          claude --version
+          claude plugin validate . --strict
 
       - name: Repository content checks
         run: ./validate-plugin.sh

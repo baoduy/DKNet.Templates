@@ -67,16 +67,17 @@ done
 [[ -d agents ]] || fail "agents/ directory missing"
 
 if command -v claude >/dev/null 2>&1; then
-  if claude plugin validate . --strict >/dev/null 2>&1; then
-    pass "claude plugin validate . --strict"
-  else
-    fail "claude plugin validate . --strict reported problems (run it for details)"
-  fi
-  if claude plugin validate skills --strict >/dev/null 2>&1 && claude plugin validate agents --strict >/dev/null 2>&1; then
-    pass "claude plugin validate skills/ agents/ --strict"
-  else
-    fail "claude plugin validate skills/ or agents/ reported problems"
-  fi
+  for target in . skills agents; do
+    if OUT=$(claude plugin validate "$target" --strict 2>&1); then
+      pass "claude plugin validate $target --strict"
+    elif [[ "$target" != "." && "$OUT" == *"No manifest found in directory"* ]]; then
+      # Claude Code < 2.1.2xx cannot validate a bare skills/ or agents/ directory (it expects a manifest).
+      pass "claude plugin validate $target --strict skipped: this CLI ($(claude --version 2>/dev/null | head -1)) cannot validate a bare directory"
+    else
+      fail "claude plugin validate $target --strict reported problems:"
+      echo "$OUT" | sed 's/^/    /'
+    fi
+  done
 fi
 
 echo "=== 2. no-foreign-reference ==="
