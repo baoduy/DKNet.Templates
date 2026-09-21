@@ -127,9 +127,15 @@ routes that stay.
 group.MapProductCrud(o => o
     .Exclude(CrudOp.Delete)                                                     // a whole operation kind
     .Exclude("Discontinue")                                                     // one generated route, by name
-    .Configure(CrudOp.GetById, b => b.RequireAuthorization("products.read"))    // every route of a kind
-    .Configure("ChangePrice", b => b.RequireAuthorization("products.write")));  // one named route
+    .Configure(CrudOp.GetById, b => b.WithTags("products-read"))                // every route of a kind
+    .Configure("ChangePrice", b => b.WithTags("products-write")));              // one named route
 ```
+
+For **authorization scopes specifically**, prefer `[EndpointGroupScope(scope, EndpointHttpMethods.X)]`
+on the endpoint class: it covers generated and hand-mapped routes in one declaration and is applied
+only when `FeatureManagement:RequireAuthorization` is on, so it needs no flag guard. Use `Configure`
+for a scope only when two routes share an HTTP method but not a scope — as `Update` and
+`AssignSupplierReference` do on `Product`.
 
 - **`Exclude(params CrudOp[])`** — `CrudOp` has six members: `GetById`, `GetList`, `Create`,
   `Update`, `Delete`, `Action`. An excluded operation is skipped entirely, not merely hidden.

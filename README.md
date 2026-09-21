@@ -59,8 +59,8 @@ Every scaffold parameter, plus the run/test/migrate/pack commands:
 
 ## The shape your endpoints should take
 
-**Composite-first.** One endpoint class per aggregate: map the generated CRUD composite at the top,
-each generated route carrying its own authorization, then hand-write below it only the routes that
+**Composite-first.** One endpoint class per aggregate: declare the group's authorization scopes on the
+class, map the generated CRUD composite at the top, then hand-write below it only the routes that
 carry real orchestration. Generated and hand-written routes live in the same group — this is not a
 choice between two styles of endpoint.
 
@@ -68,29 +68,38 @@ choice between two styles of endpoint.
 trimmed here to its structure:
 
 ```csharp
-public void Map(RouteGroupBuilder group)
+[EndpointGroupScope(ProductScopes.Read, EndpointHttpMethods.Get)]
+[EndpointGroupScope(ProductScopes.Write, EndpointHttpMethods.Post, EndpointHttpMethods.Put,
+    EndpointHttpMethods.Delete)]
+internal sealed class ProductV1Endpoint : IEndpointConfig
 {
-    group.MapProductCrud(o =>
+    public void Map(RouteGroupBuilder group)
     {
-        o.Exclude("Discontinue");                                            // hand-written below
+        group.MapProductCrud(o =>
+        {
+            o.Exclude("Discontinue");                                        // hand-written below
 
-        o.Configure(CrudOp.GetById, rb => rb.RequireAuthorization(ProductScopes.Read));
-        o.Configure(CrudOp.Create,  rb => rb.RequireAuthorization(ProductScopes.Write));
-        o.Configure("Approve",      rb => rb.RequireAuthorization(ProductScopes.Write));
-        // its own scope — holding products.write must not be enough to assign a supplier reference
-        o.Configure("AssignSupplierReference", rb => rb.RequireAuthorization(ProductScopes.Supplier));
-    });
+            // a PUT like Update, so the per-method declaration cannot separate them — holding
+            // products.write must not be enough to assign a supplier reference
+            if (requireAuthorization)
+                o.Configure("AssignSupplierReference", rb => rb.RequireAuthorization(ProductScopes.Supplier));
+        });
 
-    // writes two aggregates in one transaction — outside what the generator can express
-    group.MapPut("{id:guid}/discontinue", /* ... */).Produces<ProductDto>();
+        // writes two aggregates in one transaction — outside what the generator can express
+        group.MapPut("{id:guid}/discontinue", /* ... */).Produces<ProductDto>();
 
-    // a response shape the generator has none for
-    group.MapGet("summary", /* ... */).Produces<ProductPriceSummaryDto>();
+        // a response shape the generator has none for; the group's GET declaration already covers it
+        group.MapGet("summary", /* ... */).Produces<ProductPriceSummaryDto>();
+    }
 }
 ```
 
-Seven of the nine routes come from `MapProductCrud`. Scopes are applied only when
-`FeatureManagement:RequireAuthorization` is on, so a stock Development run enforces none of them.
+Seven of the nine routes come from `MapProductCrud`. `[EndpointGroupScope]` names the scope per HTTP
+method once and covers generated and hand-mapped routes alike; a per-route `Configure`/
+`RequireAuthorization` is needed only where two routes share an HTTP method but not a scope. Scopes
+are applied only when `FeatureManagement:RequireAuthorization` is on, so a stock Development run
+enforces none of them — the attribute checks that flag itself, which is why the per-route overrides
+are the only calls that need an explicit guard.
 
 ### When an operation needs a hand-written route
 
@@ -160,15 +169,17 @@ capability-to-attribute tables ("I want X; which attribute or call gives it to m
 
 ## AI Plugin — Claude Code, GitHub Copilot, and any agent that reads SKILL.md
 
-This repository root is also the `dknet-minimal` plugin: `.claude-plugin/plugin.json` + `skills/` +
-`agents/` (Claude Code), `plugin.json` (GitHub Copilot), `package.json` (npm). One set of
+The `dknet-minimal` plugin lives in [`plugin/`](plugin): `plugin/.claude-plugin/plugin.json` +
+`plugin/skills/` + `plugin/agents/` (Claude Code). The repository root keeps only the entry points
+that have to be found there — `.claude-plugin/marketplace.json` (pointing at `./plugin`),
+`plugin.json` (GitHub Copilot) and `package.json` (npm). One set of
 [Agent Skills](https://agentskills.io) teaches an AI coding agent how to build on this template: the
 layer boundaries, every endpoint shape (hand-mapped, generated `Map<Entity>Crud()`, or the generic
 route helpers), actions and queries, FluentValidation + Mapster DTOs, domain entities and static
 seeding, SlimMessageBus internal events and Azure Service Bus forwarding, auth/ownership and every
 `FeatureManagement` flag. Eight of the skills are slash workflows that scaffold a vertical slice end to
 end; three Claude Code subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) back
-`/dknet-feature`. Index of every skill: [`skills/README.md`](skills/README.md).
+`/dknet-feature`. Index of every skill: [`plugin/skills/README.md`](plugin/skills/README.md).
 
 `dotnet new dknet-minimal` does **not** copy the plugin into a generated solution (only `AGENTS.md`
 ships) — install it into the generated repo with one of the channels below.
@@ -200,14 +211,14 @@ npx skills add baoduy/DKNet.Templates -s '*' -y  # everything, no prompts
 
 ```bash
 npm i -D @drunkcoding/dknet-implementation-skills
-claude --plugin-dir node_modules/@drunkcoding/dknet-implementation-skills   # Claude Code
+claude --plugin-dir node_modules/@drunkcoding/dknet-implementation-skills/plugin   # Claude Code
 npx skills experimental_sync -a '*'                                  # any agent: node_modules -> .agents/skills/ etc.
 ```
 
 **Working on this repository**
 
 ```bash
-claude --plugin-dir .          # loads skills/ and agents/ from the checkout
+claude --plugin-dir plugin     # loads plugin/skills/ and plugin/agents/ from the checkout
 ./validate-plugin.sh           # manifests, README install channels, skill portability
 ```
 
@@ -243,7 +254,7 @@ claude --plugin-dir .          # loads skills/ and agents/ from the checkout
 
 **Release.** Versions stay `0.0.0` in git. `publish-nuget-github.yml` computes the release version from
 tags on `main`, packs and publishes the NuGet template, creates the GitHub release, then stamps the same
-version into `package.json` / `plugin.json` / `.claude-plugin/plugin.json` (`npm version` →
+version into `package.json` / `plugin.json` / `plugin/.claude-plugin/plugin.json` (`npm version` →
 `scripts/sync-version.mjs`), validates the skills (`agentskills validate`, `claude plugin validate`,
 `npx skills add --list`, `./validate-plugin.sh`) and publishes `@drunkcoding/dknet-implementation-skills` to npm
 with OIDC trusted publishing. A version already on npm is skipped.
