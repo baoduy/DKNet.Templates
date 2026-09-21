@@ -39,7 +39,7 @@ specify extension add --dev extensions/dknet-implement
 
 ## Related Skills
 
-The Claude Code skills this extension orchestrates are in `.claude/skills/`:
+The Claude Code skills this extension orchestrates are in `skills/`:
 
 - `dknet-domain-entity` — Domain entity creation
 - `dknet-efcore-config` — EF Core mapper configuration

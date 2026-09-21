@@ -47,3 +47,24 @@ jobs:
           name: test-results-${{ matrix.configuration }}
           path: "**/TestResults/**"
           if-no-files-found: ignore
+
+  plugin:
+    name: Validate AI plugin (skills, agents, manifests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: validate-plugin.sh
+        run: ./validate-plugin.sh
+
+      - name: Skills CLI discovery (npx skills add --list)
+        run: npx -y skills@latest add . --list -y | grep -E 'dknet-feature|dknet-endpoint-config' || (echo "skills CLI did not discover the dknet skills" && exit 1)

@@ -54,7 +54,7 @@ From the feature context, extract for each entity:
 
 ### Step 3: Execute Layer 1 — Domain Entity
 
-**Skill**: `.claude/skills/dknet-domain-entity/SKILL.md`
+**Skill**: `skills/dknet-domain-entity/SKILL.md`
 
 For each entity identified in Step 2:
 
@@ -74,7 +74,7 @@ For each entity identified in Step 2:
 
 ### Step 4: Execute Layer 2 — EF Core Configuration
 
-**Skill**: `.claude/skills/dknet-efcore-config/SKILL.md`
+**Skill**: `skills/dknet-efcore-config/SKILL.md`
 
 For each entity:
 
@@ -101,7 +101,7 @@ cd src/ApiEndpoints
 
 ### Step 5: Execute Layer 3 — AppServices Actions
 
-**Skill**: `.claude/skills/dknet-appservices-actions/SKILL.md`
+**Skill**: `skills/dknet-appservices-actions/SKILL.md`
 
 For each entity:
 
@@ -142,7 +142,7 @@ For each entity:
 
 ### Step 6: Execute Layer 4 — Endpoint Configuration
 
-**Skill**: `.claude/skills/dknet-endpoint-config/SKILL.md`
+**Skill**: `skills/dknet-endpoint-config/SKILL.md`
 
 For each entity:
 

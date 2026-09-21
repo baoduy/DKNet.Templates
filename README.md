@@ -158,35 +158,95 @@ capability-to-attribute tables ("I want X; which attribute or call gives it to m
 > nuspec's file list doesn't ship `docs/`. Copy what you need into the generated solution, or add it
 > to the nuspec.
 
-## AI assistant plugins
+## AI Plugin — Claude Code, GitHub Copilot, and any agent that reads SKILL.md
 
-The repo ships a Claude Code plugin and a GitHub Copilot plugin that drive vertical-slice features
-end to end. `dotnet new dknet-minimal` copies both folders (`.claude/`, `.claude-plugin/`,
-`.github/`) into the generated solution, so your team gets the same agents, skills and commands with
-no extra install step.
+This repository root is also the `dknet-minimal` plugin: `.claude-plugin/plugin.json` + `skills/` +
+`agents/` (Claude Code), `plugin.json` (GitHub Copilot), `package.json` (npm). One set of
+[Agent Skills](https://agentskills.io) teaches an AI coding agent how to build on this template: the
+layer boundaries, every endpoint shape (hand-mapped, generated `Map<Entity>Crud()`, or the generic
+route helpers), actions and queries, FluentValidation + Mapster DTOs, domain entities and static
+seeding, SlimMessageBus internal events and Azure Service Bus forwarding, auth/ownership and every
+`FeatureManagement` flag. Eight of the skills are slash workflows that scaffold a vertical slice end to
+end; three Claude Code subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) back
+`/dknet-feature`. Index of every skill: [`skills/README.md`](skills/README.md).
+
+`dotnet new dknet-minimal` does **not** copy the plugin into a generated solution (only `AGENTS.md`
+ships) — install it into the generated repo with one of the channels below.
+
+**Claude Code**
 
 ```text
-# Claude Code
-/plugin marketplace add baoduy/dknet.templates
-/plugin install dknet-minimal
-
-# GitHub Copilot
-copilot plugin marketplace add baoduy/DKNet.Templates
+/plugin marketplace add baoduy/DKNet.Templates
+/plugin install dknet-minimal@dknet-marketplace
 ```
 
-| Command | Purpose |
+Skills then load on demand as `dknet-minimal:<skill-name>`; workflows are `/dknet-minimal:dknet-feature` etc.
+
+**GitHub Copilot**
+
+```bash
+# Copilot reads .agents/skills/ in the workspace; the skills CLI installs there for it
+npx skills add baoduy/DKNet.Templates -a github-copilot
+```
+
+**Any agent (Codex, Cursor, Gemini CLI, Windsurf, …) via the skills CLI**
+
+```bash
+npx skills add baoduy/DKNet.Templates            # pick the skills and the agents to install into
+npx skills add baoduy/DKNet.Templates -s '*' -y  # everything, no prompts
+```
+
+**From npm (pins the version with your project)**
+
+```bash
+npm i -D @drunkcoding/dknet-minimal-skills
+claude --plugin-dir node_modules/@drunkcoding/dknet-minimal-skills   # Claude Code
+npx skills experimental_sync -a '*'                                  # any agent: node_modules -> .agents/skills/ etc.
+```
+
+**Working on this repository**
+
+```bash
+claude --plugin-dir .          # loads skills/ and agents/ from the checkout
+./validate-plugin.sh           # manifests, README install channels, skill portability
+```
+
+| Workflow | Purpose |
 |---|---|
-| `/dknet-feature <Feature> <Entity> [props…]` | Full vertical slice: plan → entity → CRUD → endpoint → tests → BDD → docs |
-| `/dknet-entity <Feature> <Entity> [props…]` | Domain entity + EF mapper + migration |
-| `/dknet-crud <Feature> <Entity>` | AppServices CRUD (DTO + Create/Update/Delete + spec + event) |
-| `/dknet-endpoint <Feature> <Entity>` | Minimal API `IEndpointConfig` with idempotency on POST |
-| `/dknet-unit-tests <Feature> <Entity>` | `ApiFixture` + `IMessageBus` integration tests |
-| `/dknet-bdd-test <Feature> <Entity>` | Reqnroll + NUnit BDD scenarios |
+| `/dknet-feature <Feature> <Entity> [mode=manual\|auto] [props…]` | Full vertical slice: plan → entity → CRUD → endpoint → tests → BDD → docs |
+| `/dknet-feature-remove <Feature>` | Retire a slice, its touchpoints and its tables (drop migration) |
+| `/dknet-entity <Feature> <Entity> [mode=…] [props…]` | Domain entity + EF mapper + migration |
+| `/dknet-crud <Feature> <Entity> [mode=…]` | AppServices CRUD (DTO + Create/Update/Delete + spec + event), or the generator attributes |
+| `/dknet-endpoint <Feature> <Entity> [mode=…]` | Minimal API `IEndpointConfig` — hand-mapped with idempotency, or `Map<Entity>Crud()` |
+| `/dknet-unit-tests <Feature> <Entity> [mode=…]` | xUnit + Shouldly tests through `ApiFixture` + `IMessageBus` |
+| `/dknet-bdd-test <Feature>` | Reqnroll + NUnit BDD scenarios |
 | `/dknet-docs <Feature>` | Feature documentation under `docs/features/<feature>/` |
 
-Subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) and ten domain skills back
-the commands — see `.claude/agents/` and `.claude/skills/`. Copilot auto-discovers `.github/agents/`
-and `.github/skills/`; the full skill list is in `.github/skills/CATALOG.md`.
+| Reference skill | Teaches |
+|---|---|
+| `dknet-project-structure` | Layers, folder footprint, auto-discovery, which skill for what — read first |
+| `dknet-ddd-principles` | Aggregate boundaries, invariants, when an event is warranted |
+| `dknet-feature-lifecycle` | Manual vs automated flow decision, feature footprint, removal rules |
+| `dknet-scaffold` | `dotnet new dknet-minimal`, parameters, first run, deleting the samples, installing this plugin |
+| `dknet-domain-entity` | `AggregateRoot` entities, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`/`[RaisesEvent]`, `IOwnedBy`, `[SensitiveData]` |
+| `dknet-efcore-config` | Mappers, static data seeding (both wiring paths), `CoreDbContext`, migrations |
+| `dknet-appservices-actions` | Commands, FluentValidation (incl. 409 preconditions), handlers, generated requests |
+| `dknet-queries-specs` | `Specification<T>`, query handlers, paging, the generic filter/search/order list route |
+| `dknet-dto-mapping` | Hand-written vs `[GenerateDto]` DTOs, Mapster config and `IRegister` custom mapping, `ResultOf` |
+| `dknet-endpoint-config` | `IEndpointConfig`; raw routes, `Map<Entity>Crud()` + `CrudMapOptions`, generic helpers; idempotency; scopes |
+| `dknet-messaging-events` | SlimMessageBus in-memory bus, domain events (manual/declared), Azure Service Bus Produce/Consume |
+| `dknet-auth-and-ownership` | JWT + scopes, demo auth, `[FromClaim]`, `DataOwnerHook`, row-level isolation, sensitive data |
+| `dknet-platform-config` | Start-up order, every `FeatureManagement` flag and config section, Aspire, jobs, health, OpenAPI |
+| `dknet-unit-test` / `dknet-bdd-tests` | What each suite owns, fixtures, worked examples, the business-tests-only rule |
+| `dknet-feature-documentation` | README + Mermaid architecture + API reference for a finished feature |
+| `dknet-package-adoption` | Using DKNet packages in a project not created from the template |
+
+**Release.** Versions stay `0.0.0` in git. `publish-nuget-github.yml` computes the release version from
+tags on `main`, packs and publishes the NuGet template, creates the GitHub release, then stamps the same
+version into `package.json` / `plugin.json` / `.claude-plugin/plugin.json` (`npm version` →
+`scripts/sync-version.mjs`), validates the skills (`agentskills validate`, `claude plugin validate`,
+`npx skills add --list`, `./validate-plugin.sh`) and publishes `@drunkcoding/dknet-minimal-skills` to npm
+with OIDC trusted publishing. A version already on npm is skipped.
 
 ## Release notes
 

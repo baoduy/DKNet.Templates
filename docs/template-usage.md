@@ -90,13 +90,12 @@ MyCompany.MyService/
     └── MyCompany.MyService.App.BDDTests/  # Reqnroll + NUnit BDD tests
 ```
 
-The scaffold also copies `AGENTS.md`, `.claude-plugin/`, `.specify/`, `.vscode/`, the
-`agents`/`commands`/`skills` folders of `.claude/`, and the `agents`/`prompts`/`skills` folders of
-`.github/` unchanged into every generated solution — the file list in
-`src/DKNet.Minimal.Template.nuspec` is what decides. These are the same AI-assistant
-agents/skills/prompts and Spec-Kit workflow the template itself is built with. Everything else in
-`.github/` (workflows, hooks, instructions, `copilot-instructions.md`) belongs to this repository
-and is **not** copied. See [`template-features.md`](./template-features.md) for details.
+The scaffold also copies `AGENTS.md` into every generated solution — the file list in
+`src/DKNet.Minimal.Template.nuspec` is what decides, and it packs nothing else outside `ApiEndpoints/`
+and the four solution-level files. `.claude/`, `.claude-plugin/`, `.github/`, `.vscode/` and `.specify/`
+stay in this repository: install the AI plugin into the generated repo instead
+(`/plugin marketplace add baoduy/DKNet.Templates` + `/plugin install dknet-minimal@dknet-marketplace`,
+or `npx skills add baoduy/DKNet.Templates`). See [`template-features.md`](./template-features.md).
 
 ## Run
 

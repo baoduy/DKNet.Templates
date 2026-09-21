@@ -9,10 +9,14 @@ name: Build and Publish NuGet Package
 permissions:
   contents: write
   packages: write
+  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    outputs:
+      # Consumed by publish-npm so the skills package carries the same version as the NuGet template package.
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout
@@ -89,3 +93,79 @@ jobs:
           #files: ${{ runner.WORKSPACE }}/nupkgs/release.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ steps.version.outputs.version }}
+
+  # The dknet-minimal agent-skills plugin (repository root: .claude-plugin/, skills/, agents/) goes to npmjs.com
+  # AFTER the NuGet template package, stamped with the SAME version number. No tag and no GitHub release of its
+  # own — the v<version> release above already marks the commit. The repo keeps the placeholder 0.0.0 in
+  # package.json, plugin.json and .claude-plugin/plugin.json; the version is injected here, exactly like the
+  # nuspec <version> is stamped for the template.
+  #
+  # Releases from `main` only. A version already on npm is skipped, so a re-run of the same commit is a no-op.
+  # Auth: npm Trusted Publishing (OIDC) — https://docs.npmjs.com/trusted-publishers. No NPM_TOKEN secret.
+  # One-time setup on npmjs.com → package @drunkcoding/dknet-minimal-skills → Settings → Trusted Publisher →
+  # GitHub Actions, owner/repo `baoduy/DKNet.Templates`, workflow filename `publish-nuget-github.yml` (exact,
+  # case-sensitive, with the extension), environment left blank. Then set publishing access to "Require
+  # two-factor authentication and disallow tokens". npm generates the provenance attestation automatically.
+  publish-npm:
+    name: Publish dknet-minimal skills (npm)
+    needs: publish
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # npm trusted publishing (OIDC) + automatic provenance
+    env:
+      VERSION: ${{ needs.publish.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Trusted publishing needs npm >= 11.5.1 / node >= 22.14; node 24 ships it. No registry-url: that only
+      # writes an .npmrc `_authToken` line, and an empty one fails the publish with ENEEDAUTH.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Stamp the release version into package.json, plugin.json and .claude-plugin/plugin.json
+        # `npm version` updates package.json and runs the "version" script (scripts/sync-version.mjs).
+        run: npm version "${VERSION}" --no-git-tag-version --allow-same-version
+
+      - name: Validate every skill against the Agent Skills spec
+        run: |
+          set -euo pipefail
+          for d in skills/*/; do
+            uvx --from skills-ref agentskills validate "$d"
+            lines=$(wc -l < "$d/SKILL.md")
+            [ "$lines" -le 500 ] || { echo "$d/SKILL.md has $lines lines (> 500)"; exit 1; }
+          done
+
+      - name: Validate the Claude Code plugin, skills and agents
+        run: |
+          npx -y @anthropic-ai/claude-code@latest plugin validate . --strict
+          npx -y @anthropic-ai/claude-code@latest plugin validate skills --strict
+          npx -y @anthropic-ai/claude-code@latest plugin validate agents --strict
+
+      - name: Repository content checks
+        run: ./validate-plugin.sh
+
+      - name: Skills are discoverable by `npx skills add`
+        run: npx -y skills@latest add ./ --list
+
+      - name: Already on npm?
+        id: exists
+        run: |
+          name=$(node -p "require('./package.json').name")
+          if npm view "${name}@${VERSION}" version >/dev/null 2>&1; then
+            echo "${name}@${VERSION} is already published — skipping"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npmjs.com
+        if: ${{ steps.exists.outputs.exists == 'false' }}
+        run: |
+          echo "Publishing ${VERSION} to the 'latest' dist-tag"
+          npm publish --access public

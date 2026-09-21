@@ -393,13 +393,13 @@ Store selection happens once in `Minimal.Api/Configs/AppConfig.cs`, based on whe
 `ConnectionStrings:Redis` is configured:
 
 - **Redis configured** — `AddIdempotencyWithRedisStore(redisConnectionString, o =>
-  o.ConflictHandling = IdempotentConflictHandling.CachedResult)`: keys are tracked in Redis, so
+  o.ConflictHandling = IdempotentConflictHandling.ConflictResponse)`: keys are tracked in Redis, so
   idempotency works correctly across multiple app instances.
-- **No Redis** — falls back to the non-generic `AddIdempotentKey(...)` (same `CachedResult`
+- **No Redis** — falls back to the non-generic `AddIdempotentKey(...)` (same `ConflictResponse`
   conflict handling), an in-process store. Fine for local development, not for a multi-instance
   deployment.
 
-With `IdempotentConflictHandling.CachedResult` (this template's setting), a replayed request with
+With `IdempotentConflictHandling.ConflictResponse` (this template's setting), a replayed request with
 the same key returns the original cached response rather than re-running the handler or returning a
 conflict error.
 

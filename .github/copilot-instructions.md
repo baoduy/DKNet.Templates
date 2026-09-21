@@ -81,7 +81,7 @@ to mirror; it states what each layer costs or gives up.
 
 ## When Unsure
 
-Search for the closest existing feature — `ManualSample/PurchaseOrder` or `AutomatedSample/Product`, per `docs/samples/manual-vs-automated.md` — and replicate its style with minimal divergence. See `AGENTS.md` and `CLAUDE.md` for the full architecture reference, and `.github/skills/` (`dknet-project-structure`, `dknet-ddd-principles`, and the other `dknet-*` skills) for step-by-step guidance.
+Search for the closest existing feature — `ManualSample/PurchaseOrder` or `AutomatedSample/Product`, per `docs/samples/manual-vs-automated.md` — and replicate its style with minimal divergence. See `AGENTS.md` and `CLAUDE.md` for the full architecture reference, and the `skills/` folder (`dknet-project-structure`, `dknet-ddd-principles`, and the other `dknet-*` skills — also installable with `npx skills add baoduy/DKNet.Templates`) for step-by-step guidance.
 
 ---
 End of Copilot Instructions.

@@ -93,7 +93,7 @@ samples (`ManualSample`, `AutomatedSample`) — the two namespaces don't have to
 ### Key wiring points
 
 - **EF Core auto-discovery**: `UseAutoConfigModel` + `UseAutoDataSeeding` in **both** `InfraSetup.AddInfraServices` (DI host path) and `InfraMigration.MigrateDb` (startup-migration path) — no manual `DbSet` declarations needed. Mappers (`IEntityTypeConfiguration<T>`) and seeders are picked up by assembly scan — a seeder inherits the **base class** `DataSeedingConfiguration<T>` (see `PurchaseOrderStaticData`), not an `IDataSeedingConfiguration<T>` interface. Wiring seeding into only one of the two paths is a real bug this template hit once already (`PurchaseOrderStaticData` didn't appear over HTTP until `MigrateDb` got the same `.UseAutoDataSeeding(...)` call).
-- **Service registration**: Scrutor scans Infra; keep concrete repos/services `sealed` and place them under `.Repos` or `.Services` namespaces so the convention scan picks them up.
+- **Service registration**: there is no Scrutor/convention scan in Infra — `InfraSetup.AddInfraServices` registers each service explicitly (`AddScoped<IMembershipService, MembershipService>()`); add a line there for every new Infra service. Keep implementations `internal sealed` under `Minimal.Infra/Services/`. The only assembly scans are EF Core's `UseAutoConfigModel`/`UseAutoDataSeeding`, SlimMessageBus's `AutoDeclareFrom`/`AddServicesFromAssembly`, FluentValidation's `AddValidatorsFromAssembly`, and Mapster's `ScanMaps`/`Scan`.
 - **Endpoint mapping helpers** (`DKNet.AspCore.Extensions`, not local to this template): hand-mapped routes use the raw minimal-API surface directly (see `PurchaseOrderV1Endpoint`); generator-driven routes call the package's generic `MapGetList<TEntity,TKey,TDto>`/`MapGetById`/`MapPost<TRequest,TDto>`/`MapPutById`/`MapDeleteById` (see the generated `ProductCrudEndpointExtensions.MapProductCrud()`). POST does NOT auto-add idempotency either way — call `.RequiredIdempotentKey()` explicitly (see `PurchaseOrderV1Endpoint`'s create route); clients then send `X-Idempotency-Key: {Guid}`. The automated sample's generated create route has no such call — it accepts a replayed request as a fresh create.
 - **`ByUser` / acting-user auto-fill**: `AddContextualRequestPopulation` (wired in `Program.cs`) populates any `[FromClaim(...)]`-decorated request property before validation and before the handler runs, from the authenticated caller's claims; with `RequireAuthorization` off, that caller is the built-in demonstration authentication provider (`FeatureManagement:EnableDemoAuthentication`, `Minimal.Api/Configs/Auth/DemoAuthConfig.cs`), never an unauthenticated fallback. A **generated** CRUD request can never carry a `[FromClaim]` property — the generator forwards only `System.ComponentModel.DataAnnotations` attributes onto generated properties — so the automated sample's acting-user stamping goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `ServiceConfigs.AddAllAppServices` (`.AddDataOwnerProvider<CoreDbContext, PrincipalProvider>()`) and applying to every entity on `CoreDbContext`, not just `Product`.
 - **Mapster global config**: `Minimal.AppServices/AppSetup.cs`. DTOs use `[GenerateDto(...)]` (generates every audited property by default — `Exclude`/`Include` to narrow) or a hand-written record (full control, see `PurchaseOrderDto`). Lazy mapping after `SaveChanges` via `mapper.ResultOf<T>(entity)` / `mapper.LazyMap<T>()` from `DKNet.SlimBus.Extensions.LazyMapper` (the template's former local copy under `AppServices/Extensions/LazyMapper` was removed — use the package's).
@@ -168,42 +168,76 @@ generated solution.
 - `AGENTS.md` — full architecture reference (layer rules, message bus, command/mapping details).
 - `docs/samples/manual-vs-automated.md` — layer-by-layer comparison of the two worked samples, including what the generator-driven sample gives up.
 - `docs/samples/manual-purchase-orders/`, `docs/samples/automated-products/` — thin per-sample READMEs (what each demonstrates, routes, how to delete it).
-- `.github/skills/` — guided skill catalog (domain-modeling, crud-operations, api-endpoints, BDD, etc.). See `.github/skills/CATALOG.md`.
+- `skills/` — the agent skills (this repo root is the `dknet-minimal` plugin). Index: `skills/README.md`.
 - `specs/` — Spec-Kit feature specs; workflow docs in `SPEC_KIT.md`.
 
 ## Feature lifecycle (plugin)
 
 A business feature is one vertical slice, addressable by its `<Feature>` folder name, which appears
-literally in ten fixed roots across six projects. `.claude/skills/dknet-feature-lifecycle/SKILL.md` is
+literally in ten fixed roots across six projects. `skills/dknet-feature-lifecycle/SKILL.md` is
 the authority on that footprint, the out-of-folder touchpoints a delete must also clean
 (`DomainSchemas`, `ServiceBusSetup` Produce/Consume, `FeatureOptions` + `FeatureManagement` JSON,
-migrations, docs links), and the migration rule on removal.
+scope policies, migrations, docs links), and the migration rule on removal.
 
-Every scaffolding command takes `mode=manual|auto`, threaded end-to-end by the orchestrator. The mode
+Every scaffolding workflow takes `mode=manual|auto`, threaded end-to-end by the orchestrator. The mode
 is not a style preference — it changes which files exist, whether an attribute-declared rule is
 enforced, whether create is idempotent, and how the acting user is attributed. A rule that has to
 refuse an operation is not part of that trade: a FluentValidation validator on a generated request
-runs on the generated route (`docs/api-pipeline.md`). Commands that omit `mode=` detect it by
+runs on the generated route (`docs/api-pipeline.md`). Workflows that omit `mode=` detect it by
 grepping the entity for `[CrudCreate]`.
 
-| Command | Purpose |
+The workflows are skills (there is no `.claude/commands/` — Claude Code, Copilot and the skills CLI
+all read `SKILL.md`); each carries `metadata.arguments` (the Agent Skills spec has no `argument-hint`
+field, and `agentskills validate` rejects unknown keys) plus a `Usage:` line, and is invoked as a slash command:
+
+| Workflow | Purpose |
 |---|---|
 | `/dknet-feature <Feature> <Entity> [mode=…] [props…]` | Add a slice end-to-end (plan → domain → CRUD → endpoint → tests → BDD → docs) |
 | `/dknet-feature-remove <Feature>` | Retire a slice end-to-end, including touchpoints and a drop migration |
 | `/dknet-entity`, `/dknet-crud`, `/dknet-endpoint`, `/dknet-unit-tests`, `/dknet-bdd-test`, `/dknet-docs` | Individual phases, same `mode=` contract |
 
+Reference skills (no arguments) back them: `dknet-project-structure` (read first),
+`dknet-ddd-principles`, `dknet-feature-lifecycle`, `dknet-scaffold`, `dknet-domain-entity`,
+`dknet-efcore-config`, `dknet-appservices-actions`, `dknet-queries-specs`, `dknet-dto-mapping`,
+`dknet-endpoint-config`, `dknet-messaging-events`, `dknet-auth-and-ownership`,
+`dknet-platform-config`, `dknet-unit-test`, `dknet-bdd-tests`, `dknet-feature-documentation`,
+`dknet-package-adoption`. Subagents live in `agents/` and are listed one file each in
+`.claude-plugin/plugin.json` (`agents` must be an array of file paths — a directory string fails
+`claude plugin validate`).
+
 `ls src/ApiEndpoints/Minimal.Domains/Features/` enumerates the features that exist — there is
 deliberately no registry file to drift out of sync.
 
-New `.claude/skills/<x>` must be mirrored byte-identically to `.github/skills/<x>` and added to
-`CORE_SKILLS` in `validate-plugin.sh`; check 3 enforces the pair.
+### Skill authoring rules (enforced by `./validate-plugin.sh` check 6)
+
+Skills are copied verbatim into other repositories (plugin cache, `npx skills add` targets,
+`node_modules/@drunkcoding/dknet-minimal-skills`), so every `skills/<x>/SKILL.md`:
+
+- has frontmatter `name` equal to its folder, a single-line `description` (≤ 1024 chars), and only
+  Agent Skills spec keys (`allowed-tools`, `license`, `compatibility`, `metadata`) — workflow skills put
+  their argument shape in `metadata.arguments`, never in `argument-hint`;
+- writes paths relative to the consumer's solution root (`ApiEndpoints/Minimal.Infra/…`), never
+  `src/…`, and always `Minimal.*` (the template `sourceName`), never an example project name;
+- refers to other skills by name (``the `dknet-queries-specs` skill``) and to workflows as
+  `/dknet-entity`, never by a `.claude/…` or `.github/…` path;
+- never links into `docs/` of this repository (only `AGENTS.md` ships) and never cites a `*.sh`
+  script — inline `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`;
+- inlines the exemplar code it teaches from, so it still works after a team deletes the two samples.
+
+The repository root is the plugin: `.claude-plugin/plugin.json` + `skills/` + `agents/` for Claude Code,
+`plugin.json` for GitHub Copilot, `package.json` for npm. There is no `.claude/` or `.github/skills/`
+mirror any more — Copilot and every other agent get the skills through `npx skills add` or the npm
+package. Versions stay `0.0.0` in git; `publish-nuget-github.yml` stamps the release version into all
+three manifests (`npm version` → `scripts/sync-version.mjs`) and publishes to npm with OIDC trusted
+publishing after the NuGet template package. Working on this repo in Claude Code: `claude --plugin-dir .`
+(`skills/` is not auto-discovered the way `.claude/skills/` was).
 
 ## `AGENTS.md` ships to consumers — write guidance for THEIR tree, not this one
 
 `DKNet.Minimal.Template.nuspec` packs exactly this into the template's `content/`: `AGENTS.md`,
 `.template.config/`, the four solution-level files (`global.json`, `Directory.Packages.props`,
 `coverage.runsettings`, `DKNet.Templates.sln`) and `ApiEndpoints/**`. Nothing else reaches a consumer —
-`.claude/`, `.claude-plugin/`, `.github/`, `.vscode/` and `docs/` stay in this repository, so a link
+`skills/`, `agents/`, `.claude-plugin/`, `.github/`, `.vscode/` and `docs/` stay in this repository, so a link
 into any of them is a dead link in the generated tree. (`README.md` is packed to the *package* root as
 the NuGet package-page readme, not into the generated solution.)
 
