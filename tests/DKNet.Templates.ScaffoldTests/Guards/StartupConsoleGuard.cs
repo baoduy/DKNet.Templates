@@ -7,8 +7,8 @@ namespace DKNet.Templates.ScaffoldTests;
 /// and a container log rotation drops it. Eight of the shipped calls report whether a security control is on,
 /// which is exactly the thing an operator later needs to answer from the log store.
 /// <para>
-/// This is a Tier-2 baseline rule: the twelve files below are today's offenders and the guard only reports
-/// files outside that list, so a new one fails the build while the existing ones stay green. The allow-list
+/// This is a Tier-2 baseline rule: the list below holds today's offenders (none since DRK-1576 migrated the
+/// last twelve) and the guard only reports files outside it, so any new one fails the build. The allow-list
 /// must only ever shrink — deleting an entry as its file is migrated is the point. It is keyed by file rather
 /// than by line so unrelated edits do not churn it; a fourteenth call inside an already-listed file is
 /// therefore not caught, which is the deliberate cost of that stability.
@@ -23,18 +23,7 @@ internal static class StartupConsoleGuard
     /// <summary>Today's offenders, as paths relative to <c>src/</c> with forward slashes. Only ever remove entries.</summary>
     internal static readonly IReadOnlySet<string> KnownViolations = new HashSet<string>(StringComparer.Ordinal)
     {
-        "ApiEndpoints/Minimal.Api/Configs/Antiforgery/AntiforgeryConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/Auth/AuthConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs",
-        "ApiEndpoints/Minimal.Api/Configs/CrosConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/ForwardedHeadersConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/Healthz/HealthzConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/HttpsConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/Jobs/MigrationJob.cs",
-        "ApiEndpoints/Minimal.Api/Configs/RateLimits/RateLimitConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/RequestBoundsConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/SecurityHeadersConfig.cs",
-        "ApiEndpoints/Minimal.Api/Configs/Swagger/SwaggerConfig.cs",
+        // Empty since DRK-1576 migrated the last twelve Configs/*.cs files to ILogger. Only ever remove entries.
     };
 
     /// <summary>

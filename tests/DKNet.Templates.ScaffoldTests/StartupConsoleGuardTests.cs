@@ -57,9 +57,12 @@ public class StartupConsoleGuardTests
     [Fact]
     public void AFileOnTheBaseline_IsNotReported()
     {
+        // Synthetic baseline: the real KnownViolations is empty now, so this checks the allow-list mechanics only.
+        var baseline = new HashSet<string>(StringComparer.Ordinal) { "ApiEndpoints/Minimal.Api/Configs/CrosConfig.cs" };
+
         var result = StartupConsoleGuard.StdoutWritersNotOnBaseline(
             [("ApiEndpoints/Minimal.Api/Configs/CrosConfig.cs", "Console.WriteLine(\"CROS enabled.\");")],
-            StartupConsoleGuard.KnownViolations);
+            baseline);
 
         result.ShouldBeEmpty();
     }
