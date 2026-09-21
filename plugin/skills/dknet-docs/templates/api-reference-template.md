@@ -1,5 +1,12 @@
 # {FeatureName} — API Reference
 
+> Every route the feature publishes gets its own section below — generated CRUD routes included.
+> Read the list off the built `<Entity>CrudEndpoints.g.cs` plus the endpoint config's hand-mapped
+> calls; do not trim one because it looks obvious. Each section states method + path, the scope it
+> requires and where that scope is declared, whether it is idempotent, every bound field and where it
+> binds from, every status it can return, whether its DataAnnotations are enforced, and a runnable
+> curl. See the `dknet-docs` skill, Step 4.
+
 **Base Path**: `/api/v1/{feature-route}`
 **Auth**: Bearer token required on all endpoints
 **Content-Type**: `application/json`

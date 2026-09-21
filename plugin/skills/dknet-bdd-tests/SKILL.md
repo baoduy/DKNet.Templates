@@ -1,6 +1,6 @@
 ---
 name: dknet-bdd-tests
-description: Create and maintain Reqnroll + NUnit BDD .feature scenarios and step bindings in Minimal.App.BDDTests — request/status/response-body scenarios and domain-event side effects observed via log capture, for the hand-written PurchaseOrder and generator-driven Product samples. Use when adding or updating HTTP-facing scenarios for a DKNet.Templates feature. Result-level Result-object assertions, architecture rules and pure functional tests belong in the `dknet-unit-tests` skill instead — do not duplicate a behavior here that xUnit already covers. Invoke as `/dknet-bdd-tests <Feature>` to scaffold it for a feature.
+description: Create and maintain Reqnroll + NUnit BDD .feature scenarios and step bindings in <YourApp>.App.BDDTests — request/status/response-body scenarios and domain-event side effects observed via log capture, for the hand-written PurchaseOrder and generator-driven Product samples. Use when adding or updating HTTP-facing scenarios for a DKNet.Templates feature. Result-level Result-object assertions, architecture rules and pure functional tests belong in the `dknet-unit-tests` skill instead — do not duplicate a behavior here that xUnit already covers. Invoke as `/dknet-bdd-tests <Feature>` to scaffold it for a feature.
 metadata:
   kind: workflow
   arguments: "<Feature> e.g. Orders"
@@ -9,17 +9,23 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 Usage: `/dknet-bdd-tests <Feature> e.g. Orders`
 
-# BDD tests (Minimal.App.BDDTests)
+# BDD tests (<YourApp>.App.BDDTests)
 
 ## What BDD owns vs xUnit
 
-BDD owns user-facing HTTP behavior: request → status code → response body, and domain-event side effects
-observed through captured log lines. xUnit (`dknet-unit-tests`) owns architecture/convention rules, pure
-functional tests (entity methods, validators, specs), and result-level integration assertions on the
-handler's `IResult`/`IResultBase` object. Schema/model/migration assertions never belong in BDD. Don't
-write a BDD scenario for a rule already proven at the `Result` level in xUnit unless it's the one place
-that rule is reachable over HTTP — and don't add a duplicate xUnit HTTP test for a rule a BDD scenario
-already proves.
+**BDD is the default home for a feature's business rules.** Anything statable as "a caller does X and
+gets Y" — happy paths, refusals, state transitions, precondition conflicts, domain-event side effects
+observed through captured log lines — is a scenario here, because that is the form a team can read as
+the specification of the feature.
+
+xUnit (`dknet-unit-tests`) keeps what a scenario cannot express or cannot distinguish:
+architecture/convention rules, pure functional tests (entity methods, validators, specs in isolation),
+EF model/schema/migration shape, and a `Result`-level assertion **only** where the HTTP response does
+not identify which rule fired (two failures sharing one status code, a `NotFoundError` versus an
+ownership filter that also answers `404`). Schema/model/migration assertions never belong in BDD.
+
+Never assert the same rule in both suites. If a rule is reachable over HTTP and its response
+identifies it, the scenario is the test — delete the xUnit duplicate rather than keeping both.
 
 Both shipped suites are teaching material: every scenario must be about the `PurchaseOrder` (manual) or
 `Product` (automated) sample's business behavior, never about logging, health checks, CORS, security
@@ -185,7 +191,7 @@ Scenario: A product name that is already taken is refused
 The log-line step just asserts on `LogCapture.Messages` — no polling needed here because the response body
 already round-trips through the handler that logs synchronously before returning; if a future scenario
 asserts on an *async consumer's* log line instead (a domain event's own subscriber, not the handler that
-raised it), poll with `Eventually.IsTrueAsync(...)` from `Minimal.App.TestSupport` rather than asserting
+raised it), poll with `Eventually.IsTrueAsync(...)` from `<YourApp>.App.TestSupport` rather than asserting
 immediately — the in-memory bus publishes non-blocking:
 
 ```csharp
@@ -242,7 +248,7 @@ like `"status":"placed"` where the surrounding shape isn't in question.
 ## Commands
 
 ```bash
-dotnet test ApiEndpoints/Minimal.App.BDDTests/Minimal.App.BDDTests.csproj --filter "TestCategory=PurchaseOrder"
+dotnet test ApiEndpoints/<YourApp>.App.BDDTests/<YourApp>.App.BDDTests.csproj --filter "TestCategory=PurchaseOrder"
 ```
 
 ## Step-by-step
@@ -302,10 +308,10 @@ Before any BDD design or edits:
 ### Scope
 
 Work only on BDD test artifacts and closely related support wiring:
-- `ApiEndpoints/Minimal.App.BDDTests/Features/**/*.feature`
-- `ApiEndpoints/Minimal.App.BDDTests/Features/**/Steps/*.cs`
-- `ApiEndpoints/Minimal.App.BDDTests/Support/*.cs`
-- `ApiEndpoints/Minimal.App.BDDTests/*.csproj`
+- `ApiEndpoints/<YourApp>.App.BDDTests/Features/**/*.feature`
+- `ApiEndpoints/<YourApp>.App.BDDTests/Features/**/Steps/*.cs`
+- `ApiEndpoints/<YourApp>.App.BDDTests/Support/*.cs`
+- `ApiEndpoints/<YourApp>.App.BDDTests/*.csproj`
 
 ### Constraints
 
@@ -324,6 +330,9 @@ Work only on BDD test artifacts and closely related support wiring:
   forwarded DataAnnotations — a scenario expecting `400` from an out-of-range value will fail against
   a `201`. Cover that gap by asserting what happens, or leave it to the manual flow.
 - Do not implement unrelated domain/business logic outside BDD test scope.
+- Cover every business rule the feature exposes over HTTP — happy path, each refusal, each state
+  transition. If a rule already has an xUnit `Result`-level test and its HTTP response identifies it
+  uniquely, write the scenario here and say in your report that the xUnit duplicate should go.
 
 ### Workflow
 
@@ -338,7 +347,7 @@ Work only on BDD test artifacts and closely related support wiring:
 3. Implement/adjust step bindings in `Steps/*.cs`.
 4. Run validation:
    - `dotnet build -c Release`
-   - `dotnet test ApiEndpoints/Minimal.App.BDDTests`
+   - `dotnet test ApiEndpoints/<YourApp>.App.BDDTests`
 5. Report:
    - changed files
    - scenario count

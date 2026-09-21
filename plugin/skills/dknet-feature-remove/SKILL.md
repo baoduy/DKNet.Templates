@@ -16,12 +16,12 @@ and the database tables all live outside the feature folders.
 ## Inputs
 
 `$ARGUMENTS` — the feature folder name (PascalCase, as it appears under
-`Minimal.Domains/Features/`), plus optional `--dry-run`.
+`<YourApp>.Domains/Features/`), plus optional `--dry-run`.
 
 If no feature is named, list the candidates and stop:
 
 ```bash
-ls ApiEndpoints/Minimal.Domains/Features/
+ls ApiEndpoints/<YourApp>.Domains/Features/
 ```
 
 ## Required reading
@@ -32,7 +32,7 @@ ls ApiEndpoints/Minimal.Domains/Features/
 
 ## Phase 0 — Confirm and inventory (always, even under `--dry-run`)
 
-1. Resolve the feature: confirm `ApiEndpoints/Minimal.Domains/Features/<Feature>/` exists. If it
+1. Resolve the feature: confirm `ApiEndpoints/<YourApp>.Domains/Features/<Feature>/` exists. If it
    does not, list the candidates and STOP — do not guess at a near-match.
 2. Inventory every path that will be deleted, using the §2 footprint. Report actual matches only:
    ```bash
@@ -58,24 +58,24 @@ Do NOT reorder. Each step removes only things that nothing later in the list dep
 intermediate build failure points at real coupling rather than at the ordering.
 
 1. Docs — `docs/features/<slug>/` (or wherever the solution keeps feature docs).
-2. BDD — `ApiEndpoints/Minimal.App.BDDTests/Features/<Plural>/` (both `*.feature` and the
+2. BDD — `ApiEndpoints/<YourApp>.App.BDDTests/Features/<Plural>/` (both `*.feature` and the
    generated `*.feature.cs`, plus `Steps/`).
-3. Tests — `Minimal.App.Tests/Unit/<Feature>/` and `Minimal.App.Tests/Integration/<Feature>/`.
-   Also grep `Minimal.App.Tests/Architecture/` — a convention test may assert on this feature by name.
-4. Api — `Minimal.Api/ApiEndpoints/<Feature>/`.
-5. AppServices — `Minimal.AppServices/<Feature>/`.
-6. Infra — `Minimal.Infra/Features/<Feature>/`.
-7. Domains — `Minimal.Domains/Features/<Feature>/`.
+3. Tests — `<YourApp>.App.Tests/Unit/<Feature>/` and `<YourApp>.App.Tests/Integration/<Feature>/`.
+   Also grep `<YourApp>.App.Tests/Architecture/` — a convention test may assert on this feature by name.
+4. Api — `<YourApp>.Api/ApiEndpoints/<Feature>/`.
+5. AppServices — `<YourApp>.AppServices/<Feature>/`.
+6. Infra — `<YourApp>.Infra/Features/<Feature>/`.
+7. Domains — `<YourApp>.Domains/Features/<Feature>/`.
 
 ## Phase 2 — Out-of-folder touchpoints
 
 Work the §3 table. For each, edit surgically — remove the feature's lines, never the whole file:
 
-1. `Minimal.Domains/Share/DomainSchemas.cs` — drop the feature's `const string`, if it added one.
+1. `<YourApp>.Domains/Share/DomainSchemas.cs` — drop the feature's `const string`, if it added one.
    Leave `Migration` and `Profile` alone unless this feature owned one of them.
-2. `Minimal.Infra/Extensions/ServiceBusSetup.cs` — drop the matching `azb.Produce<T>` /
+2. `<YourApp>.Infra/Extensions/ServiceBusSetup.cs` — drop the matching `azb.Produce<T>` /
    `azb.Consume<T>` pair and the now-unused `using`.
-3. `Minimal.Share/Options/FeatureOptions.cs` + every `appsettings*.json` `FeatureManagement` section
+3. `<YourApp>.Share/Options/FeatureOptions.cs` + every `appsettings*.json` `FeatureManagement` section
    — drop the flag property and its JSON key together. A key with no property silently no-ops, so
    an orphan here fails no test; delete both halves or neither.
 4. Docs cross-links — the docs index page and any feature index that linked the slice.
@@ -84,8 +84,8 @@ Work the §3 table. For each, edit surgically — remove the feature's lines, ne
 
 Apply §4 of the lifecycle skill. State which branch you took and why:
 
-- Feature's migration is the newest and unapplied → `cd ApiEndpoints && dotnet ef migrations remove -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`
-- Otherwise → `cd ApiEndpoints && dotnet ef migrations add Drop<Feature> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj` and verify the generated `Up`
+- Feature's migration is the newest and unapplied → `cd ApiEndpoints && dotnet ef migrations remove -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj`
+- Otherwise → `cd ApiEndpoints && dotnet ef migrations add Drop<Feature> -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj` and verify the generated `Up`
   contains the expected `DropTable` calls and nothing else.
 
 Read the generated migration before moving on. A drop migration that also touches an unrelated table

@@ -12,7 +12,7 @@
   "plugins": [
     {
       "name": "dknet-minimal",
-      "source": ".",
+      "source": "./plugin",
       "description": "Skills (Claude Code plugin + Agent Skills standard) and subagents for building vertical-slice features on the DKNet.Minimal.Template: endpoints, actions, queries, validation, DTO mapping, entities, seeding, SlimMessageBus/Azure Service Bus events, auth/ownership, platform flags, tests, and end-to-end /dknet-feature workflows.",
       "category": "development",
       "homepage": "https://github.com/baoduy/DKNet.Templates",

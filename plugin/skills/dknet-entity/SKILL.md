@@ -1,6 +1,6 @@
 ---
 name: dknet-entity
-description: Create DDD domain entities following this project's AggregateRoot/DomainEntity inheritance pattern, either hand-written (mode=manual) or generator-declared (mode=auto). Use when adding a new domain entity or owned type to Minimal.Domains. Invoke as `/dknet-entity <Feature> <Entity> [mode=manual|auto] [props…]` to scaffold it for a feature.
+description: Create DDD domain entities following this project's AggregateRoot/DomainEntity inheritance pattern, either hand-written (mode=manual) or generator-declared (mode=auto). Use when adding a new domain entity or owned type to <YourApp>.Domains. Invoke as `/dknet-entity <Feature> <Entity> [mode=manual|auto] [props…]` to scaffold it for a feature.
 metadata:
   kind: workflow
   arguments: "<Feature> <Entity> [mode=manual|auto] [props…] e.g. Orders Order mode=manual Number:string Total:decimal"
@@ -13,8 +13,14 @@ Usage: `/dknet-entity <Feature> <Entity> [mode=manual|auto] [props…] e.g. Orde
 
 Create domain entities that integrate with this project's DDD infrastructure — `AggregateRoot`,
 `DomainEntity`, and (rarely) owned value objects — in either of the two shapes this template ships:
-hand-written (`mode=manual`, mirrors `ManualSample/PurchaseOrder`) or generator-declared
-(`mode=auto`, mirrors `AutomatedSample/Product`).
+generator-declared (`mode=auto`, mirrors `AutomatedSample/Product`) or hand-written
+(`mode=manual`, mirrors `ManualSample/PurchaseOrder`).
+
+**`mode=auto` is the default.** Declare the CRUD surface with `[CrudCreate]`/`[CrudUpdate]`/
+`[CrudAction]` and the events with `[RaisesEvent]`; hand-write an entity's operations only for the
+reasons `dknet-feature-lifecycle` §1 lists. Within a hand-written entity, raise events in the same
+order of preference: `[RaisesEvent]`, then `AddEvent<TEvent>()` (payload projected from the entity
+by `IMapper`), then `AddEvent(new …)` with a hand-built payload.
 
 If the aggregate boundary, entity-vs-value-object choice, or invariant placement isn't obvious, read
 `dknet-ddd-principles` first — this skill covers class mechanics, not those judgment calls. Event
@@ -25,11 +31,11 @@ here — this skill only covers how an entity raises an event.
 
 ```
 AuditedEntity<Guid>   (DKNet.EfCore.Abstractions.Entities — Id, CreatedBy/On, UpdatedBy/On)
-  └── DomainEntity     (Minimal.Domains/Share/DomainEntity.cs)
-       └── AggregateRoot (Minimal.Domains/Share/AggregateRoot.cs)
+  └── DomainEntity     (<YourApp>.Domains/Share/DomainEntity.cs)
+       └── AggregateRoot (<YourApp>.Domains/Share/AggregateRoot.cs)
 ```
 
-`Minimal.Domains/Share/DomainEntity.cs`:
+`<YourApp>.Domains/Share/DomainEntity.cs`:
 
 ```csharp
 public abstract class DomainEntity : AuditedEntity<Guid>
@@ -45,7 +51,7 @@ public abstract class DomainEntity : AuditedEntity<Guid>
 }
 ```
 
-`Minimal.Domains/Share/AggregateRoot.cs`:
+`<YourApp>.Domains/Share/AggregateRoot.cs`:
 
 ```csharp
 public abstract class AggregateRoot : DomainEntity
@@ -89,7 +95,7 @@ and every property setter is `private` — don't redeclare any of them.
 
 ## mode=manual — hand-written (`ManualSample/PurchaseOrder`)
 
-`Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`:
+`<YourApp>.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`:
 
 ```csharp
 public enum PurchaseOrderStatus { Draft, Placed, Cancelled }
@@ -137,7 +143,7 @@ public sealed class PurchaseOrder : AggregateRoot
 }
 ```
 
-`Minimal.Domains/Features/ManualSample/Entities/PurchaseOrderCreatedEvent.cs` — the whole file:
+`<YourApp>.Domains/Features/ManualSample/Entities/PurchaseOrderCreatedEvent.cs` — the whole file:
 
 ```csharp
 public sealed record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, decimal Amount);
@@ -155,11 +161,14 @@ Rules this shape follows:
 - Every mutation method calls `SetUpdatedBy(userId)` at the end.
 - The domain event is raised by hand: `AddEvent(new PurchaseOrderCreatedEvent(...))` inside the
   constructor, right where the aggregate becomes valid. The event itself is a plain
-  `public sealed record` next to the entity, in the same file or the same folder.
+  `public sealed record` next to the entity, in the same file or the same folder. This is the
+  lowest rung — a hand-written entity can still carry `[RaisesEvent]`, or call
+  `AddEvent<TEvent>()` and let `IMapper` project the payload; reach for a hand-built payload only
+  when it is not a projection of the entity's own state.
 
 ## mode=auto — generator-declared (`AutomatedSample/Product`)
 
-`Minimal.Domains/Features/AutomatedSample/Entities/Product.cs` (XML docs trimmed):
+`<YourApp>.Domains/Features/AutomatedSample/Entities/Product.cs` (XML docs trimmed):
 
 ```csharp
 [RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]
@@ -207,7 +216,7 @@ public class Product : AggregateRoot, IOwnedBy
 }
 ```
 
-**`Product` is not `sealed`.** No architecture test enforces sealing on `Minimal.Domains` entities
+**`Product` is not `sealed`.** No architecture test enforces sealing on `<YourApp>.Domains` entities
 (only on mappers/handlers/validators), and nothing subclasses it — an inconsistency, not a rule to
 copy. Default to `sealed` unless you have a concrete reason not to, as `mode=manual` does.
 
@@ -234,13 +243,14 @@ uses them.
 - None of the three has a hand-written source file — they're compiled output. Verify a composed name
   against the built assembly before wiring a consumer to it:
   ```bash
-  strings ApiEndpoints/Minimal.Domains/bin/Release/net10.0/Minimal.Domains.dll | grep Event
+  strings ApiEndpoints/<YourApp>.Domains/bin/Release/net10.0/<YourApp>.Domains.dll | grep Event
   ```
 - `[RaisesEvent]` alone raises nothing — the host must register `DKNet.EfCore.Events`' save hook
   (`AddSlimBusEfCoreInterceptor<CoreDbContext>()`, already wired in this template) before declared
   events publish.
-- Never both styles for the same logical change: pick `AddEvent` (mode=manual) or `[RaisesEvent]`
-  (mode=auto) for a given entity's events, not a mix on one property. Writing a consumer for a
+- Never two raise styles for the same logical change: one property's event comes from
+  `[RaisesEvent]`, `AddEvent<TEvent>()`, or `AddEvent(new …)` — never a mix on one property. Prefer
+  them in that order; see `dknet-ddd-principles` for when each rung is the right one. Writing a consumer for a
   raised event (either style) is covered by `dknet-messaging-events`, not this skill.
 
 ### Generator attributes: `[CrudCreate]`, `[CrudUpdate]`, `[CrudAction]`
@@ -305,11 +315,11 @@ the interface alone doesn't do it.
 
 ## Domain services, sequences, and `DomainSchemas`
 
-`Minimal.Domains/Share/DomainSchemas.cs` holds named schema constants (`Migration = "migrate"`,
+`<YourApp>.Domains/Share/DomainSchemas.cs` holds named schema constants (`Migration = "migrate"`,
 `Profile = "pro"`) for reuse across mappers — neither sample uses one; both pass a literal schema
 string to `ToTable(...)` instead. Add a constant only when a schema name is reused by >1 entity.
 
-`Minimal.Domains/Share/Sequences.cs` declares named PostgreSQL sequences:
+`<YourApp>.Domains/Share/Sequences.cs` declares named PostgreSQL sequences:
 
 ```csharp
 [SqlSequence]
@@ -322,7 +332,7 @@ public enum Sequences
 }
 ```
 
-The domain-service contract pattern that wraps a sequence (`Minimal.Domains/Services/`):
+The domain-service contract pattern that wraps a sequence (`<YourApp>.Domains/Services/`):
 
 ```csharp
 public interface IDomainService;                                       // marker, no members
@@ -333,7 +343,7 @@ public interface ISequenceServices : IDomainService
 public interface IMembershipService : ISequenceServices;                // one sequence, one interface
 ```
 
-The `Minimal.Infra` implementation is a one-line primary-constructor subclass of an internal
+The `<YourApp>.Infra` implementation is a one-line primary-constructor subclass of an internal
 `SequenceService` base (see `dknet-efcore-config`). Neither sample uses a sequence; add one the same
 way `IMembershipService`/`MembershipService` do for `Sequences.Membership`, for entities needing a
 human-readable sequential id instead of a `Guid`.
@@ -359,9 +369,9 @@ builder.OwnsOne(e => e.ShippingAddress, owned =>
 });
 ```
 
-## Architecture tests that constrain `Minimal.Domains`
+## Architecture tests that constrain `<YourApp>.Domains`
 
-`Architecture/RecordArchitectureTests.cs` scans `Minimal.Domains`/`Minimal.AppServices` for any
+`Architecture/RecordArchitectureTests.cs` scans `<YourApp>.Domains`/`<YourApp>.AppServices` for any
 record with a public property that has a **private** setter, and fails — Mapster/AutoMapper can't
 map those. A hand-written event record (`public sealed record XCreatedEvent(...)`) is positional and
 passes by construction. `Architecture/SampleInvariantTests.cs` enforces the two-sample split:
@@ -373,10 +383,10 @@ conventions above are followed by convention, not test (unlike mapper/handler/va
 
 ## Unit tests to mirror
 
-- `Minimal.App.Tests/Unit/ManualSample/PurchaseOrderTests.cs` — constructor sets properties and
+- `<YourApp>.App.Tests/Unit/ManualSample/PurchaseOrderTests.cs` — constructor sets properties and
   raises `PurchaseOrderCreatedEvent` (asserted via `order.GetEvents()`); the rehydration constructor
   does not raise it; mutation methods stamp `UpdatedBy`.
-- `Minimal.App.Tests/Unit/AutomatedSample/ProductTests.cs` — constructor sets properties (no event
+- `<YourApp>.App.Tests/Unit/AutomatedSample/ProductTests.cs` — constructor sets properties (no event
   assertion — declared events don't raise outside a real `SaveChanges`, see
   `dknet-messaging-events`); reflection asserts `[CrudCreate]`/`[CrudUpdate]` `DataAnnotations` are
   present, the only thing a unit test can prove about a forwarded-but-unenforced attribute;
@@ -387,7 +397,7 @@ conventions above are followed by convention, not test (unlike mapper/handler/va
 
 **mode=manual**
 
-1. Create `ApiEndpoints/Minimal.Domains/Features/<Feature>/Entities/<Entity>.cs` following the
+1. Create `ApiEndpoints/<YourApp>.Domains/Features/<Feature>/Entities/<Entity>.cs` following the
    three-constructor shape above, `AddEvent(new <Entity>CreatedEvent(...))` in the public one.
 2. Add `public sealed record <Entity>CreatedEvent(...)` next to the entity.
 3. Mark the class `sealed` unless you have a specific reason not to.
@@ -395,11 +405,11 @@ conventions above are followed by convention, not test (unlike mapper/handler/va
 
 **mode=auto**
 
-1. Create `ApiEndpoints/Minimal.Domains/Features/<Feature>/Entities/<Entity>.cs` following the
+1. Create `ApiEndpoints/<YourApp>.Domains/Features/<Feature>/Entities/<Entity>.cs` following the
    attribute shape above (`[RaisesEvent]`, `[CrudCreate]`, `[CrudUpdate]`, `[CrudAction]`, `IOwnedBy`
    as needed).
 2. Build once, inspect `obj/Generated/DKNet.SlimBus.Generators/…` for request/handler names and
-   `strings …/Minimal.Domains.dll | grep Event` for composed event names.
+   `strings …/<YourApp>.Domains.dll | grep Event` for composed event names.
 3. Continue to `dknet-efcore-config` for the mapper (unchanged by this mode).
 
 ## mode=manual vs mode=auto — when to pick which
@@ -435,9 +445,9 @@ more than one aggregate, or a domain method needs the acting user's identity as 
 | Adding a `createdBy`/`byUser` constructor parameter to a `[CrudCreate]` constructor | Never — it becomes a caller-settable field on the generated create request. Stamp the acting user from the authenticated caller at save time instead. |
 | Naming a `[CrudAction]` parameter `byUser` and expecting it to carry the authenticated caller | **What you might expect:** it's populated like `[FromClaim]`. **What actually happens:** it's an ordinary caller-settable body field on the generated request. **Why:** the generator forwards only the parameter list and its `DataAnnotations`; it has no concept of `[FromClaim]`. |
 | Assuming `ChangePrice`'s `[Range(0.01, double.MaxValue)]` is enforced because it's on the entity | It's forwarded onto the generated request but only *enforced* when the route is a literal `Map*(string, Delegate)` call — generated CRUD routes aren't. See `dknet-crud`. |
-| Guessing a composed `[RaisesEvent]` name from the pattern alone | Always verify with `strings ApiEndpoints/Minimal.Domains/bin/Release/net10.0/Minimal.Domains.dll \| grep Event` after building — there's no source file to read. |
+| Guessing a composed `[RaisesEvent]` name from the pattern alone | Always verify with `strings ApiEndpoints/<YourApp>.Domains/bin/Release/net10.0/<YourApp>.Domains.dll \| grep Event` after building — there's no source file to read. |
 | Expecting an `Updated` rule to fire because a setter ran | It only fires when the named property's value actually changed relative to the change tracker's original value on that save. |
-| Sealing `Product`-style logic because "the manual sample is sealed" | `sealed` is a good default but is not enforced on `Minimal.Domains` entities by any architecture test — don't cite one that doesn't exist. |
+| Sealing `Product`-style logic because "the manual sample is sealed" | `sealed` is a good default but is not enforced on `<YourApp>.Domains` entities by any architecture test — don't cite one that doesn't exist. |
 
 ---
 
@@ -462,14 +472,14 @@ the `dknet-feature-lifecycle` skill §1 to choose one and say which you chose.
 
 1. The reference sections above (mode=manual / mode=auto sections cover the exemplar shapes in full)
 2. the `dknet-efcore-config` skill
-3. `manual` exemplar — `ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`; `auto` exemplar — `ApiEndpoints/Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`
-4. `ApiEndpoints/Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` (exemplar mapper — hand-written in **both** modes; no generator produces this)
+3. `manual` exemplar — `ApiEndpoints/<YourApp>.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`; `auto` exemplar — `ApiEndpoints/<YourApp>.Domains/Features/AutomatedSample/Entities/Product.cs`
+4. `ApiEndpoints/<YourApp>.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` (exemplar mapper — hand-written in **both** modes; no generator produces this)
 
 ### Steps
 
-1. Use the `dknet-implementer` subagent (via the Agent tool) to execute Steps 1–4 of the implementer protocol: domain entity, schema constant, owned types, EF Core mapper, optional sequence/seed data, then `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj` from `ApiEndpoints/`. Apply the mode=manual or mode=auto rules from the sections above verbatim — don't re-derive them.
+1. Use the `dknet-implementer` subagent (via the Agent tool) to execute Steps 1–4 of the implementer protocol: domain entity, schema constant, owned types, EF Core mapper, optional sequence/seed data, then `dotnet ef migrations add <Name> -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj` from `ApiEndpoints/`. Apply the mode=manual or mode=auto rules from the sections above verbatim — don't re-derive them.
 2. Run `dotnet build -c Release` and stop on first error.
-3. **`auto` only** — verify composed event-record names against the built DLL (see "Events: `[RaisesEvent]`" above) before wiring a consumer: `strings ApiEndpoints/Minimal.Domains/bin/Release/net10.0/Minimal.Domains.dll | grep <Entity>`.
+3. **`auto` only** — verify composed event-record names against the built DLL (see "Events: `[RaisesEvent]`" above) before wiring a consumer: `strings ApiEndpoints/<YourApp>.Domains/bin/Release/net10.0/<YourApp>.Domains.dll | grep <Entity>`.
 4. Report:
    - mode used,
    - files created (relative paths),
@@ -479,5 +489,5 @@ the `dknet-feature-lifecycle` skill §1 to choose one and say which you chose.
 
 ### Constraints
 
-- Do NOT touch `Minimal.AppServices` or `Minimal.Api` here — those belong to `/dknet-crud` and `/dknet-endpoint`.
+- Do NOT touch `<YourApp>.AppServices` or `<YourApp>.Api` here — those belong to `/dknet-crud` and `/dknet-endpoint`.
 - Entity/mapper/event rules: see Validation checklist above — verify against it, don't restate it.

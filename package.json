@@ -36,8 +36,7 @@
   },
   "files": [
     ".claude-plugin/",
-    "skills/",
-    "agents/",
+    "plugin/",
     "plugin.json",
     "README.md",
     "LICENSE"

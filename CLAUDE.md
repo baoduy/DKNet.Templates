@@ -168,13 +168,13 @@ generated solution.
 - `AGENTS.md` — full architecture reference (layer rules, message bus, command/mapping details).
 - `docs/samples/manual-vs-automated.md` — layer-by-layer comparison of the two worked samples, including what the generator-driven sample gives up.
 - `docs/samples/manual-purchase-orders/`, `docs/samples/automated-products/` — thin per-sample READMEs (what each demonstrates, routes, how to delete it).
-- `skills/` — the agent skills (this repo root is the `dknet-minimal` plugin). Index: `skills/README.md`.
+- `plugin/` — the `dknet-minimal` plugin: `plugin/skills/` (agent skills, index `plugin/skills/README.md`) and `plugin/agents/` (subagents).
 - `specs/` — Spec-Kit feature specs; workflow docs in `SPEC_KIT.md`.
 
 ## Feature lifecycle (plugin)
 
 A business feature is one vertical slice, addressable by its `<Feature>` folder name, which appears
-literally in ten fixed roots across six projects. `skills/dknet-feature-lifecycle/SKILL.md` is
+literally in ten fixed roots across six projects. `plugin/skills/dknet-feature-lifecycle/SKILL.md` is
 the authority on that footprint, the out-of-folder touchpoints a delete must also clean
 (`DomainSchemas`, `ServiceBusSetup` Produce/Consume, `FeatureOptions` + `FeatureManagement` JSON,
 scope policies, migrations, docs links), and the migration rule on removal.
@@ -201,9 +201,9 @@ Reference skills (no arguments) back them: `dknet-project-structure` (read first
 `dknet-efcore-config`, `dknet-crud`, `dknet-queries-specs`, `dknet-dto-mapping`,
 `dknet-endpoint`, `dknet-messaging-events`, `dknet-auth-and-ownership`,
 `dknet-platform-config`, `dknet-unit-tests`, `dknet-bdd-tests`, `dknet-docs`,
-`dknet-package-adoption`. Subagents live in `agents/` and are listed one file each in
-`.claude-plugin/plugin.json` (`agents` must be an array of file paths — a directory string fails
-`claude plugin validate`).
+`dknet-package-adoption`. Subagents live in `plugin/agents/` and are listed one file each in
+`plugin/.claude-plugin/plugin.json` (`agents` must be an array of file paths — a directory string
+fails `claude plugin validate`).
 
 `ls src/ApiEndpoints/Minimal.Domains/Features/` enumerates the features that exist — there is
 deliberately no registry file to drift out of sync.
@@ -211,33 +211,38 @@ deliberately no registry file to drift out of sync.
 ### Skill authoring rules (enforced by `./validate-plugin.sh` check 6)
 
 Skills are copied verbatim into other repositories (plugin cache, `npx skills add` targets,
-`node_modules/@drunkcoding/dknet-implementation-skills`), so every `skills/<x>/SKILL.md`:
+`node_modules/@drunkcoding/dknet-implementation-skills`), so every `plugin/skills/<x>/SKILL.md`:
 
 - has frontmatter `name` equal to its folder, a single-line `description` (≤ 1024 chars), and only
   Agent Skills spec keys (`allowed-tools`, `license`, `compatibility`, `metadata`) — workflow skills put
   their argument shape in `metadata.arguments`, never in `argument-hint`;
-- writes paths relative to the consumer's solution root (`ApiEndpoints/Minimal.Infra/…`), never
-  `src/…`, and always `Minimal.*` (the template `sourceName`), never an example project name;
+- writes paths relative to the consumer's solution root (`ApiEndpoints/<YourApp>.Infra/…`), never
+  `src/…`, and always the `<YourApp>` placeholder for the solution prefix — never a hard-coded
+  `Minimal.*` (skills are installed separately and are never rewritten by `sourceName`);
 - refers to other skills by name (``the `dknet-queries-specs` skill``) and to workflows as
   `/dknet-entity`, never by a `.claude/…` or `.github/…` path;
 - never links into `docs/` of this repository (only `AGENTS.md` ships) and never cites a `*.sh`
-  script — inline `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`;
+  script — inline `dotnet ef migrations add <Name> -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj`;
 - inlines the exemplar code it teaches from, so it still works after a team deletes the two samples.
 
-The repository root is the plugin: `.claude-plugin/plugin.json` + `skills/` + `agents/` for Claude Code,
-`plugin.json` for GitHub Copilot, `package.json` for npm. There is no `.claude/` or `.github/skills/`
-mirror any more — Copilot and every other agent get the skills through `npx skills add` or the npm
-package. Versions stay `0.0.0` in git; `publish-nuget-github.yml` stamps the release version into all
-three manifests (`npm version` → `scripts/sync-version.mjs`) and publishes to npm with OIDC trusted
-publishing after the NuGet template package. Working on this repo in Claude Code: `claude --plugin-dir .`
-(`skills/` is not auto-discovered the way `.claude/skills/` was).
+The plugin is `plugin/`: `plugin/.claude-plugin/plugin.json` + `plugin/skills/` + `plugin/agents/`
+for Claude Code. Only the entry points that must be found at the repository root stay there —
+`.claude-plugin/marketplace.json` (its one plugin entry has `"source": "./plugin"`), `plugin.json`
+for GitHub Copilot (paths `plugin/skills/`, `plugin/agents/`), and `package.json` for npm (`files`
+ships `plugin/`). There is no `.claude/` or `.github/skills/` mirror any more — Copilot and every
+other agent get the skills through `npx skills add` (its CLI walks the checkout, so `plugin/skills/`
+is found from the root) or the npm package. Versions stay `0.0.0` in git;
+`publish-nuget-github.yml` stamps the release version into all three manifests (`npm version` →
+`scripts/sync-version.mjs`) and publishes to npm with OIDC trusted publishing after the NuGet
+template package. Working on this repo in Claude Code: `claude --plugin-dir plugin` (it is not
+auto-discovered the way `.claude/skills/` was).
 
 ## `AGENTS.md` ships to consumers — write guidance for THEIR tree, not this one
 
 `DKNet.Minimal.Template.nuspec` packs exactly this into the template's `content/`: `AGENTS.md`,
 `.template.config/`, the four solution-level files (`global.json`, `Directory.Packages.props`,
 `coverage.runsettings`, `DKNet.Templates.sln`) and `ApiEndpoints/**`. Nothing else reaches a consumer —
-`skills/`, `agents/`, `.claude-plugin/`, `.github/`, `.vscode/` and `docs/` stay in this repository, so a link
+`plugin/`, `.claude-plugin/`, `.github/`, `.vscode/` and `docs/` stay in this repository, so a link
 into any of them is a dead link in the generated tree. (`README.md` is packed to the *package* root as
 the NuGet package-page readme, not into the generated solution.)
 

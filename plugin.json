@@ -19,8 +19,8 @@
     "slimmessagebus",
     "fluentvalidation"
   ],
-  "agents": "agents/",
+  "agents": "plugin/agents/",
   "skills": [
-    "skills/"
+    "plugin/skills/"
   ]
 }

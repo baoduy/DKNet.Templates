@@ -100,10 +100,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ steps.version.outputs.version }}
 
-  # The dknet-minimal agent-skills plugin (repository root: .claude-plugin/, skills/, agents/) goes to npmjs.com
+  # The dknet-minimal agent-skills plugin (plugin/: .claude-plugin/plugin.json, skills/, agents/; the repository
+  # root keeps .claude-plugin/marketplace.json, plugin.json and package.json) goes to npmjs.com
   # AFTER the NuGet template package, stamped with the SAME version number. No tag and no GitHub release of its
   # own — the v<version> release above already marks the commit. The repo keeps the placeholder 0.0.0 in
-  # package.json, plugin.json and .claude-plugin/plugin.json; the version is injected here, exactly like the
+  # package.json, plugin.json and plugin/.claude-plugin/plugin.json; the version is injected here, exactly like the
   # nuspec <version> is stamped for the template.
   #
   # Releases from `main` only. A version already on npm is skipped, so a re-run of the same commit is a no-op.
@@ -134,7 +135,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v6
 
-      - name: Stamp the release version into package.json, plugin.json and .claude-plugin/plugin.json
+      - name: Stamp the release version into package.json, plugin.json and plugin/.claude-plugin/plugin.json
         # `npm version` updates package.json and runs the "version" script (scripts/sync-version.mjs).
         run: npm version "${VERSION}" --no-git-tag-version --allow-same-version
 
@@ -143,7 +144,7 @@ jobs:
         run: |
           set -euo pipefail
           [ -n "${VERSION}" ] || { echo "VERSION output from the publish job is empty"; exit 1; }
-          for f in package.json plugin.json .claude-plugin/plugin.json; do
+          for f in package.json plugin.json plugin/.claude-plugin/plugin.json; do
             v=$(node -p "require('./$f').version")
             [ "$v" = "${VERSION}" ] || { echo "$f is $v, NuGet template is ${VERSION}"; exit 1; }
           done
@@ -152,17 +153,18 @@ jobs:
       - name: Validate every skill against the Agent Skills spec
         run: |
           set -euo pipefail
-          for d in skills/*/; do
+          for d in plugin/skills/*/; do
             uvx --from skills-ref agentskills validate "$d"
             lines=$(wc -l < "$d/SKILL.md")
             [ "$lines" -le 500 ] || { echo "$d/SKILL.md has $lines lines (> 500)"; exit 1; }
           done
 
-      - name: Validate the Claude Code plugin (skills/ and agents/ are covered by validate-plugin.sh below)
+      - name: Validate the marketplace and the plugin (plugin/skills and plugin/agents are covered by validate-plugin.sh below)
         run: |
           npm install -g @anthropic-ai/claude-code@latest
           claude --version
           claude plugin validate . --strict
+          claude plugin validate plugin --strict
 
       - name: Repository content checks
         run: ./validate-plugin.sh

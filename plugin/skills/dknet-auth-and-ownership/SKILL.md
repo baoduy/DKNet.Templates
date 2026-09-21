@@ -7,7 +7,7 @@ description: Explains authentication, per-route authorization scopes, acting-use
 
 ## `FeatureManagement:RequireAuthorization`
 
-When `true`, `AddAppConfig` calls `AddAuthConfig` (`Minimal.Api/Configs/Auth/AuthConfig.cs`):
+When `true`, `AddAppConfig` calls `AddAuthConfig` (`<YourApp>.Api/Configs/Auth/AuthConfig.cs`):
 
 ```csharp
 services.AddAuthentication().AddJwtBearer();
@@ -47,7 +47,7 @@ local development and the test hosts do not exercise real JWT validation by defa
 
 ## Scopes → policies
 
-`Minimal.Api/ApiEndpoints/AutomatedSample/ProductScopes.cs` defines the scope constants for the
+`<YourApp>.Api/ApiEndpoints/AutomatedSample/ProductScopes.cs` defines the scope constants for the
 `Product` feature:
 
 ```csharp
@@ -62,46 +62,96 @@ internal static class ProductScopes
 ```
 
 `AuthConfig`'s `foreach (var scope in ProductScopes.All)` loop registers **one authorization policy
-per scope, the scope value doubling as its own policy name** — so a route calls
-`.RequireAuthorization(ProductScopes.Read)` directly, no separate policy name to remember.
+per scope, the scope value doubling as its own policy name** — so a route names
+`ProductScopes.Read` directly, with no separate policy name to remember.
 
-A route only calls `RequireAuthorization(scope)` when the flag is actually on — calling it
-unconditionally would throw at request time if `RequireAuthorization` is off, because no policies
-were registered for the app to resolve against. `ProductV1Endpoint.Map` reads the flag once via DI
-and branches on it:
+### Attach the scope with `[EndpointGroupScope]` first
+
+Prefer declaring scopes **above the `IEndpointConfig` class**, not route by route inside `Map`:
 
 ```csharp
+[EndpointGroupScope(ProductScopes.Read, EndpointHttpMethods.Get)]
+[EndpointGroupScope(ProductScopes.Write, EndpointHttpMethods.Post, EndpointHttpMethods.Put,
+    EndpointHttpMethods.Delete)]
+internal sealed class ProductV1Endpoint : IEndpointConfig
+{
+    public int Version => 1;
+    public string GroupEndpoint => "/products";
+
+    public void Map(RouteGroupBuilder group) => group.MapProductCrud();
+}
+```
+
+(`EndpointGroupScopeAttribute`/`EndpointHttpMethods` live in
+`DKNet.AspCore.Extensions.Endpoints`.)
+
+Rules, in the order they bite:
+
+- The attribute is `AllowMultiple` — stack one declaration per scope, each naming the HTTP methods
+  that need it.
+- A declaration naming **no** HTTP method is the group's default for every method it serves. A
+  declaration that names a method wins over that default for its own method.
+- It is applied **only when `EndpointRegistrationOptions.RequireAuthorization` is `true`** — the
+  same value `Program.cs` assigns from `FeatureOptions.RequireAuthorization`. That is the reason to
+  prefer it: the flag check is built in, so there is no `if (!requireAuthorization) return;` branch
+  to write and no way to forget one.
+- A route that already names its own policy, or allows anonymous access, is left alone — which is
+  what makes the per-route fallbacks below safe to mix in.
+- Once **any** declaration exists on a group, an endpoint serving a method with neither its own
+  declaration nor a group default is **refused when the group's endpoints are built**. Cover every
+  method the group serves, or declare a default.
+- Requires `DKNet.AspCore.Extensions` **13.0.0 or newer**. The shipped `ProductV1Endpoint` is
+  declared exactly this way.
+
+### Fallback, in order
+
+Drop one rung only when the rung above cannot express the rule:
+
+1. **`[EndpointGroupScope]`** — the scope is a function of the HTTP method. Covers a whole
+   generated CRUD slice in two lines.
+2. **`o.Configure(CrudOp.X, …)` / `o.Configure("RouteName", …)`** — two routes sharing one HTTP
+   method need *different* scopes, so no per-method declaration can separate them.
+   `o.Configure(CrudOp, …)` targets a generated composite route by operation kind (see
+   `dknet-endpoint`); `o.Configure("RouteName", …)` targets one `[CrudAction]` route by its C#
+   member name. `Product` needs this: `Update` and `AssignSupplierReference` are both `PUT`, and
+   the second must demand `products.supplier` rather than `products.write`.
+3. **`.RequireAuthorization(scope)` on the `RouteHandlerBuilder`** — a hand-mapped route, or a
+   generated route replaced by a hand-mapped one (`discontinue` below).
+
+Rungs 2 and 3 do **not** self-gate. Calling `RequireAuthorization(scope)` with the flag off throws
+at request time, because `AddAuthConfig` never ran and no policy of that name was registered — so
+each must sit behind a flag check. `ProductV1Endpoint` reads it once via DI, and needs it for
+exactly the two `PUT` routes the group declarations cannot separate:
+
+```csharp
+// Only for the per-route overrides below — the class-level declarations gate themselves.
 var requireAuthorization = ((IEndpointRouteBuilder)group).ServiceProvider
     .GetRequiredService<IOptions<FeatureOptions>>().Value.RequireAuthorization;
 
 group.MapProductCrud(o =>
 {
     o.Exclude("Discontinue");
-    if (!requireAuthorization) return;
 
-    o.Configure(CrudOp.GetById, rb => rb.RequireAuthorization(ProductScopes.Read));
-    o.Configure(CrudOp.GetList, rb => rb.RequireAuthorization(ProductScopes.Read));
-    o.Configure(CrudOp.Create, rb => rb.RequireAuthorization(ProductScopes.Write));
-    o.Configure(CrudOp.Update, rb => rb.RequireAuthorization(ProductScopes.Write));
-    o.Configure(CrudOp.Delete, rb => rb.RequireAuthorization(ProductScopes.Write));
-    o.Configure("Approve", rb => rb.RequireAuthorization(ProductScopes.Write));
-    // Its own scope, not Write — holding only products.write must not be enough to assign it.
-    o.Configure("AssignSupplierReference", rb => rb.RequireAuthorization(ProductScopes.Supplier));
+    // A PUT like Update, so no per-method declaration separates them, and products.write must not
+    // be enough to assign a supplier reference.
+    if (requireAuthorization)
+        o.Configure("AssignSupplierReference", rb => rb.RequireAuthorization(ProductScopes.Supplier));
 });
 
 var discontinue = group.MapPut("{id:guid}/discontinue", /* ... */);
 if (requireAuthorization) discontinue.RequireAuthorization(ProductScopes.Discontinue);
+
+// GET summary needs no call at all — the group's products.read declaration covers it.
+group.MapGet("summary", /* ... */);
 ```
 
-`o.Configure(CrudOp, ...)` targets a generated composite route by operation kind (see
-`dknet-endpoint`); `o.Configure("RouteName", ...)` targets a specific `[CrudAction]` route by
-its C# member name. A hand-mapped route (`discontinue` above) calls `.RequireAuthorization(scope)`
-directly on the `RouteHandlerBuilder` the same way.
+`GetById`, `GetList`, `Create`, `Update`, `Delete` and `Approve` carry no scope call: their HTTP
+method decides their scope, and the two class-level declarations already say what it is.
 
 `IEndpointConfig` also exposes an optional `string? AuthPolicy` member for gating an entire group
-under one policy (`null` means plain authentication) rather than per-route scopes — neither shipped
-sample overrides it; both use per-route `RequireAuthorization(scope)` inside `Map` instead, because
-different routes in the same group need different scopes.
+under one policy (`null` means plain authentication) rather than per-method scopes — neither shipped
+sample overrides it, because different methods in the same group need different scopes and
+`[EndpointGroupScope]` expresses that without giving up the group-level declaration.
 
 **Recipe: add a new scope for a new feature.**
 1. Add a constant (and to an `All` array, if you loop like `ProductScopes` does) in a
@@ -109,14 +159,15 @@ different routes in the same group need different scopes.
 2. Register it as a policy — either loop over your `All` array in `AuthConfig` the way
    `ProductScopes.All` is registered, or call `options.AddPolicy(YourScopes.X, ...)` explicitly for a
    one-off scope.
-3. Call `.RequireAuthorization(YourScopes.X)` on the route, gated behind the same
-   `FeatureOptions.RequireAuthorization` check `ProductV1Endpoint` uses — never call it
-   unconditionally.
+3. Attach it with `[EndpointGroupScope(YourScopes.X, EndpointHttpMethods.…)]` on the endpoint class.
+   Only where a single HTTP method needs two different scopes, fall back to `o.Configure(...)` or
+   `.RequireAuthorization(...)` — and then gate that call behind
+   `FeatureOptions.RequireAuthorization`, never call it unconditionally.
 
 ## Demo authentication
 
 `FeatureManagement:EnableDemoAuthentication` registers `DemoAuthenticationHandler`
-(`Minimal.Api/Configs/Auth/DemoAuthConfig.cs`) as the default authenticate/challenge scheme. Every
+(`<YourApp>.Api/Configs/Auth/DemoAuthConfig.cs`) as the default authenticate/challenge scheme. Every
 request is authenticated, unconditionally, as a fixed fake identity:
 
 ```csharp
@@ -156,10 +207,19 @@ if (string.IsNullOrEmpty(request.ByUser))
 — from `CreatePurchaseOrderCommandHandler`. A payload value for `ByUser` is always overwritten, never
 trusted; this is a security seam, not a binding convenience.
 
+`[FromRequestHeader("X-Header-Name")]` is the same populator reading a named request header instead
+of a claim: also overwritten before validation and the handler (with the property's default when the
+header is absent), also impossible to forge through the payload, and also inert unless
+`AddContextualRequestPopulation` is registered — it is. A missing header is never a refusal, just a
+default. **It is not an authorization signal**: a header is caller-supplied and carries no identity
+guarantee, so never use it where `[FromClaim]` belongs. Neither shipped sample uses it; reach for it
+for correlation ids, a tenant hint, or a client-version marker the handler wants without adding a
+body field.
+
 **Automated: `PrincipalProvider` + two save hooks.** A `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`
 generated request forwards only `System.ComponentModel.DataAnnotations` attributes, so it can never
 carry `[FromClaim]`. Acting-user attribution instead goes through `PrincipalProvider`
-(`Minimal.Api/Configs/Handlers/PrincipalProvider.cs`), which implements `IPrincipalProvider`
+(`<YourApp>.Api/Configs/Handlers/PrincipalProvider.cs`), which implements `IPrincipalProvider`
 (`IDataOwnerProvider` + `ICurrentUserProvider` plus `ProfileId`/`Email`/`UserName`):
 
 ```csharp
@@ -257,7 +317,7 @@ pins the whole chain: an authenticated caller with no resolvable subject claim g
 is never persisted at all (checked with `IgnoreQueryFilters()` directly against the database, not
 just "unreadable over HTTP").
 
-**Tests that pin this area** (all in `Minimal.App.Tests/Integration/...`):
+**Tests that pin this area** (all in `<YourApp>.App.Tests/Integration/...`):
 
 - `AutomatedSample/V1/ProductOwnershipIsolationTests` — two distinct authenticated callers get
   distinct ownership keys; neither can read or list the other's row; `oid` takes precedence over
@@ -325,7 +385,7 @@ that two callers are judged independently in either request order), `ProductSens
 POST routes are not idempotent unless the route calls `.RequiredIdempotentKey()` explicitly, with
 callers sending `X-Idempotency-Key`. The store is Redis when `ConnectionStrings:Redis` is set, else
 an in-process in-memory store; both use `ConflictHandling = IdempotentConflictHandling.ConflictResponse`
-(`Minimal.Api/Configs/AppConfig.cs`). See `dknet-crud` for how a handler's `Result`
+(`<YourApp>.Api/Configs/AppConfig.cs`). See `dknet-crud` for how a handler's `Result`
 maps to a response body, and `dknet-platform-config` for CORS, security headers, and rate limiting.
 Status mapping: 400 validation, 401 no/invalid credential, 403 `OwnershipRequiredException` or a
 failed authorization policy, 404 not found or filtered out by ownership, 409 a
@@ -365,7 +425,7 @@ public sealed class AuthOnApiFixture : TestApiFactoryBase, IAsyncLifetime
 This is only safe because the test assembly disables collection parallelization — no other test's
 host can boot while the variable is set, or it would leak into an unrelated test run.
 
-`TestAuthHandler` (`Minimal.App.TestSupport/TestAuthHandler.cs`) replaces the real JWT bearer scheme
+`TestAuthHandler` (`<YourApp>.App.TestSupport/TestAuthHandler.cs`) replaces the real JWT bearer scheme
 so a request can be authenticated without a live token. It issues a fixed name/subject and a scope
 claim built from every `ProductScopes` entry by default, overridable per request via a header:
 
@@ -387,7 +447,7 @@ in the constructor, cleared in `Dispose`, `TestAuthHandler.Register(services)` i
 `ConfigureTestServices`), then assert against `TestAuthHandler.CallerName` /
 `TestAuthHandler.CallerProfileId` the same way `PurchaseOrderSecurityTests`/`ProductSecurityTests`
 do. For a test that needs two distinct callers in one host (row-isolation tests),
-`Minimal.App.TestSupport/MultiSubjectAuthHandler.cs` reads the subject from a request header instead
+`<YourApp>.App.TestSupport/MultiSubjectAuthHandler.cs` reads the subject from a request header instead
 of a fixed constant — see `AuthOnMultiSubjectApiFixture` and `ProductOwnershipIsolationTests`. For a
 caller authenticated with no name claim at all, see `AuthOnNoNameClaimApiFixture`. For a fixed-tenant
 `OwnedBy` with a still-distinct acting `CreatedBy`, see `AuthOnFixedTenantApiFixture`.
@@ -399,8 +459,12 @@ the thing under test, and it is expected to fail start-up.
 
 - **What you might expect:** calling `.RequireAuthorization(scope)` unconditionally on a route.
   **What actually happens:** with `RequireAuthorization` off, no policies were ever registered, so
-  the call throws at request time. Always gate it on `FeatureOptions.RequireAuthorization`, as
-  `ProductV1Endpoint` does.
+  the call throws at request time. Gate it on `FeatureOptions.RequireAuthorization`, as
+  `ProductV1Endpoint` does — or declare the scope with `[EndpointGroupScope]`, which is applied only
+  when that flag is on and therefore needs no branch at all.
+- **What you might expect:** one `[EndpointGroupScope]` covering the methods you care about leaves
+  the rest of the group unguarded. **What actually happens:** it fails closed — a served method with
+  no declaration and no group default makes endpoint building throw, not silently pass through.
 - **What you might expect:** giving a generated `[CrudAction]` a parameter meant to auto-populate
   from the caller. **What actually happens:** it becomes an ordinary, caller-settable bound property
   — there is no `[FromClaim]` seam on a generated request.

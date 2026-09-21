@@ -367,15 +367,19 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
     public void Map(RouteGroupBuilder group)
     {
         group.MapProductCrud(o => o
-            .Exclude("Discontinue")                                                     // hand-written below
-            .Configure(CrudOp.GetById, b => b.RequireAuthorization("products.read")));  // and so on, per route
+            .Exclude("Discontinue"));   // hand-written below; scopes come from the class attributes
         group.MapPut("{id:guid}/discontinue", /* … */);
         group.MapGet("summary", /* … */);
     }
 }
 ```
 
-The generated call carries its per-route options and one by-name exclusion, and the two routes the
+(The class carries `[EndpointGroupScope(ProductScopes.Read, EndpointHttpMethods.Get)]` and
+`[EndpointGroupScope(ProductScopes.Write, EndpointHttpMethods.Post, Put, Delete)]`, which is where
+every route's authorization scope comes from — see
+[`docs/api-pipeline.md`](api-pipeline.md), or `ProductV1Endpoint` itself.)
+
+The generated call carries its by-name exclusion, and the two routes the
 generator cannot express are mapped below it — generated and hand-written in one endpoint, not two
 rival samples. The generated `Map<Entity>Crud()` extension (`ProductCrudEndpointExtensions` here) maps
 `GetById`/`GetList`/`Delete` through `DKNet.AspCore.Extensions`'s **generic**

@@ -1,6 +1,6 @@
 ---
 name: dknet-messaging-events
-description: Explains how this template wires SlimMessageBus as its command/query/event backbone, how the two domain-event styles (manual AddEvent vs declared RaisesEvent) reach a subscriber, and how to forward an event to an external Azure Service Bus topic. Use whenever adding a domain event, wiring an internal or external event consumer, or reasoning about how a command/query travels from an endpoint to its handler.
+description: Explains how this template wires SlimMessageBus as its command/query/event backbone, how the three domain-event raise styles ([RaisesEvent], AddEvent<TEvent>(), AddEvent(instance)) reach a subscriber, and how to forward an event to an external Azure Service Bus topic. Use whenever adding a domain event, wiring an internal or external event consumer, or reasoning about how a command/query travels from an endpoint to its handler.
 ---
 
 # DKNet messaging and events (SlimMessageBus)
@@ -31,12 +31,12 @@ Handlers never call `SaveChanges`. `AddSlimBusEfCoreInterceptor<CoreDbContext>()
 successfully.
 
 **Auto-discovery, no per-message registration.** `AutoDeclareFrom(serviceAssembly)` scans the
-`Minimal.AppServices` assembly and declares every request/handler pair it finds by convention;
+`<YourApp>.AppServices` assembly and declares every request/handler pair it finds by convention;
 `AddServicesFromAssembly(serviceAssembly)` registers the discovered handler classes in DI. Adding a
 new `*Request` + `*Handler` pair needs no wiring beyond writing the two classes — see the
 `dknet-crud` skill for how requests, validators, and handlers are shaped.
 
-## Wiring: `Minimal.Infra/Extensions/ServiceBusSetup.cs`
+## Wiring: `<YourApp>.Infra/Extensions/ServiceBusSetup.cs`
 
 ```csharp
 public static IServiceCollection AddServiceBus(
@@ -89,13 +89,20 @@ header envelope or JSON round-trip. `EnableBlockingPublish = false` means `bus.P
 domain event does not wait for every subscriber to finish before returning — a slow or hung internal
 consumer does not block the HTTP response.
 
-## Domain events: two styles, same publisher
+## Domain events: three raise styles, same publisher
 
-Both styles are covered in full in the `dknet-entity` skill; here only what matters for
-messaging.
+All are covered in full in the `dknet-entity` and `dknet-ddd-principles` skills; here only what
+matters for messaging. Prefer them in this order — `[RaisesEvent]`, then `AddEvent<TEvent>()`, then
+`AddEvent(instance)`.
 
-- **Manual** — `PurchaseOrder`'s constructor calls `AddEvent(new PurchaseOrderCreatedEvent(...))` by
-  hand; the record is a plain hand-written type next to the entity.
+- **Manual, instance** — `PurchaseOrder`'s constructor calls
+  `AddEvent(new PurchaseOrderCreatedEvent(...))` by hand; the record is a plain hand-written type
+  next to the entity. Last resort: use it only when the payload is not a projection of the entity.
+- **Manual, type-only** — `AddEvent<TEvent>()` queues the event *type*; the publisher maps the
+  entity onto it via `IMapper` when the save succeeds, so there is no hand-written payload. It
+  **requires an `IMapper` registration** — without one the publisher throws `EventException` instead
+  of dropping the event. Use it when the decision to raise needs real logic but the payload does
+  not.
 - **Declared** — `Product` carries `[RaisesEvent(EventOperations.Created, Include = [...])]` and
   `[RaisesEvent(EventOperations.Updated, nameof(Price))]`; DKNet's EF Core save hook raises the event
   itself after a successful save. Composed names fold the narrowing property in:
@@ -104,7 +111,7 @@ messaging.
   property's value actually changed on that save — calling `ChangePrice` with the price it already
   holds raises nothing.
 
-Either way, the entity only **queues** the event. `Minimal.Infra/Services/EventPublisher.cs` is what
+Either way, the entity only **queues** the event. `<YourApp>.Infra/Services/EventPublisher.cs` is what
 actually calls the bus:
 
 ```csharp
@@ -128,13 +135,13 @@ a specific order across multiple handlers of the same event, and multiple consum
 allowed (both an internal and an external consumer subscribe to the same `ProductCreatedEvent`, see
 below).
 
-**Consumers are always hand-written.** Neither `[RaisesEvent]` nor `AddEvent` generates a consumer —
-only the raise side is automatic for the declared style.
+**Consumers are always hand-written.** Neither `[RaisesEvent]` nor either `AddEvent` overload
+generates a consumer — only the raise side is automatic for the declared style.
 
-Internal consumers live in `Minimal.AppServices/<Feature>/V1/Events/`:
+Internal consumers live in `<YourApp>.AppServices/<Feature>/V1/Events/`:
 
 ```csharp
-// Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs
+// <YourApp>.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs
 internal sealed class PurchaseOrderCreatedEventHandler(ILogger<PurchaseOrderCreatedEventHandler> logger)
     : Fluents.EventsConsumers.IHandler<PurchaseOrderCreatedEvent>
 {
@@ -152,7 +159,7 @@ internal sealed class PurchaseOrderCreatedEventHandler(ILogger<PurchaseOrderCrea
 ```
 
 ```csharp
-// Minimal.AppServices/AutomatedSample/V1/Events/ProductEventHandlers.cs
+// <YourApp>.AppServices/AutomatedSample/V1/Events/ProductEventHandlers.cs
 internal sealed class ProductCreatedEventHandler(ILogger<ProductCreatedEventHandler> logger)
     : Fluents.EventsConsumers.IHandler<ProductCreatedEvent>
 {
@@ -171,7 +178,7 @@ A second child bus, `"AzureBus"`, is added only when **both** conditions hold:
 
 | Condition | Where |
 |---|---|
-| `FeatureManagement:EnableServiceBus` is `true` | `Minimal.Share/Options/FeatureOptions.cs` |
+| `FeatureManagement:EnableServiceBus` is `true` | `<YourApp>.Share/Options/FeatureOptions.cs` |
 | `ConnectionStrings:AzureBus` is a non-empty connection string | checked in `AddServiceBus` |
 
 ```csharp
@@ -228,12 +235,12 @@ The same event type — `ProductCreatedEvent` — flows on both buses. There is 
 event record. The `Produce`/`Consume` declaration in `AddAzureBus` is what forwards an
 already-declared internal event externally; nothing about the event itself changes.
 
-External consumers live in `Minimal.Infra/Features/<Feature>/ExternalEvents/`, are `internal
+External consumers live in `<YourApp>.Infra/Features/<Feature>/ExternalEvents/`, are `internal
 sealed`, and are discovered by the same `AddServicesFromAssembly(typeof(InfraSetup).Assembly)` call
 inside `AddAzureBus` — no separate registration:
 
 ```csharp
-// Minimal.Infra/Features/AutomatedSample/ExternalEvents/ProductCreatedNotificationHandler.cs
+// <YourApp>.Infra/Features/AutomatedSample/ExternalEvents/ProductCreatedNotificationHandler.cs
 internal sealed class ProductCreatedNotificationHandler(ILogger<ProductCreatedNotificationHandler> logger)
     : Fluents.EventsConsumers.IHandler<ProductCreatedEvent>
 {
@@ -259,7 +266,7 @@ internal sealed class ProductCreatedNotificationHandler(ILogger<ProductCreatedNo
        .WithConsumer<THandler>());
    ```
 2. Write `THandler` as a `Fluents.EventsConsumers.IHandler<TEvent>` under
-   `Minimal.Infra/Features/<Feature>/ExternalEvents/`. External-system concerns belong in `Infra`,
+   `<YourApp>.Infra/Features/<Feature>/ExternalEvents/`. External-system concerns belong in `Infra`,
    never `AppServices`.
 3. Nothing else — `azb.AddServicesFromAssembly(typeof(InfraSetup).Assembly)` already picks up the
    new handler by assembly scan.
@@ -274,7 +281,7 @@ azb.Consume<TExternalEvent>(o => o.Path("<their-topic-name>")
     .WithConsumer<THandler>());
 ```
 
-`THandler` still goes in `Minimal.Infra/Features/<Feature>/ExternalEvents/` and still needs no
+`THandler` still goes in `<YourApp>.Infra/Features/<Feature>/ExternalEvents/` and still needs no
 manual DI registration. Do not add a matching `azb.Produce<TExternalEvent>(...)` — that would make
 this service claim ownership of an event type it does not raise.
 
@@ -289,13 +296,13 @@ from Azure Service Bus: `ProductCreatedEvent` is still published in-memory and h
 
 ## Local development
 
-`Minimal.AppHost/AppHost.cs` (Aspire orchestration) wires only Redis and PostgreSQL today:
+`<YourApp>.AppHost/AppHost.cs` (Aspire orchestration) wires only Redis and PostgreSQL today:
 
 ```csharp
 var cache = builder.AddRedis("Redis");
 var postgres = builder.AddPostgres("Postgres");
 ...
-builder.AddProject("Api", "../Minimal.Api/Minimal.Api.csproj")
+builder.AddProject("Api", "../<YourApp>.Api/<YourApp>.Api.csproj")
     .WithReference(cache, "Redis")
     .WithReference(apDb, "AppDb")
     //.WaitFor(bus)
@@ -304,7 +311,7 @@ builder.AddProject("Api", "../Minimal.Api/Minimal.Api.csproj")
 ```
 
 The `.WaitFor(bus)` line is commented out and no `bus` resource is added above it — no Azure Service
-Bus emulator is wired into `AppHost.cs` as shipped. `Minimal.AppHost/Configs/busConfig.json` exists
+Bus emulator is wired into `AppHost.cs` as shipped. `<YourApp>.AppHost/Configs/busConfig.json` exists
 and is copied to the build output, but nothing in `AppHost.cs` references it — it's a config file
 waiting for an emulator resource, not something a consumer touches to run the app today.
 
@@ -314,7 +321,7 @@ DKNet also carries an `Aspire.Hosting.ServiceBus` project that runs the emulator
 
 ## Testing events
 
-**BDD — log-capture pattern.** `Minimal.App.TestSupport/TestLogCapture.cs` is an `ILoggerProvider`
+**BDD — log-capture pattern.** `<YourApp>.App.TestSupport/TestLogCapture.cs` is an `ILoggerProvider`
 that queues every formatted log line into an in-memory collection, registered as an additional
 provider alongside the host's normal logging. A scenario asserts on the resulting text instead of on
 internal call order:
@@ -381,15 +388,15 @@ that path as untested until you add integration coverage against a real namespac
 - **What you might expect:** an `[RaisesEvent(EventOperations.Updated, ...)]` fires on every call to
   the method that touches that property. **What actually happens:** it only fires when the value
   actually changed on that save — see `dknet-entity` for the mechanics.
-- **What you might expect:** placing a new event consumer in `Minimal.Api` gets it discovered like
-  the others. **What actually happens:** discovery only scans the `Minimal.AppServices` assembly
-  (internal) and the `Minimal.Infra` assembly (external, inside `AddAzureBus`). A consumer in
-  `Minimal.Api` is never registered.
+- **What you might expect:** placing a new event consumer in `<YourApp>.Api` gets it discovered like
+  the others. **What actually happens:** discovery only scans the `<YourApp>.AppServices` assembly
+  (internal) and the `<YourApp>.Infra` assembly (external, inside `AddAzureBus`). A consumer in
+  `<YourApp>.Api` is never registered.
 - **What you might expect:** setting `EnableServiceBus: true` is enough to start producing to Azure.
   **What actually happens:** `ConnectionStrings:AzureBus` must also be a non-empty string. Either one
   missing and the `AzureBus` child bus, and everything registered only on it, silently does not exist
   — no error, no log, just no external traffic.
 - **What you might expect:** an external consumer belongs next to the internal one, in
-  `Minimal.AppServices/<Feature>/V1/Events/`. **What actually happens:** external-system consumers
-  belong in `Minimal.Infra/Features/<Feature>/ExternalEvents/` — that is the assembly `AddAzureBus`
+  `<YourApp>.AppServices/<Feature>/V1/Events/`. **What actually happens:** external-system consumers
+  belong in `<YourApp>.Infra/Features/<Feature>/ExternalEvents/` — that is the assembly `AddAzureBus`
   scans, and it keeps the external-system dependency out of `AppServices`.

@@ -39,12 +39,15 @@ of the same output.
 | `auto` | `AutomatedSample` / `Product` | `[RaisesEvent]` / `[CrudCreate]` / `[CrudUpdate]` / `[CrudAction]` on the entity plus a one-line `[GenerateDto]`. Requests, handlers, and routes are generated. No idempotency, **forwarded DataAnnotations not enforced** (a FluentValidation validator on a generated request *is*), acting user via `DataOwnerHook`. |
 
 If `mode=` was not supplied, apply §1 of the lifecycle skill, **recommend one with a reason**, and ask
-the user to confirm. Default to `manual` whenever the request mentions an operation that writes more
-than one aggregate in one transaction, idempotent writes, a filtered query, a DTO that hides fields,
-or attribute-declared validation that must return `400` — `auto` is a deliberate trade, not a
-fallback. A business rule, state transition or duplicate check on its own does **not** force
-`manual`: write it as a FluentValidation validator on the generated request, the way the product
-sample refuses a duplicate name and a delete of a product still for sale.
+the user to confirm. **Default to `auto`.** Recommend `manual` only when the request actually needs
+one of the five things the generator cannot express: an operation writing more than one aggregate in
+one transaction, idempotent writes, a query beyond the generic list route's
+`filter`/`search`/`orderBy` contract, `[FromClaim]` acting-user attribution, or attribute-declared
+validation that must return `400` and cannot be restated as a FluentValidation rule. A business
+rule, state transition, duplicate check or a DTO that hides fields does **not** force `manual`:
+write the rule as a FluentValidation validator on the generated request (as the product sample
+refuses a duplicate name and a delete of a product still for sale) and narrow the DTO with
+`[GenerateDto(..., Exclude = [...])]`.
 
 When `auto` is selected, state the validation gap in your confirmation message: a `[Range]` on a
 generated request property is forwarded but never enforced, so a `POST` with an invalid value returns
@@ -74,7 +77,9 @@ Run `/dknet-entity <Feature> <Entity> mode=<mode> <props…>`. Verify in both mo
 - `dotnet build` is green.
 
 Additionally verify, by mode:
-- `manual` — mutation methods raise events via `AddEvent(...)`; a hand-written event record exists.
+- `manual` — every event is raised at the highest rung that fits: `[RaisesEvent]` where the event is
+  "created" or "these properties changed", else `AddEvent<TEvent>()` with the payload projected from
+  the entity, and a hand-built `AddEvent(new …)` only where the payload is not a projection.
 - `auto` — class-level `[RaisesEvent(...)]`, a `[CrudCreate]` constructor, and at least one
   `[CrudUpdate]` method are present. No `AddEvent` call anywhere in the slice.
 
@@ -89,24 +94,40 @@ Build green either way.
 ### Phase 4 — Endpoint
 
 Run `/dknet-endpoint <Feature> <Entity> mode=<mode>`. Verify the new `*V1Endpoint : IEndpointConfig` exists and:
-- `manual` — every route is a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call, and the create route chains `.RequiredIdempotentKey()`.
+- `manual` — every route is a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call, and the create route chains `.RequiredIdempotentKey()`. Confirm each hand-mapped route is one no CRUD attribute and no generic `Map*` helper could have covered; report any that could have been generated.
 - `auto` — the body is a single `group.Map<Entity>Crud()` call. There is no `.RequiredIdempotentKey()` on this path; do not add one, it will not compile onto the generated route.
+
+Authorization scopes, either mode: declared with `[EndpointGroupScope]` on the endpoint class where
+the package version supports it, dropping to `o.Configure(...)`/`.RequireAuthorization(...)` — each
+behind the `FeatureOptions.RequireAuthorization` guard — only for a route whose HTTP method cannot
+decide its scope.
 
 Build green.
 
 ### Phase 5 — Unit/integration tests
 
-Run `/dknet-unit-tests <Feature> <Entity> mode=<mode>`. Verify all tests pass and cover happy path, not-found, and domain events in both modes, plus by mode:
-- `manual` — FluentValidation failures, duplicate detection, and any rejected state transition.
+Run `/dknet-unit-tests <Feature> <Entity> mode=<mode>`. xUnit here covers only what a BDD scenario
+cannot: architecture/convention rules, pure functional tests (entity methods, validators, specs),
+EF model/schema shape, and a `Result`-level assertion where the HTTP response cannot tell two
+failures apart. Every business rule reachable over HTTP is Phase 6's job — do not write it twice.
+- `manual` — validator rules and rejected state transitions asserted at the unit level.
 - `auto` — entity-method behavior directly. Do **not** write a test asserting a `400` from a forwarded DataAnnotations attribute; it will return `201` and the test would encode the gap as expected behavior.
 
 ### Phase 6 — BDD acceptance tests
 
-Dispatch the `dknet-bdd-engineer` subagent with the feature scope. Verify `.feature` + step files exist with status + shape + key-field assertions and the BDD project passes.
+Dispatch the `dknet-bdd-engineer` subagent with the feature scope. **This is where the feature's
+business rules are specified** — happy path, every refusal, every state transition, and the
+domain-event side effects visible in captured logs. Verify `.feature` + step files exist with
+status + shape + key-field assertions, that every route from Phase 4 appears in at least one
+scenario, and that the BDD project passes.
 
 ### Phase 7 — Feature documentation
 
-Run `/dknet-docs <Feature>`. Verify README, architecture diagrams, data-model, and api-reference exist under `docs/features/<feature-kebab>/` (or `docs/<feature>/` if internal).
+Run `/dknet-docs <Feature>`. Verify README, architecture diagrams, data-model, and api-reference
+exist under `docs/features/<feature-kebab>/` (or `docs/<feature>/` if internal), that
+`api-reference.md` has a section for **every** route Phase 4 published, and that the architecture,
+sequence and event diagrams are archify renders committed with their JSON sources under
+`diagrams/` (Mermaid only if archify could not be installed — the report must say so).
 
 ### Phase 8 — Final gates
 
@@ -118,7 +139,7 @@ Run `/dknet-docs <Feature>`. Verify README, architecture diagrams, data-model, a
    - Migration name + tables.
    - Endpoints (route + verbs), flagging whether the create route is idempotent.
    - Test counts (unit + BDD).
-   - Docs paths.
+   - Docs paths, and whether the diagrams are archify renders or Mermaid fallbacks.
    - For `auto`: the exact generated type names produced, and a plain statement that the forwarded
      DataAnnotations validation on those routes is not enforced.
    - `/dknet-feature-remove <Feature>` as the way to retire the slice.

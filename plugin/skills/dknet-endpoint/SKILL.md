@@ -12,9 +12,20 @@ Usage: `/dknet-endpoint <Feature> <Entity> [mode=manual|auto] [routePrefix] [ver
 # Skill: Endpoint Configuration
 
 Wires AppServices actions/queries — or an entity's `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`
-declarations — to HTTP routes via `IEndpointConfig`. Three ways to map a route: pick the one matching
-how the feature's actions were built (`mode=manual` or `mode=auto`), and reach for the third only when
-neither fits one particular route.
+declarations — to HTTP routes via `IEndpointConfig`.
+
+**Pick the highest rung that expresses the route. Do not start at the bottom.**
+
+| Rung | Shape | Use it when |
+|---|---|---|
+| 1 | **Option B** — `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` on the entity + one `group.Map{Entity}Crud()` call (§3) | The route is create, update, delete, get-by-id, list, or a single-aggregate business action. This is the default for a new feature — declare the operation on the entity and let the generator emit the request, handler and route. |
+| 2 | **Option C** — the package's generic `MapGetById`/`MapGetList`/`MapPost<TRequest,TDto>`/… helpers (§4) | The entity carries no CRUD attributes (a read-mostly reference table, an entity you don't own), but the route is still a plain shape the helpers already implement. |
+| 3 | **Option A** — a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call dispatching through `IMessageBus` (§2) | Nothing above can express it: multiple aggregates in one transaction, a response shape with no DTO behind it, or a create route that must enforce `.RequiredIdempotentKey()` or a DataAnnotations attribute (§5). |
+
+Rungs mix freely inside one `Map(RouteGroupBuilder)` — `ProductV1Endpoint` maps its whole generated
+slice, excludes one route by name, and hand-maps two below it. `mode=manual`/`mode=auto` says which
+rung the feature's *actions* were built for; it does not license dropping to rung 3 for a route rung 1
+would have covered.
 
 ## 1. The `IEndpointConfig` contract
 
@@ -28,7 +39,7 @@ internal sealed class {Entity}V1Endpoint : IEndpointConfig
 ```
 
 - **Discovery**: every non-abstract `IEndpointConfig` in the API assembly is found by
-  `UseEndpointConfigs(...)`, called once from `Minimal.Api/Program.cs`. Never register a route group
+  `UseEndpointConfigs(...)`, called once from `<YourApp>.Api/Program.cs`. Never register a route group
   by hand.
 - **Versioning**: `EnableVersioning` (`FeatureManagement`, default `true`) turns `GroupEndpoint` into
   `/v{version}/{route}` — `"/products"` at `Version => 1` becomes `/v1/products`. Off, the group
@@ -56,11 +67,11 @@ MapDelete(...)` call, dispatching through `IMessageBus` by hand:
 ```csharp
 using DKNet.AspCore.Extensions.Responses;
 using DKNet.AspCore.Idempotency;
-using Minimal.AppServices.ManualSample.V1.Actions;
-using Minimal.AppServices.ManualSample.V1.Queries;
-using PurchaseOrderDto = Minimal.AppServices.ManualSample.V1.PurchaseOrderDto;
+using <YourApp>.AppServices.ManualSample.V1.Actions;
+using <YourApp>.AppServices.ManualSample.V1.Queries;
+using PurchaseOrderDto = <YourApp>.AppServices.ManualSample.V1.PurchaseOrderDto;
 
-namespace Minimal.Api.ApiEndpoints.ManualSample;
+namespace <YourApp>.Api.ApiEndpoints.ManualSample;
 
 internal sealed class PurchaseOrderV1Endpoint : IEndpointConfig
 {
@@ -79,10 +90,6 @@ internal sealed class PurchaseOrderV1Endpoint : IEndpointConfig
             .WithDescription(
                 "Create purchase order. <br/><br/> Note: Idempotency key is required in the header. <br/>" +
                 "X-Idempotency-Key: {IdempotencyKey} <br/>");
-
-        group.MapGet("/", async ([AsParameters] ListPurchaseOrdersQuery query, IMessageBus bus, CancellationToken ct) =>
-                Results.Ok(await bus.Send(query, cancellationToken: ct)))
-            .WithDescription("Get purchase orders (paged, optionally filtered by customer name).");
 
         group.MapGet("{id:guid}", async (Guid id, IMessageBus bus, CancellationToken ct) =>
             {
@@ -144,12 +151,12 @@ registers the entire generated CRUD surface; hand-mapped routes for what the gen
 go below it.
 
 ```csharp
-using Minimal.AppServices.AutomatedSample.V1;
-using Minimal.AppServices.AutomatedSample.V1.Actions;
-using Minimal.AppServices.AutomatedSample.V1.Queries;
-using Minimal.AppServices.Crud;
+using <YourApp>.AppServices.AutomatedSample.V1;
+using <YourApp>.AppServices.AutomatedSample.V1.Actions;
+using <YourApp>.AppServices.AutomatedSample.V1.Queries;
+using <YourApp>.AppServices.Crud;
 
-namespace Minimal.Api.ApiEndpoints.AutomatedSample;
+namespace <YourApp>.Api.ApiEndpoints.AutomatedSample;
 
 internal sealed class ProductV1Endpoint : IEndpointConfig
 {
@@ -197,7 +204,7 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
 }
 ```
 
-`ProductScopes` (`Minimal.Api/ApiEndpoints/AutomatedSample/ProductScopes.cs`) is a plain
+`ProductScopes` (`<YourApp>.Api/ApiEndpoints/AutomatedSample/ProductScopes.cs`) is a plain
 `internal static class` of policy-name constants — one per authorization scope the routes above
 require, registered as authorization policies by `AddAuthConfig()` only when `RequireAuthorization`
 is on:
@@ -229,7 +236,7 @@ PUT {id} (per update request), DELETE {id} and each generated domain-action endp
 ### Where the generated code lives
 
 `DKNet.SlimBus.Generators` emits, per entity, under
-`ApiEndpoints/Minimal.AppServices/obj/Generated/DKNet.SlimBus.Generators/.../` — not committed, so
+`ApiEndpoints/<YourApp>.AppServices/obj/Generated/DKNet.SlimBus.Generators/.../` — not committed, so
 build once (`dotnet build`) and read it there for the exact shape:
 
 - `{Entity}CrudRequests.g.cs` — one `sealed partial record` per route (`Create{Entity}Request`,
@@ -305,8 +312,9 @@ group.MapParameterlessActionById<TRequest, TKey, TDto>("{id}/x", "PUT"); // any 
   already resolve `ErrorResponseOptions` via `[FromServices]` — calling these helpers directly gets
   the same behavior.
 
-Reach for Option C only when neither A nor B fits one particular entity — most features should be
-entirely A or entirely B.
+Reach for Option C when the entity carries no CRUD attributes but the route is still one of these
+stock shapes — it is a rung above hand-mapping, not a last resort. Drop to Option A only for a route
+none of these helpers can express.
 
 ## 5. Cross-cutting behavior
 
@@ -333,12 +341,34 @@ Only Option A's literal `group.MapPost("/", async (CreateXRequest req, ...) => .
 attribute enforced. If a create/update rule must be enforced, either hand-map that one route (Option
 A) or write it as a FluentValidation validator instead of a DataAnnotations attribute.
 
-**Authorization scopes are conditional on the flag, always.** `RequireAuthorization(...)` needs
-authorization middleware to evaluate — that middleware is only added when `FeatureManagement:
-RequireAuthorization` is `true`. Calling `.RequireAuthorization(scope)` unconditionally would throw at
-request time with the flag off (local development, both test suites). Every scope call in
-`ProductV1Endpoint` is therefore gated behind reading the flag from `IOptions<FeatureOptions>`, as
-shown in §3 — copy that guard, don't call `RequireAuthorization` bare.
+**Authorization scopes: declare them on the class with `[EndpointGroupScope]` first.**
+`EndpointGroupScopeAttribute` (`DKNet.AspCore.Extensions.Endpoints`, **13.0.0 or newer**) sits above
+the `IEndpointConfig` class and names the scope one or more HTTP methods require:
+
+```csharp
+[EndpointGroupScope(ProductScopes.Read, EndpointHttpMethods.Get)]
+[EndpointGroupScope(ProductScopes.Write, EndpointHttpMethods.Post, EndpointHttpMethods.Put,
+    EndpointHttpMethods.Delete)]
+internal sealed class ProductV1Endpoint : IEndpointConfig { /* ... */ }
+```
+
+It is stackable; a declaration naming no method becomes the group's default, and a per-method
+declaration beats that default for its own method. It applies to generated and hand-mapped routes
+alike, skips any route that already names its own policy or allows anonymous access, and **fails
+closed** — once one declaration exists, a served method with neither a declaration nor a group
+default is refused when the group's endpoints are built. Above all, it is applied only when
+`EndpointRegistrationOptions.RequireAuthorization` is `true` (the value `Program.cs` assigns from
+`FeatureOptions.RequireAuthorization`), so it needs no flag check of its own.
+
+Fall back to `o.Configure(CrudOp.X, …)`, `o.Configure("RouteName", …)`, or
+`.RequireAuthorization(scope)` on a `RouteHandlerBuilder` **only when two routes sharing one HTTP
+method need different scopes** — `Product`'s `Update` and `AssignSupplierReference` are both `PUT`,
+and only the latter may demand `products.supplier`. Those three forms do *not* self-gate: with the
+flag off no policies were registered and the call throws at request time, so each must sit behind the
+`IOptions<FeatureOptions>` guard shown in §3. The shipped `ProductV1Endpoint` is written exactly this
+way: two class-level declarations, and a guarded per-route override for only the two `PUT` routes
+(`AssignSupplierReference`, `discontinue`) that need their own scope. Full treatment: the
+`dknet-auth-and-ownership` skill.
 
 **Status-counts helper.** `group.MapGetStatusCounts<TEntity>("status", new StatusPropertyInfo(nameof(X.Status), typeof(XStatus)))`
 is a template-local extension (not part of the published package) that groups an entity's rows by an
@@ -365,9 +395,10 @@ skill.
 
 ### `mode=manual`
 
-1. Confirm the feature's `AppServices` layer exposes hand-written request/query records (see the
-   `dknet-crud` skill).
-2. Create `ApiEndpoints/Minimal.Api/ApiEndpoints/{Feature}/{Entity}V1Endpoint.cs`, `internal sealed`,
+1. Confirm rung 3 is actually needed — that the route is not one `[CrudCreate]`/`[CrudUpdate]`/
+   `[CrudAction]` (rung 1) or a generic helper (rung 2) would have covered — and that the feature's
+   `AppServices` layer exposes hand-written request/query records (see the `dknet-crud` skill).
+2. Create `ApiEndpoints/<YourApp>.Api/ApiEndpoints/{Feature}/{Entity}V1Endpoint.cs`, `internal sealed`,
    implementing `IEndpointConfig`.
 3. Map every route as a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call per §2, dispatching
    through `IMessageBus`.
@@ -379,25 +410,21 @@ skill.
 1. Confirm the entity declares `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` (see `/dknet-entity`)
    and its DTO is `[GenerateDto(typeof(Entity))]`.
 2. Build once so the generated `Map{Entity}Crud()` extension exists.
-3. Create `ApiEndpoints/Minimal.Api/ApiEndpoints/{Feature}/{Entity}V1Endpoint.cs`, calling
-   `group.Map{Entity}Crud()` — bare, or with an `Action<CrudMapOptions>` per §3 for per-route scopes
-   or exclusions.
+3. Create `ApiEndpoints/<YourApp>.Api/ApiEndpoints/{Feature}/{Entity}V1Endpoint.cs`, calling
+   `group.Map{Entity}Crud()` — bare, or with an `Action<CrudMapOptions>` per §3 for exclusions.
+   Declare authorization scopes with `[EndpointGroupScope]` on the class (§5); use
+   `o.Configure(...)` only for a route whose scope its HTTP method cannot decide.
 4. For anything the generator can't express, hand-map it below the composite call, dropping the
    generated route it replaces via `o.Exclude(...)` when one exists.
 
 ## Verification
 
-```bash
-dotnet build -c Release
-dotnet run --project ApiEndpoints/Minimal.Api
-```
-
-Then exercise the route via `/docs` (Scalar, when `EnableSwagger` is on) or curl:
+`dotnet build -c Release`, then `dotnet run --project ApiEndpoints/<YourApp>.Api` and exercise the
+route via `/docs` (Scalar, when `EnableSwagger` is on) or curl:
 
 ```bash
 curl -X POST https://localhost:5001/v1/{route} \
   -H "Content-Type: application/json" -H "X-Idempotency-Key: $(uuidgen)" -d '{...}'
-curl https://localhost:5001/v1/{route}/{id}
 ```
 
 ## Common mistakes
@@ -406,7 +433,7 @@ curl https://localhost:5001/v1/{route}/{id}
 |---|---|---|
 | A `[Range]`/`[Required]` on a `[CrudCreate]`/`[CrudUpdate]` parameter is enforced | A generated route accepts the out-of-range value and returns `201`/`200` | The .NET validation source generator can't see through the package's generic `Map*<TRequest,TDto>` wrapper — see §5 |
 | `.RequiredIdempotentKey()` works the same on a generated create route | There's no route to call it on unless you exclude `"Create"` and hand-map it | The generated extension's calls are compiler output, not source you can chain onto |
-| `RequireAuthorization(scope)` is safe to call unconditionally | It throws at request time when `RequireAuthorization` is off | No authorization middleware is added unless the flag is on — gate every call on `IOptions<FeatureOptions>` |
+| `RequireAuthorization(scope)` is safe to call unconditionally | It throws at request time when `RequireAuthorization` is off | No authorization middleware is added unless the flag is on — gate every call on `IOptions<FeatureOptions>`, or declare the scope with `[EndpointGroupScope]`, which is applied only when the flag is on |
 | A `[CrudAction]` method parameter named `byUser` is the acting-user stamp | It becomes a caller-settable, body-bound `required string ByUser` on the generated request | Generated requests carry no `[FromClaim]`; the automated sample's acting-user attribution goes through `DataOwnerHook`/`AddCurrentUserProvider` instead — never name a generated action parameter after the acting user |
 | Excluding a route by a typo'd name is silently ignored | The host throws `ArgumentException` at start-up | `ValidateRouteNames` checks every `Exclude`/`Configure` name against the entity's real route names before the app can serve traffic |
 | A hand-mapped endpoint can call the generic `MapPost<TRequest,TDto>` helper directly for convenience | It works, but bypasses the DataAnnotations-enforcement your Option A route would otherwise get | Only a literal `group.MapPost("/", async (...) => ...)` — not a call to the generic wrapper — is visible to the validation source generator |
@@ -432,7 +459,7 @@ not apply to it. If `mode=` was not supplied, detect it: a `[CrudCreate]` on the
 ### Required reading
 
 1. The reference sections above
-2. `ApiEndpoints/Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs` (exemplar — every route is a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call against the raw minimal-API surface, base route `/v1/purchase-orders`)
+2. `ApiEndpoints/<YourApp>.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs` (exemplar — every route is a literal `group.MapPost/MapGet/MapPut/MapDelete(...)` call against the raw minimal-API surface, base route `/v1/purchase-orders`)
 3. The `dknet-feature-lifecycle` skill §1 — read the endpoint-registration and request-idempotency rows before choosing a mapping style
 
 ### Steps (`mode=manual`)
@@ -455,4 +482,4 @@ not apply to it. If `mode=` was not supplied, detect it: a `[CrudCreate]` on the
 
 ### Alternative: generated CRUD route
 
-If the entity is plain CRUD with `[CrudCreate]`/`[CrudUpdate]`/`[GenerateDto]` already in place (see `Product`), skip hand-mapping entirely — the generator emits a `Map<Entity>Crud()` extension (namespace `Minimal.AppServices.Crud`) that wires GetById/GetList/Create/Update/Delete in one call. `ProductV1Endpoint` is the exemplar: `group.MapProductCrud(o => …)` carrying the per-route scopes and one `Exclude("Discontinue")`, plus a `.WithDescription`, with the two routes the generator cannot express hand-mapped below it. This path does **not** get `.RequiredIdempotentKey()` and its DataAnnotations validation is not enforced (the .NET 10 validation source generator can't see through the generic `Map*<TRequest,TDto>` wrapper the generated route uses) — confirmed live: `POST /v1/products` with a negative price returns `201`. Only use this path when idempotency and enforced validation are not required.
+If the entity is plain CRUD with `[CrudCreate]`/`[CrudUpdate]`/`[GenerateDto]` already in place (see `Product`), skip hand-mapping entirely — the generator emits a `Map<Entity>Crud()` extension (namespace `<YourApp>.AppServices.Crud`) that wires GetById/GetList/Create/Update/Delete in one call. `ProductV1Endpoint` is the exemplar: `group.MapProductCrud(o => …)` carrying the per-route scopes and one `Exclude("Discontinue")`, plus a `.WithDescription`, with the two routes the generator cannot express hand-mapped below it. This path does **not** get `.RequiredIdempotentKey()` and its DataAnnotations validation is not enforced (the .NET 10 validation source generator can't see through the generic `Map*<TRequest,TDto>` wrapper the generated route uses) — confirmed live: `POST /v1/products` with a negative price returns `201`. Only use this path when idempotency and enforced validation are not required.

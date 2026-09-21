@@ -1,6 +1,6 @@
 ---
 name: dknet-unit-tests
-description: Write xUnit + Shouldly tests for a DKNet.Templates feature in Minimal.App.Tests — architecture/convention rules, pure functional tests (entity methods, validators, specs, mapping), and result-level integration tests against ApiFixture + IMessageBus (handler Result failures, EF persistence, domain events). Use after AppServices actions and endpoint config are ready. Covers only what xUnit owns; HTTP request/response and event-log scenarios belong in the `dknet-bdd-tests` skill. Invoke as `/dknet-unit-tests <Feature> <Entity> [mode=manual|auto]` to scaffold it for a feature.
+description: Write xUnit + Shouldly tests for a DKNet.Templates feature in <YourApp>.App.Tests — architecture/convention rules, pure functional tests (entity methods, validators, specs, mapping), and result-level integration tests against ApiFixture + IMessageBus (handler Result failures, EF persistence, domain events). Use after AppServices actions and endpoint config are ready. Covers only what xUnit owns; HTTP request/response and event-log scenarios belong in the `dknet-bdd-tests` skill. Invoke as `/dknet-unit-tests <Feature> <Entity> [mode=manual|auto]` to scaffold it for a feature.
 metadata:
   kind: workflow
   arguments: "<Feature> <Entity> [mode=manual|auto]"
@@ -9,11 +9,11 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash, Agent
 
 Usage: `/dknet-unit-tests <Feature> <Entity> [mode=manual|auto]`
 
-# xUnit tests (Minimal.App.Tests)
+# xUnit tests (<YourApp>.App.Tests)
 
 ## Both shipped suites are teaching material — business tests only
 
-`Minimal.App.Tests` and `Minimal.App.BDDTests` ship inside every generated solution. A team reads them
+`<YourApp>.App.Tests` and `<YourApp>.App.BDDTests` ship inside every generated solution. A team reads them
 to learn how tests are written here, so every test must be about the business domain: the `PurchaseOrder`
 (manual) and `Product` (automated) samples — entity invariants, validators, specs, handler results, CRUD
 over HTTP, domain events.
@@ -26,6 +26,10 @@ sample's business rules, stop and delete the test.
 
 ## Test layering — where a test belongs
 
+**Business behavior goes to BDD first.** If a rule can be stated as "a caller does X and gets Y", it
+belongs in `<YourApp>.App.BDDTests` as a scenario — that is the readable, business-facing record of
+the rule. xUnit is for what a scenario cannot express or cannot distinguish.
+
 xUnit owns three things; BDD must not re-cover them:
 
 1. **Architecture/convention** — `Architecture/*`: NetArchTest + reflection over the compiled assembly
@@ -33,20 +37,21 @@ xUnit owns three things; BDD must not re-cover them:
    expose a domain entity type). Cannot be expressed as an HTTP scenario; never port to BDD.
 2. **Pure functional** — `Unit/*`: entity methods, validators, spec predicate filters, static data. No
    host, no DB, no HTTP.
-3. **Result-level integration** — `Integration/<Feature>/V1/*`: handler failures asserted on the
-   `IResult`/`IResultBase` object (not-found, missing acting user, "already cancelled", 409 precondition
-   codes) and EF model/schema shape. BDD's HTTP-status/response-body assertions are coarser and would lose
-   this intent — keep the `Result`-level assertion here even though the same rule is also proven over HTTP
-   in BDD.
+3. **Result-level integration** — `Integration/<Feature>/V1/*`: EF model/schema shape, and a handler
+   failure asserted on the `IResult`/`IResultBase` object **only when the HTTP response cannot tell it
+   apart from another failure**. Two rules that both answer `400`, or a `NotFoundError` versus an
+   ownership filter that also returns `404`, need the `Result`-level assertion to pin *which* rule
+   fired. A failure whose status code and message already identify it uniquely does not — write that
+   one as a BDD scenario and leave it out of here.
 
 BDD owns user-facing HTTP behavior (request → status → response body) and domain-event side effects
-observed via log capture. Do not duplicate the same behavior in both suites — an HTTP-status check for a
-rule already covered here belongs in BDD instead, not copied into both.
+observed via log capture — which is most of a feature's business rules. Never assert the same rule in
+both suites: pick the suite that states it best, and delete the other copy.
 
-## Fixtures (`Minimal.App.TestSupport` + `Integration/Support`)
+## Fixtures (`<YourApp>.App.TestSupport` + `Integration/Support`)
 
-`TestApiFactoryBase(string? dbName) : WebApplicationFactory<Minimal.Api.Program>` (in
-`Minimal.App.TestSupport`) is the shared host substitution both xUnit and BDD build on. It:
+`TestApiFactoryBase(string? dbName) : WebApplicationFactory<<YourApp>.Api.Program>` (in
+`<YourApp>.App.TestSupport`) is the shared host substitution both xUnit and BDD build on. It:
 
 - Sets `FeatureManagement:RunDbMigrationWhenAppStart/EnableSwagger/EnableAzureAppConfig = false` and
   `ConnectionStrings:AppDb = UseInMemory`.
@@ -143,7 +148,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
 
 The same class also proves a guarded state transition by calling the handler twice — `Cancel` once
 succeeds, a second `Cancel` on the same order fails with the `precondition.purchase-order-already-cancelled`
-message (`PreconditionCodes`, `Minimal.AppServices/Share/PreconditionCodes.cs`), and every mutating action
+message (`PreconditionCodes`, `<YourApp>.AppServices/Share/PreconditionCodes.cs`), and every mutating action
 fails when `ByUser` is left empty (the acting-user rule the manual mode enforces in the handler itself).
 
 **Precondition branch reachable only over HTTP from xUnit**
@@ -245,7 +250,7 @@ orders.ShouldAllBe(o => o.CreatedBy == SharedConsts.SystemAccount);
 ```
 
 **Architecture rule** (`Architecture/AppServiceTests.cs`), using NetArchTest against the compiled
-`Minimal.AppServices` assembly:
+`<YourApp>.AppServices` assembly:
 
 ```csharp
 var result = Types.InAssembly(typeof(AppSetup).Assembly)
@@ -268,11 +273,11 @@ result.IsSuccessful.ShouldBeTrue();
   violation on a generated CRUD route**; it returns 201/200 (`DKNet.AspCore.Extensions`'s generic
   `Map*<TRequest,TDto>` wrapper isn't visible to the validation source generator). A FluentValidation
   validator still runs on every route. Verify a declared event's composed name against the compiled
-  assembly before asserting on it — `strings bin/**/Minimal.Domains.dll | grep <Entity>`.
+  assembly before asserting on it — `strings bin/**/<YourApp>.Domains.dll | grep <Entity>`.
 
 ## Conventions
 
-- xUnit + Shouldly (`result.IsSuccess.ShouldBeTrue()`, not `Assert.True`). `Minimal.App.Tests.csproj`
+- xUnit + Shouldly (`result.IsSuccess.ShouldBeTrue()`, not `Assert.True`). `<YourApp>.App.Tests.csproj`
   disables analyzers and warnings-as-errors — production code style rules do not apply here.
 - Implicit usings from `GlobalUsings.cs`: `AutoBogus`, `Shouldly`, `System.Text.Json`, `MapsterMapper`,
   plus csproj-level `System.Net`, `Microsoft.Extensions.DependencyInjection`, `Xunit`. Still add explicit
@@ -287,11 +292,11 @@ result.IsSuccessful.ShouldBeTrue();
 ## Commands
 
 ```bash
-dotnet test ApiEndpoints/Minimal.App.Tests/Minimal.App.Tests.csproj --filter "FullyQualifiedName~PurchaseOrder"
+dotnet test ApiEndpoints/<YourApp>.App.Tests/<YourApp>.App.Tests.csproj --filter "FullyQualifiedName~PurchaseOrder"
 dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
 ```
 
-`coverage.runsettings` includes `[DKNet*]*` and `[Minimal*]*`, excludes `*.Tests`/`*Tests` assemblies and
+`coverage.runsettings` includes `[DKNet*]*` and `[<YourApp>*]*`, excludes `*.Tests`/`*Tests` assemblies and
 `**/bin/**, **/obj/**, **/*Tests.cs, **/GlobalUsings.cs, **/*.g.cs` by file — don't put real logic in an
 excluded path expecting it to be measured.
 
@@ -333,7 +338,7 @@ excluded path expecting it to be measured.
 
 The procedure an agent follows when invoked with arguments. The reference sections above are the rules it applies.
 
-You are adding integration tests in `Minimal.App.Tests` that exercise the AppServices and Domains layers through the real DI container.
+You are adding integration tests in `<YourApp>.App.Tests` that exercise the AppServices and Domains layers through the real DI container.
 
 ### Inputs
 
@@ -343,7 +348,7 @@ You are adding integration tests in `Minimal.App.Tests` that exercise the AppSer
 ### Required reading
 
 1. The reference sections above
-2. `ApiEndpoints/Minimal.App.Tests/` — existing fixtures and test patterns (`Architecture/`, `Integration/`, `Unit/`).
+2. `ApiEndpoints/<YourApp>.App.Tests/` — existing fixtures and test patterns (`Architecture/`, `Integration/`, `Unit/`).
 
 ### Steps
 
@@ -370,7 +375,7 @@ You are adding integration tests in `Minimal.App.Tests` that exercise the AppSer
      the gap is correct. Note the gap in the report instead.
 2. Run only the affected tests:
    ```
-   dotnet test ApiEndpoints/Minimal.App.Tests/Minimal.App.Tests.csproj --filter "FullyQualifiedName~<Entity>"
+   dotnet test ApiEndpoints/<YourApp>.App.Tests/<YourApp>.App.Tests.csproj --filter "FullyQualifiedName~<Entity>"
    ```
 3. If any test fails, fix the test or product code (per skill guidance) — do not relax assertions.
 4. Report: test file path, count, pass/fail, coverage areas hit.

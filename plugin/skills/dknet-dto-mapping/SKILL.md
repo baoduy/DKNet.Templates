@@ -1,6 +1,6 @@
 ---
 name: dknet-dto-mapping
-description: Design response DTOs and Mapster mapping for a DKNet.Minimal feature — hand-written vs [GenerateDto] shapes, custom Mapster IRegister mappings for values the generator's convention can't produce, LazyMapper, and the JSON/sensitive-data contract. Use after (or alongside) dknet-crud when a handler needs a DTO to return.
+description: Design response DTOs and Mapster mapping for a DKNet.Minimal feature — [GenerateDto] first and hand-written records as the fallback, custom Mapster IRegister mappings for values the generator's convention can't produce, LazyMapper, and the JSON/sensitive-data contract. Use after (or alongside) dknet-crud when a handler needs a DTO to return.
 ---
 
 # DTO and Mapster mapping
@@ -8,27 +8,15 @@ description: Design response DTOs and Mapster mapping for a DKNet.Minimal featur
 Response DTO shape and how it gets filled from the entity. For request contracts, validators and
 handlers, load `dknet-crud`. For paged query projections, load `dknet-queries-specs`.
 
-## Two DTO shapes
+## Two DTO shapes — `[GenerateDto]` first
 
-**Hand-written** — a plain record, exactly the fields you list:
-
-```csharp
-// ManualSample/V1/PurchaseOrderDto.cs
-public sealed record PurchaseOrderDto
-{
-    public Guid Id { get; init; }
-    public string CustomerName { get; init; } = null!;
-    public decimal Amount { get; init; }
-    public PurchaseOrderStatus Status { get; init; }
-    public string CreatedBy { get; init; } = null!;
-}
-```
-
-This carries **no attribute at all**, yet `mapper.Map<PurchaseOrderDto>(order)` and
-`mapper.ResultOf<PurchaseOrderDto>(order)` both work correctly. Mapster's global convention
-(`TypeAdapterConfig.GlobalSettings.Default`, configured once in `AppSetup.cs`) maps any two types by
-flexible name matching with no registration required — a hand-written DTO whose property names
-match the entity's needs nothing further.
+**Default to `[GenerateDto]`.** It keeps the DTO in step with the entity (a new property appears on
+the next build), carries `[SensitiveData]`/`[MaxLength]` across from the entity for free, and is what
+the generated CRUD and generic list routes read as their contract. Narrow it with `Exclude`/`Include`
+rather than abandoning it, and add a computed member on your own partial declaration rather than
+hand-writing the whole record. Hand-write a DTO only when the response must intentionally expose
+less than the entity *and* the feature has no generated route, or when a value needs CLR-only
+computation that could never be EF-translated.
 
 **Generated** — one attribute on an empty `partial record`:
 
@@ -67,6 +55,26 @@ that's how `SupplierCostPrice`/`SupplierReferenceCode` stay gated per caller (se
 `GrossMargin` is the file's one hand-written addition, on the *other*, non-generated partial
 declaration — the generator's output file is never edited directly.
 
+**Hand-written (fallback)** — a plain record, exactly the fields you list:
+
+```csharp
+// ManualSample/V1/PurchaseOrderDto.cs
+public sealed record PurchaseOrderDto
+{
+    public Guid Id { get; init; }
+    public string CustomerName { get; init; } = null!;
+    public decimal Amount { get; init; }
+    public PurchaseOrderStatus Status { get; init; }
+    public string CreatedBy { get; init; } = null!;
+}
+```
+
+This carries **no attribute at all**, yet `mapper.Map<PurchaseOrderDto>(order)` and
+`mapper.ResultOf<PurchaseOrderDto>(order)` both work correctly. Mapster's global convention
+(`TypeAdapterConfig.GlobalSettings.Default`, configured once in `AppSetup.cs`) maps any two types by
+flexible name matching with no registration required — a hand-written DTO whose property names
+match the entity's needs nothing further.
+
 ## `[GenerateDto]` options
 
 ```csharp
@@ -96,7 +104,7 @@ real mapped columns covering the same intent.
 
 ## Mapster global configuration
 
-`Minimal.AppServices/AppSetup.cs`, run once at startup:
+`<YourApp>.AppServices/AppSetup.cs`, run once at startup:
 
 ```csharp
 TypeAdapterConfig.GlobalSettings.Default.NameMatchingStrategy(NameMatchingStrategy.Flexible);
@@ -109,7 +117,7 @@ services.AddSingleton(TypeAdapterConfig.GlobalSettings)
         .AddScoped<IMapper, ServiceMapper>();
 ```
 
-`ScanMaps()` (`Minimal.AppServices/Extensions/MapsToExtensions.cs`) reflects over the assembly for
+`ScanMaps()` (`<YourApp>.AppServices/Extensions/MapsToExtensions.cs`) reflects over the assembly for
 every type carrying `[MapsFrom(typeof(Entity))]` or `[GenerateDto(typeof(Entity))]` and calls
 `config.NewConfig(entityType, dtoType)` for each — this is what makes a generated/`[MapsFrom]`-typed
 pair eagerly compiled and validated at startup, rather than resolved lazily by the `Default`
@@ -118,7 +126,7 @@ fallback rule on first use. **Ordering matters**: only *after* that loop does it
 merges their `ForType` customizations onto the config the loop just built. Reversing the order would
 have the convention's `NewConfig` wipe out the `IRegister`'s merge.
 
-`[MapsFrom]` on a hand-written DTO (`Minimal.AppServices.Extensions.MapsFromAttribute`) is **not
+`[MapsFrom]` on a hand-written DTO (`<YourApp>.AppServices.Extensions.MapsFromAttribute`) is **not
 required for the mapping to work** — `PurchaseOrderDto` proves that with zero attributes and zero
 registration. Reach for it only when you also want to attach a Mapster `IRegister` customization
 (a computed property, a rename) to that specific entity/DTO pair: `[MapsFrom]` puts the hand-written
@@ -215,7 +223,7 @@ carries its paging metadata (page number, total count) forward onto the DTO-type
 
 ## JSON contract
 
-`Minimal.Share/SharedConsts.JsonSerializerOptions` is the one source of truth for serialization
+`<YourApp>.Share/SharedConsts.JsonSerializerOptions` is the one source of truth for serialization
 shape — camelCase property names, nulls omitted (`DefaultIgnoreCondition.WhenWritingNull`), enums as
 camelCase strings (`JsonStringEnumConverter(JsonNamingPolicy.CamelCase)`). `ServiceConfigs.AddOptions`
 copies these settings onto ASP.NET Core's own `JsonOptions` via `ConfigureHttpJsonOptions`, so a
@@ -236,10 +244,10 @@ change to the DTO type itself.
 | Derived/computed value | Any C# expression, `AfterMapping` included | Only via a hand-written partial member + `IRegister`, and only if EF-translatable |
 | Needs `[MapsFrom]`? | Only to attach an `IRegister` customization | N/A — `[GenerateDto]` already opts in |
 
-Pick hand-written when the response should intentionally expose less than the entity, or when a
-value needs CLR-only computation (`AfterMapping`, external lookups) and will never back a generated
-list route. Pick `[GenerateDto]` when the entity already carries `[CrudCreate]`/`[CrudUpdate]` and
-the DTO doubles as the generic CRUD/list contract.
+Start at `[GenerateDto]` — always, when the entity carries `[CrudCreate]`/`[CrudUpdate]`, and by
+default otherwise too. Drop to a hand-written record only when the response must intentionally expose
+less than the entity *and* no generated route reads it, or when a value needs CLR-only computation
+(`AfterMapping`, external lookups) that will never back a generated list route.
 
 ## Common mistakes
 

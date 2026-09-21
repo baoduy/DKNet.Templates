@@ -51,14 +51,14 @@ Authorization: Bearer {token}
 
 | Layer | Path |
 |-------|------|
-| Domain Entity | `ApiEndpoints/Minimal.Domains/Features/{EntityFolder}/Entities/{EntityName}.cs` |
-| EF Core Mapper | `ApiEndpoints/Minimal.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs` |
-| Create Handler | `ApiEndpoints/Minimal.AppServices/{FeatureFolder}/V1/Actions/Create.cs` |
-| Update Handler | `ApiEndpoints/Minimal.AppServices/{FeatureFolder}/V1/Actions/Update.cs` |
-| Delete Handler | `ApiEndpoints/Minimal.AppServices/{FeatureFolder}/V1/Actions/Delete.cs` |
-| Domain Events | `ApiEndpoints/Minimal.AppServices/{FeatureFolder}/V1/Events/` |
-| Query Specs | `ApiEndpoints/Minimal.AppServices/{FeatureFolder}/V1/Specs/` |
-| API Endpoints | `ApiEndpoints/Minimal.Api/ApiEndpoints/{EntityName}V1Endpoints.cs` |
+| Domain Entity | `ApiEndpoints/<YourApp>.Domains/Features/{EntityFolder}/Entities/{EntityName}.cs` |
+| EF Core Mapper | `ApiEndpoints/<YourApp>.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs` |
+| Create Handler | `ApiEndpoints/<YourApp>.AppServices/{FeatureFolder}/V1/Actions/Create.cs` |
+| Update Handler | `ApiEndpoints/<YourApp>.AppServices/{FeatureFolder}/V1/Actions/Update.cs` |
+| Delete Handler | `ApiEndpoints/<YourApp>.AppServices/{FeatureFolder}/V1/Actions/Delete.cs` |
+| Domain Events | `ApiEndpoints/<YourApp>.AppServices/{FeatureFolder}/V1/Events/` |
+| Query Specs | `ApiEndpoints/<YourApp>.AppServices/{FeatureFolder}/V1/Specs/` |
+| API Endpoints | `ApiEndpoints/<YourApp>.Api/ApiEndpoints/{EntityName}V1Endpoints.cs` |
 
 ## Related Documentation
 

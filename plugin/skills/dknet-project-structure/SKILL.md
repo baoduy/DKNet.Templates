@@ -11,21 +11,21 @@ of this same map — read it too if you're unsure which project a file belongs i
 ## Layer boundaries and dependency direction
 
 ```
-Minimal.Api          → entry point, endpoints, auth, OpenAPI
+<YourApp>.Api          → entry point, endpoints, auth, OpenAPI
   ↓
-Minimal.AppServices  → CQRS handlers, validators, DTOs, domain event handlers
+<YourApp>.AppServices  → CQRS handlers, validators, DTOs, domain event handlers
   ↓
-Minimal.Domains      → entities, aggregate roots, domain service contracts
+<YourApp>.Domains      → entities, aggregate roots, domain service contracts
   ↑
-Minimal.Infra        → EF Core (CoreDbContext), repos, event publisher, service bus
+<YourApp>.Infra        → EF Core (CoreDbContext), repos, event publisher, service bus
   (wires into Api via InfraSetup.AddInfraServices)
 
-Minimal.Share        → shared constants/options/base types (read by all layers)
-Minimal.AppHost      → Aspire orchestration only (Redis + PostgreSQL + Minimal.Api), no business logic
+<YourApp>.Share        → shared constants/options/base types (read by all layers)
+<YourApp>.AppHost      → Aspire orchestration only (Redis + PostgreSQL + <YourApp>.Api), no business logic
 ```
 
-Every project reference points inward: `Minimal.Domains` references only `Minimal.Share`;
-`Minimal.AppServices` depends only on `Domains` (+ `Share`); `Minimal.Infra` and `Minimal.Api`
+Every project reference points inward: `<YourApp>.Domains` references only `<YourApp>.Share`;
+`<YourApp>.AppServices` depends only on `Domains` (+ `Share`); `<YourApp>.Infra` and `<YourApp>.Api`
 depend on both, never the reverse. An outward reference (`Domains` → `AppServices`, say) is a
 circular project reference MSBuild refuses outright — the compiler holds this boundary, not a test.
 
@@ -33,15 +33,15 @@ circular project reference MSBuild refuses outright — the compiler holds this 
 
 | Project | Owns |
 |---|---|
-| `Minimal.Domains` | Entities, aggregate roots, owned types, domain service **contracts** (`IDomainService`) |
-| `Minimal.Infra` | EF Core mappers, seed data, repositories, `EventPublisher`, service-bus topology, domain service **implementations** |
-| `Minimal.AppServices` | Command/query requests, handlers, FluentValidation validators, specs, DTOs, domain-event consumers |
-| `Minimal.Api` | `IEndpointConfig` route groups, auth policies, platform `Configs/` |
-| `Minimal.Share` | Cross-cutting constants/options (`FeatureOptions`, `SharedConsts`) read by every layer |
-| `Minimal.AppHost` | Aspire orchestration (Redis, PostgreSQL, sample-data generation) — no business logic |
+| `<YourApp>.Domains` | Entities, aggregate roots, owned types, domain service **contracts** (`IDomainService`) |
+| `<YourApp>.Infra` | EF Core mappers, seed data, repositories, `EventPublisher`, service-bus topology, domain service **implementations** |
+| `<YourApp>.AppServices` | Command/query requests, handlers, FluentValidation validators, specs, DTOs, domain-event consumers |
+| `<YourApp>.Api` | `IEndpointConfig` route groups, auth policies, platform `Configs/` |
+| `<YourApp>.Share` | Cross-cutting constants/options (`FeatureOptions`, `SharedConsts`) read by every layer |
+| `<YourApp>.AppHost` | Aspire orchestration (Redis, PostgreSQL, sample-data generation) — no business logic |
 
-`Minimal.App.Tests` (xUnit + Shouldly), `Minimal.App.BDDTests` (Reqnroll + NUnit) and
-`Minimal.App.TestSupport` (shared `WebApplicationFactory` base) round out the solution but carry no
+`<YourApp>.App.Tests` (xUnit + Shouldly), `<YourApp>.App.BDDTests` (Reqnroll + NUnit) and
+`<YourApp>.App.TestSupport` (shared `WebApplicationFactory` base) round out the solution but carry no
 feature code of their own.
 
 ## Vertical-slice folder footprint for one feature
@@ -51,12 +51,12 @@ the two shipped samples, `ManualSample` and `AutomatedSample`, under `ApiEndpoin
 
 | Layer | `mode=manual` | `mode=auto` |
 |---|---|---|
-| Domains | `Minimal.Domains/Features/<Feature>/Entities/` — hand-written mutation + `AddEvent(...)` | same path — class-level `[RaisesEvent]`, `[CrudCreate]` ctor, `[CrudUpdate]`/`[CrudAction]` methods |
-| Infra | `Minimal.Infra/Features/<Feature>/Mappers/` (`IEntityTypeConfiguration<T>`), optional `StaticData/` (seed data) | same `Mappers/` (still hand-written — no generator produces it), optional `ExternalEvents/` (broker consumers) |
-| AppServices | `Minimal.AppServices/<Feature>/V1/Actions/`, `Queries/`, `Specs/`, `Events/`, `<Feature>Dto.cs` | `Minimal.AppServices/<Feature>/V1/<Feature>Dto.cs` (one `[GenerateDto]` line), `Events/` (consumers only — generator raises, doesn't consume), plus optional `Validators/` (precondition rules against a generated request), `Actions/` (any operation dropped out of the generated map), `Queries/`/`Specs/` (custom read shapes), and a Mapster `IRegister` for any hand-added DTO property |
-| Api | `Minimal.Api/ApiEndpoints/<Feature>/<Entity>V1Endpoint.cs` — every route a literal `Map*` call | same file — one `group.Map<Entity>Crud(o => …)` call, plus any routes excluded from it mapped literally below |
-| Tests | `Minimal.App.Tests/Unit/<Feature>/`, `Minimal.App.Tests/Integration/<Feature>/V1/` | same |
-| BDD | `Minimal.App.BDDTests/Features/<Plural>/*.feature` + `Steps/*.cs` | same |
+| Domains | `<YourApp>.Domains/Features/<Feature>/Entities/` — hand-written mutation + `AddEvent(...)` | same path — class-level `[RaisesEvent]`, `[CrudCreate]` ctor, `[CrudUpdate]`/`[CrudAction]` methods |
+| Infra | `<YourApp>.Infra/Features/<Feature>/Mappers/` (`IEntityTypeConfiguration<T>`), optional `StaticData/` (seed data) | same `Mappers/` (still hand-written — no generator produces it), optional `ExternalEvents/` (broker consumers) |
+| AppServices | `<YourApp>.AppServices/<Feature>/V1/Actions/`, `Queries/`, `Specs/`, `Events/`, `<Feature>Dto.cs` | `<YourApp>.AppServices/<Feature>/V1/<Feature>Dto.cs` (one `[GenerateDto]` line), `Events/` (consumers only — generator raises, doesn't consume), plus optional `Validators/` (precondition rules against a generated request), `Actions/` (any operation dropped out of the generated map), `Queries/`/`Specs/` (custom read shapes), and a Mapster `IRegister` for any hand-added DTO property |
+| Api | `<YourApp>.Api/ApiEndpoints/<Feature>/<Entity>V1Endpoint.cs` — every route a literal `Map*` call | same file — one `group.Map<Entity>Crud(o => …)` call, plus any routes excluded from it mapped literally below |
+| Tests | `<YourApp>.App.Tests/Unit/<Feature>/`, `<YourApp>.App.Tests/Integration/<Feature>/V1/` | same |
+| BDD | `<YourApp>.App.BDDTests/Features/<Plural>/*.feature` + `Steps/*.cs` | same |
 
 The domain/AppServices feature folder name doesn't have to match the BDD folder's plural — the two
 samples happen to (`ManualSample`↔`PurchaseOrders`, `AutomatedSample`↔`Products`).
@@ -65,16 +65,16 @@ samples happen to (`ManualSample`↔`PurchaseOrders`, `AutomatedSample`↔`Produ
 
 | What | Found by | Scans |
 |---|---|---|
-| HTTP route group | `IEndpointConfig` | `UseEndpointConfigs`, assembly scan of `Minimal.Api` |
-| Command/query request+handler | `Fluents.Requests.*`/`Fluents.Queries.*` | `AutoDeclareFrom`/`AddServicesFromAssembly` on the in-memory bus, scanning `Minimal.AppServices` |
+| HTTP route group | `IEndpointConfig` | `UseEndpointConfigs`, assembly scan of `<YourApp>.Api` |
+| Command/query request+handler | `Fluents.Requests.*`/`Fluents.Queries.*` | `AutoDeclareFrom`/`AddServicesFromAssembly` on the in-memory bus, scanning `<YourApp>.AppServices` |
 | Request validator | `AbstractValidator<TRequest>` | `AddValidatorsFromAssembly(typeof(AppSetup).Assembly, includeInternalTypes: true)` |
 | EF Core table mapping | `IEntityTypeConfiguration<T>` | `UseAutoConfigModel([...])` — must be wired in **both** `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb` |
 | Seed data | `DataSeedingConfiguration<T>` (base class, not an interface) | `UseAutoDataSeeding([...])` — same both-places rule; wiring only one is a real bug this template hit once |
-| Repos/domain services | — (not auto-discovered) | Explicit `AddScoped<IService, Service>()` line in `InfraSetup.AddInfraServices`; keep implementations `internal sealed` under `Minimal.Infra/Services/` |
-| DTO mapping | `[MapsFrom(typeof(Entity))]` or `[GenerateDto(typeof(Entity))]` | Mapster `ScanMaps()` in `Minimal.AppServices/AppSetup.cs` |
+| Repos/domain services | — (not auto-discovered) | Explicit `AddScoped<IService, Service>()` line in `InfraSetup.AddInfraServices`; keep implementations `internal sealed` under `<YourApp>.Infra/Services/` |
+| DTO mapping | `[MapsFrom(typeof(Entity))]` or `[GenerateDto(typeof(Entity))]` | Mapster `ScanMaps()` in `<YourApp>.AppServices/AppSetup.cs` |
 | Custom Mapster config | `IRegister` | `config.Scan(assembly)`, same `AppSetup.cs` |
 | Internal event consumer | `Fluents.EventsConsumers.IHandler<TEvent>` in `AppServices` | `AddServicesFromAssembly` on the in-memory child bus |
-| External (broker) event consumer | same interface in `Minimal.Infra/Features/<Feature>/ExternalEvents/` | `AddServicesFromAssembly` on the Azure child bus — reached only via an explicit `azb.Produce`/`azb.Consume` pair in `ServiceBusSetup.cs` |
+| External (broker) event consumer | same interface in `<YourApp>.Infra/Features/<Feature>/ExternalEvents/` | `AddServicesFromAssembly` on the Azure child bus — reached only via an explicit `azb.Produce`/`azb.Consume` pair in `ServiceBusSetup.cs` |
 
 ## The two shipped samples
 
@@ -92,12 +92,12 @@ Run from the solution root — `dotnet build`/`dotnet test` need no explicit `.s
 ```bash
 dotnet build -c Release
 dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
-dotnet run --project ApiEndpoints/Minimal.Api            # API only
-dotnet run --project ApiEndpoints/Minimal.AppHost        # Redis + PostgreSQL via Aspire
+dotnet run --project ApiEndpoints/<YourApp>.Api            # API only
+dotnet run --project ApiEndpoints/<YourApp>.AppHost        # Redis + PostgreSQL via Aspire
 
 cd ApiEndpoints
-dotnet ef migrations add <Name>    -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
-dotnet ef migrations remove        -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
+dotnet ef migrations add <Name>    -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj
+dotnet ef migrations remove        -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj
 ```
 
 See `dknet-scaffold` for the install/generate steps and how these project names map onto your own

@@ -34,6 +34,6 @@ Use this checklist before considering BDD scenario work complete.
 ## Validation
 
 - [ ] `dotnet build -c Release` succeeds
-- [ ] `dotnet test ApiEndpoints/Minimal.App.BDDTests/Minimal.App.BDDTests.csproj` passes
+- [ ] `dotnet test ApiEndpoints/<YourApp>.App.BDDTests/<YourApp>.App.BDDTests.csproj` passes
 - [ ] No undefined or pending Reqnroll steps
 - [ ] Scenario names are readable in test output

@@ -24,7 +24,7 @@ An aggregate is a transactional consistency boundary: everything inside it is sa
 
 - If two pieces of data must always be consistent with each other *at the moment they're saved* (e.g. a `PurchaseOrder`'s `Amount` and its `Status` — cancelling and re-pricing an order in the same save must not leave those two fields disagreeing), they belong in the same aggregate. That's why `PurchaseOrder` owns both `Amount` and `Status` directly rather than splitting them into two persisted types.
 - If two pieces of data can be consistent *eventually*, a moment apart, they belong in separate aggregates, coordinated through a domain event — not a direct object reference.
-- Aggregates reference each other by ID (`Guid`), never by object reference. `PurchaseOrder` (`ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`) does not hold a `Customer` object — it holds a plain `CustomerName` string, no navigation property back to another aggregate.
+- Aggregates reference each other by ID (`Guid`), never by object reference. `PurchaseOrder` (`ApiEndpoints/<YourApp>.Domains/Features/ManualSample/Entities/PurchaseOrder.cs`) does not hold a `Customer` object — it holds a plain `CustomerName` string, no navigation property back to another aggregate.
 
 Keep aggregates small. A large aggregate means more contention (every mutation locks the whole thing) and usually signals a boundary was drawn around "things that seem related" rather than "things that must be consistent together."
 
@@ -41,26 +41,73 @@ An invariant is a rule that must always hold true for an entity (e.g. "amount is
 
 - Properties are `{ get; private set; }`. Nothing outside the entity can put it into an invalid state directly.
 - The constructor establishes the invariant for a new entity. Named mutation methods (`ChangeAmount`, `Cancel` — see `PurchaseOrder` in `dknet-entity`) re-establish it for every mutation, and are the *only* path to changing mutable state.
-- A rule that depends on the entity's **own current state** belongs on the entity, or right next to the fetch in the handler when it must read the stored row first. `PurchaseOrder.Cancel(string userId)` is the clearest example: `CancelPurchaseOrderCommandHandler` (`ApiEndpoints/Minimal.AppServices/ManualSample/V1/Actions/Cancel.cs`) checks `order.Status == PurchaseOrderStatus.Cancelled` and fails the request *before* calling `Cancel`; the transition itself still lives on the entity. Note the weakness this leaves — the guard is one call away from being bypassed by a second caller who skips it, so treat handler-side guards as a boundary check, not as the invariant's home.
+- A rule that depends on the entity's **own current state** belongs on the entity, or right next to the fetch in the handler when it must read the stored row first. `PurchaseOrder.Cancel(string userId)` is the clearest example: `CancelPurchaseOrderCommandHandler` (`ApiEndpoints/<YourApp>.AppServices/ManualSample/V1/Actions/Cancel.cs`) checks `order.Status == PurchaseOrderStatus.Cancelled` and fails the request *before* calling `Cancel`; the transition itself still lives on the entity. Note the weakness this leaves — the guard is one call away from being bypassed by a second caller who skips it, so treat handler-side guards as a boundary check, not as the invariant's home.
 - If a rule needs data external to the entity (e.g. "customer name must be unique across all orders"), that's not an entity invariant — it's a cross-entity business rule, and it belongs in the command handler as a duplicate-check `Specification` query (see `dknet-crud`), because the entity has no way to see other entities.
 
 ## When to Use a Domain Event
 
-This codebase has two equally valid ways to raise the same kind of event — pick the one that matches how much control you need over the raise:
-
-- **Hand-raised** (`PurchaseOrder`): the constructor calls `AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))` directly, in application code you can step through in a debugger. You write the payload by hand. Use this when the event's payload, timing, or "did this actually happen" condition needs logic more specific than "a tracked property changed."
-- **Declared** (`Product`): the class carries `[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]` and `[RaisesEvent(EventOperations.Updated, nameof(Price))]` — no line of application code calls `AddEvent` anywhere in `AutomatedSample/`. DKNet's EF Core save hook reads these declarations and raises the composed event records (`ProductCreatedEvent`, `ProductPriceUpdatedEvent`) after a successful `SaveChanges`, driven by the change tracker. Use this when the event is a straightforward "this property changed" notification and you're already using `[CrudCreate]`/`[CrudUpdate]` for the entity.
-  The trade-offs: you cannot single-step from "constructor ran" to "event raised" the way you can with `AddEvent`, and the payload's name and shape follow a fixed composition rule (`<Entity><NarrowingProps><Operation>Event`) rather than one you choose — verify the composed name against the compiled assembly before wiring a consumer to it.
-
-Both styles are delivered identically afterward: `ApiEndpoints/Minimal.Infra/Services/EventPublisher.cs` forwards to `IMessageBus` regardless of which raised the event.
-
-Reach for either one when **something outside this aggregate might care that this happened** — another aggregate needs to react, or an external system needs to be notified. `Product`'s declared `Created` event is consumed both in-process and over Azure Service Bus (`ProductCreatedNotificationHandler`), exactly as a hand-raised one would be.
+First decide **whether** there should be an event at all. Reach for one when **something outside
+this aggregate might care that this happened** — another aggregate needs to react, or an external
+system needs to be notified. `Product`'s declared `Created` event is consumed both in-process and
+over Azure Service Bus (`ProductCreatedNotificationHandler`).
 
 Do NOT reach for an event when the effect is entirely local to this one request:
-- Setting a computed field during the same handler → just do it in the handler or the entity method, no event needed.
+
+- Setting a computed field during the same handler → just do it in the handler or the entity method.
 - A validation failure → return `Result.Fail(...)`, don't publish an event.
 
-If you can't name a concrete future subscriber (even a logging handler counts, but "just in case" doesn't), it's not an event yet — add it when a real consumer appears.
+If you can't name a concrete future subscriber (even a logging handler counts, but "just in case"
+doesn't), it's not an event yet — add it when a real consumer appears.
+
+### How to raise it — take the highest rung that works
+
+| Rung | Form | Use it when |
+|---|---|---|
+| 1 | **`[RaisesEvent]` on the class** | The event means "this entity was created" or "these properties changed". Default. |
+| 2 | **`AddEvent<TEvent>()` in a mutation method** | Rung 1 can't decide *whether* to raise — the condition is real logic — but the payload is still a projection of the entity. |
+| 3 | **`AddEvent(new TEvent(...))`** | The payload is not a projection of the entity: it carries a computed value, a before/after pair, or data the entity doesn't hold. |
+
+**Rung 1 — declared (`Product`).** The class carries
+`[RaisesEvent(EventOperations.Created, Include = [nameof(Id), nameof(Name), nameof(Price)])]` and
+`[RaisesEvent(EventOperations.Updated, nameof(Price))]`; no line of application code calls
+`AddEvent` anywhere in `AutomatedSample/`. DKNet's EF Core save hook reads the declarations and
+raises the composed records (`ProductCreatedEvent`, `ProductPriceUpdatedEvent`) after a successful
+`SaveChanges`, driven by the change tracker. `<YourApp>.App.Tests/Architecture/SampleInvariantTests`
+fails the build if a hand-written `AddEvent(` appears under `AutomatedSample`.
+
+What you give up: you cannot single-step from "constructor ran" to "event raised", and the payload's
+name and shape follow a fixed composition rule (`<Entity><NarrowingProps><Operation>Event`) rather
+than one you choose — verify the composed name against the compiled assembly before wiring a
+consumer to it, it has no source file.
+
+**Rung 2 — type-only (`AddEvent<TEvent>()`).** Registers the event *type*; the publisher maps the
+entity onto it (`IMapper.Map(entity, entityType, eventType)`) when the save succeeds:
+
+```csharp
+public void Cancel(string byUser)
+{
+    if (Status == PurchaseOrderStatus.Cancelled) return;   // the raise IS conditional
+    Status = PurchaseOrderStatus.Cancelled;
+    SetUpdatedBy(byUser);
+    AddEvent<PurchaseOrderCancelledEvent>();               // payload projected from the entity
+}
+```
+
+You keep control of *when*, and still hand-write no payload. It **requires an `IMapper`
+registration** — with none, the publisher throws `EventException` rather than silently dropping the
+event — and the event record's members must be mappable from the entity's own properties.
+
+**Rung 3 — instance (`AddEvent(new …)`, `PurchaseOrder`).** The constructor calls
+`AddEvent(new PurchaseOrderCreatedEvent(Id, CustomerName, Amount))` directly. Full control of
+payload, name and timing, at the cost of a hand-written record and a hand-written construction site
+that can drift from the entity. Take it only when the payload is genuinely not a projection of the
+entity's current state.
+
+All three are delivered identically afterward:
+`ApiEndpoints/<YourApp>.Infra/Services/EventPublisher.cs` forwards to `IMessageBus` regardless of
+which raised the event. Mixing rungs on one entity is allowed — a declared `Created` alongside one
+hand-raised transition event is fine — except under `AutomatedSample`, where the architecture test
+pins it to rung 1 only.
 
 ## Avoiding Anemic Domain Models
 
@@ -77,6 +124,8 @@ The handler's job is orchestration: fetch the entity (via `IRepositorySpec` + a 
 - [ ] Does this type ever get looked up independently of its parent? If no, it's a value object, not an entity.
 - [ ] Does this rule only need data already on the entity? If yes, enforce it in the entity's constructor/`Update` method, not the handler.
 - [ ] Can I name a real, current subscriber for this event? If no, skip the event for now.
+- [ ] If it is an event: can `[RaisesEvent]` express it? If not, can `AddEvent<TEvent>()`? Only then
+      hand-build the payload with `AddEvent(new …)`.
 - [ ] Is the handler computing business logic, or just orchestrating fetch → mutate → persist → map? If it's computing, move the logic onto the entity.
 
 ---

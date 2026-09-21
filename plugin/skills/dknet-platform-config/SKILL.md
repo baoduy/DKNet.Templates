@@ -11,7 +11,7 @@ instead — this skill only covers cross-cutting platform wiring.
 
 ## Start-up order
 
-`Minimal.Api/Program.cs`, in the order it actually runs:
+`<YourApp>.Api/Program.cs`, in the order it actually runs:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -114,7 +114,7 @@ registration (needed because `ConfigureHttpJsonOptions` has no service-provider 
 
 ## `FeatureManagement` flags
 
-Section name is `FeatureManagement` (`FeatureOptions.Name`), bound in `Minimal.Api/Program.cs` via
+Section name is `FeatureManagement` (`FeatureOptions.Name`), bound in `<YourApp>.Api/Program.cs` via
 `GetSection(FeatureOptions.Name).Get<FeatureOptions>()`. **Every JSON key must spell a
 `FeatureOptions` property name exactly** — `Get<FeatureOptions>()` silently ignores an unknown key
 instead of failing, so a typo no-ops rather than erroring.
@@ -131,7 +131,7 @@ instead of failing, so a typo no-ops rather than erroring.
 | `EnableRateLimit` | `true` | `true` | `false` | `false` | `Configs/RateLimits/RateLimitConfig.cs` |
 | `EnableRequestBounds` | `true` | `true` | **`false`** | — | `Configs/RequestBoundsConfig.cs` |
 | `EnableSecurityHeaders` | `true` | `true` | **`false`** | — | `Configs/SecurityHeadersConfig.cs` |
-| `EnableServiceBus` | `false` | `true` | `false` | — | `Minimal.Infra/Extensions/ServiceBusSetup.cs` (Azure child bus only) |
+| `EnableServiceBus` | `false` | `true` | `false` | — | `<YourApp>.Infra/Extensions/ServiceBusSetup.cs` (Azure child bus only) |
 | `EnableSwagger` | `false` | `false` | `true` | — | `Configs/Swagger/SwaggerConfig.cs` |
 | `EnableVersioning` | `true` | `true` | — | — | `Configs/VersioningConfig.cs` |
 | `RequireAuthorization` | `false` | **`true`** | `false` | `false` | `Configs/Auth/AuthConfig.cs` |
@@ -149,7 +149,7 @@ alone does nothing — the Azure child bus is added only when the flag is `true`
 `ConnectionStrings:AzureBus` is non-empty; the in-memory child bus that carries internal
 command/event dispatch is unconditional.
 
-**Adding a flag**: add the `bool` property to `Minimal.Share/Options/FeatureOptions.cs`, add the
+**Adding a flag**: add the `bool` property to `<YourApp>.Share/Options/FeatureOptions.cs`, add the
 same-spelled key to every `appsettings*.json` that needs a non-default value, and consume it either
 as `features.YourFlag` inside `AppConfig.cs`/`ServiceConfigs.cs` (both already receive a
 `FeatureOptions features` parameter) or via `IOptions<FeatureOptions>` injected anywhere else in DI.
@@ -158,7 +158,7 @@ as `features.YourFlag` inside `AppConfig.cs`/`ServiceConfigs.cs` (both already r
 
 | Section | Keys | Shipped default | Reads |
 |---|---|---|---|
-| `ConnectionStrings` | `AppDb`, `Redis`, `AzureBus`, `AzureAppConfig` | all `""` except overlays | `AppDb` → `Minimal.Infra/Extensions/InfraSetup.cs`, `DbMigration.cs`; `Redis` → `CacheConfig.cs`, `AppConfig.cs` (idempotency store); `AzureBus` → `ServiceBusSetup.cs`; `AzureAppConfig` → `AzureAppConfigSetup.cs` |
+| `ConnectionStrings` | `AppDb`, `Redis`, `AzureBus`, `AzureAppConfig` | all `""` except overlays | `AppDb` → `<YourApp>.Infra/Extensions/InfraSetup.cs`, `DbMigration.cs`; `Redis` → `CacheConfig.cs`, `AppConfig.cs` (idempotency store); `AzureBus` → `ServiceBusSetup.cs`; `AzureAppConfig` → `AzureAppConfigSetup.cs` |
 | `Authentication:Schemes:Bearer` | `MetadataAddress`, `ValidAudiences`, `ValidIssuer` | placeholder tenant/audience | bound by ASP.NET Core's own `AddJwtBearer()`; registered only when `RequireAuthorization` is on |
 | `Cors` | `AllowedOrigins` (`[]`), `AllowedMethods` (`GET,POST,PUT,PATCH`), `AllowedHeaders` (`Authorization,Content-Type,Accept,X-Idempotency-Key`) | empty origins ⇒ CORS not wired at all | `Configs/CrosConfig.cs` |
 | `Security` | `TrustedProxies` (IP list), `TrustedNetworks` (CIDR list) | both `[]` | `Configs/ForwardedHeadersConfig.cs` — both empty ⇒ `ForwardedHeaders.None` |
@@ -167,10 +167,10 @@ as `features.YourFlag` inside `AppConfig.cs`/`ServiceConfigs.cs` (both already r
 | `RateLimit` | `DefaultRequestLimit`, `DefaultConcurrentLimit`, `TimeWindowInSeconds` | class default `2/2/1s`; base file `100/20/1s`; Development `1/1/10s` | `Configs/RateLimits/RateLimitConfig.cs` |
 | `AzureAppConfiguration` | `KeyPrefix`, `Label`, `CacheExpirationInSeconds`, `LoadFeatureFlags`, `FeatureFlagPrefix` | ships in base file | **dead** — see below |
 | `AzureAppConfig` | `ConnectionStringName` (`AzureAppConfig`), `Label` (`null`→`SharedConsts.ApiName`), `LoadFeatureFlags`, `FeatureFlagPrefix`, `RefreshIntervalInMinutes` | not shipped in base file | `Configs/AzureAppConfig/AzureAppConfigSetup.cs` — the last three properties are declared but never read; refresh is hard-coded to 30 minutes |
-| `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME` | flat keys, not a section | `http://localhost:4317`; `Minimal.Api` | `Configs/LogConfigs.cs` reads only the endpoint key as a presence check; `OTEL_SERVICE_NAME` is never read by template code |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME` | flat keys, not a section | `http://localhost:4317`; `<YourApp>.Api` | `Configs/LogConfigs.cs` reads only the endpoint key as a presence check; `OTEL_SERVICE_NAME` is never read by template code |
 | `AzureMonitor:ConnectionString` | — | `""` | `Configs/LogConfigs.cs` — non-blank adds `UseAzureMonitor()` |
 | `DKNet:ListQuery` | `DefaultPageSize`, `MaxPageSize`, `DefaultActivityWindowMonths` | package defaults (1000/1000/3) | consumed by the generic `MapGetList<TEntity,TKey,TDto>` route |
-| `SampleData:RecordsPerEntity` | — | `10000` | `Minimal.AppHost/appsettings.json`, read by `AppHost.cs` only — never present in the API |
+| `SampleData:RecordsPerEntity` | — | `10000` | `<YourApp>.AppHost/appsettings.json`, read by `AppHost.cs` only — never present in the API |
 
 `AzureAppConfiguration` (note the longer name) is a real trap: it ships in the base
 `appsettings.json` but binds to nothing — `AzureAppConfigOptions.Name` is `"AzureAppConfig"`, a
@@ -265,7 +265,7 @@ option nor an option's value; `JobRegistry.Jobs` maps recognized names (case-ins
 message-bus connection opened.
 
 ```bash
-dotnet run --project ApiEndpoints/Minimal.Api -- migration
+dotnet run --project ApiEndpoints/<YourApp>.Api -- migration
 ```
 
 `RunDbMigrationWhenAppStart` is the in-process alternative: same `MigrationJob.RunAsync` call, made
@@ -277,13 +277,13 @@ Keep a job as small as `MigrationJob`: it receives the builder as it stood right
 `AddLogConfig`, with no DI container built yet, so it constructs what it needs directly from
 `builder.Configuration`/`builder.Services.BuildServiceProvider()` rather than resolving from a host.
 
-## Aspire (`Minimal.AppHost`)
+## Aspire (`<YourApp>.AppHost`)
 
 `AppHost.cs` provisions `Redis` and `Postgres` (with an `AppDb` database), starts the `Api` project
-by path (`../Minimal.Api/Minimal.Api.csproj` — a literal path string, not `AddProject<T>`, so it
+by path (`../<YourApp>.Api/<YourApp>.Api.csproj` — a literal path string, not `AddProject<T>`, so it
 survives `sourceName` rewriting even for a dotted name), and calls `.WaitFor(cache).WaitFor(apDb)`.
 Azure Service Bus is **not** wired — `.WaitFor(bus)` is commented out in source; only Redis and
-PostgreSQL resources exist. `Minimal.AppHost/Configs/busConfig.json` (an Azure Service Bus emulator
+PostgreSQL resources exist. `<YourApp>.AppHost/Configs/busConfig.json` (an Azure Service Bus emulator
 topology file for the `product-tp`/`product-sub` topic) sits in the project but nothing in
 `AppHost.cs` references it — it is not currently wired to any resource.
 
@@ -297,15 +297,15 @@ role-gated filtering is visible on a freshly started host.
 
 ```bash
 # Full stack — Redis + PostgreSQL via Docker, sample data generated
-dotnet run --project ApiEndpoints/Minimal.AppHost
+dotnet run --project ApiEndpoints/<YourApp>.AppHost
 
 # API only — no containers, needs ConnectionStrings:AppDb supplied yourself
-dotnet run --project ApiEndpoints/Minimal.Api
+dotnet run --project ApiEndpoints/<YourApp>.Api
 ```
 
 ## Test hosts
 
-`Minimal.App.TestSupport/TestApiFactoryBase.cs` is the shared `WebApplicationFactory<Program>` both
+`<YourApp>.App.TestSupport/TestApiFactoryBase.cs` is the shared `WebApplicationFactory<Program>` both
 xUnit and BDD suites subclass. It always: `UseEnvironment("Testing")`; pushes
 `FeatureManagement:RunDbMigrationWhenAppStart=false`, `EnableSwagger=false`,
 `EnableAzureAppConfig=false`, `ConnectionStrings:AppDb=UseInMemory` through

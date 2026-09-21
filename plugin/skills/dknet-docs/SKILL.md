@@ -1,6 +1,6 @@
 ---
 name: dknet-docs
-description: Generate structured technical documentation and Mermaid architecture diagrams for completed features. Use this when documenting implemented features with README, architecture diagrams, and API references. Invoke as `/dknet-docs <Feature>` to scaffold it for a feature.
+description: Generate structured technical documentation for a completed feature and every endpoint it exposes — README, architecture and flow diagrams drawn with archify (Mermaid as the fallback), per-route API reference, data model, and domain events. Use this when documenting an implemented feature. Invoke as `/dknet-docs <Feature>` to scaffold it for a feature.
 metadata:
   kind: workflow
   arguments: "<Feature>"
@@ -29,7 +29,9 @@ Usage: `/dknet-docs <Feature>`
 | `data-model.md` | Entity diagram, properties, constraints, relationships |
 | `events.md` | Domain events catalog with publishers and subscribers |
 
-**Diagram tool**: All diagrams use **Mermaid.js** — rendered natively in GitHub, VS Code Preview, and most wikis. No extra tools required.
+**Diagram tool**: **archify first, Mermaid as the fallback** — see *Diagrams* below. Every endpoint the
+feature exposes gets its own section in `api-reference.md`; a feature is not documented until every
+route it publishes is.
 
 **Real examples already in this repo**: this skill is about documenting a *new* feature you just
 built, not about the two worked samples that ship with the template — but those samples
@@ -107,7 +109,7 @@ X-Idempotency-Key: 6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e01
 
 ### Step 3: Write architecture.md (Diagrams + Data Flow)
 
-**What you're doing**: Show how the feature is structured across layers with a vertical slice diagram. Use Mermaid for all diagrams.
+**What you're doing**: Show how the feature is structured across layers with a vertical slice diagram. Render it with archify per *Diagrams* below; the Mermaid examples here are the fallback shape.
 
 **Five diagrams to include**:
 
@@ -124,13 +126,13 @@ Example Vertical Slice Overview diagram (from the `PurchaseOrder` sample):
 ```mermaid
 graph TD
     Client["Client / Browser"]
-    subgraph API["Minimal.Api"]
+    subgraph API["<YourApp>.Api"]
         EP["PurchaseOrderV1Endpoint.cs"]
     end
-    subgraph AppServices["Minimal.AppServices"]
+    subgraph AppServices["<YourApp>.AppServices"]
         HDL["Command Handlers"]
     end
-    subgraph Domains["Minimal.Domains"]
+    subgraph Domains["<YourApp>.Domains"]
         ENT["PurchaseOrder (AggregateRoot)"]
     end
     DB[("PostgreSQL")]
@@ -142,6 +144,24 @@ graph TD
 ### Step 4: Write api-reference.md (Endpoint Reference)
 
 **What you're doing**: Full endpoint documentation with curl examples, request/response schemas, and error codes.
+
+**One section per route, no exceptions.** Enumerate the feature's routes from the endpoint config —
+for a generated slice that means every route `Map<Entity>Crud()` publishes (`GET {id}`, `GET /`,
+`POST /`, one `PUT {id}` per `[CrudUpdate]`, `DELETE {id}`, and one route per `[CrudAction]`), minus
+anything `CrudMapOptions.Exclude` drops, plus every hand-mapped route below it. Build once and read
+the generated `<Entity>CrudEndpoints.g.cs` rather than guessing the list. Each section states:
+
+| Line | What it must say |
+|---|---|
+| Method + path | Including the `/v{n}` version segment when `EnableVersioning` is on |
+| Authorization | The scope the route requires, and whether it comes from `[EndpointGroupScope]`, `o.Configure(...)` or a hand-mapped `.RequireAuthorization(...)` — or "none, `RequireAuthorization` off" |
+| Idempotency | `X-Idempotency-Key` required, or explicitly "not idempotent — a retry creates a second row" for a generated create route |
+| Request | Every bound field, its type, whether it is required, and where it binds from (body, route, query, claim) |
+| Response | Status code + DTO, and every error status the route can actually return |
+| Enforcement | Whether the route's DataAnnotations are enforced (literal `Map*` call) or forwarded only (generated/generic route) |
+| curl | One runnable example including required headers |
+
+Add a `sequence` diagram for any route whose flow is not "bind → validate → handler → save → map".
 
 Copy `templates/api-reference-template.md` from this skill's folder and fill it in — Endpoints Summary table, one section per endpoint (query params/request body, response, error table, curl example), Common Error Response Format. Note the pagination-defaults gotcha: a hand-written list query's `pageIndex`/`pageSize` defaults differ from the generated `MapGetList` route's contract (`pageNumber`/`pageSize` default 1/1000, configurable ceiling via `DKNet:ListQuery`, plus `fromDate`/`toDate` windowing) — document whichever contract this feature's route actually uses. Also document the standard error format: `result.Response()` (`DKNet.AspCore.Extensions.Responses`) converts a failed `FluentResults` result into `ProblemDetails` with messages under an `errors` array; a `NotFoundError` produces the same shape with `status: 404`.
 
@@ -214,31 +234,43 @@ public sealed record PurchaseOrderCreatedEvent(Guid Id, string CustomerName, dec
 
 ---
 
-## Mermaid Diagram Types Reference
+## Diagrams — archify first, Mermaid as the fallback
 
-Use appropriate Mermaid diagram types for different aspects:
+Draw architecture, flow, sequence, data-flow and lifecycle diagrams with **archify**
+(<https://github.com/tt-a1i/archify>), a skill that turns a small typed JSON spec into a validated,
+self-contained HTML diagram plus SVG/PNG exports. Install it once with
+`npx skills add tt-a1i/archify`, then invoke the `archify` skill and let it author, validate and
+deliver each diagram — do not hand-write its JSON from memory.
 
-| Diagram type | Mermaid keyword | When to use |
-|-------------|-----------------|-------------|
-| Component flow | `graph TD` / `graph LR` | Overview of layers, event flows |
-| Request sequence | `sequenceDiagram` | How a specific API call flows step-by-step |
-| Entity classes | `classDiagram` | Class relationships and properties |
-| Entity-Relation | `erDiagram` | Database table structure |
-| State machine | `stateDiagram-v2` | Status transitions |
-| Timeline | `timeline` | Feature evolution, release history |
+Pick the archify type per diagram:
 
-**All Mermaid diagrams are fenced code blocks**:
+| Diagram | archify type | Mermaid fallback |
+|---|---|---|
+| Vertical slice across the six projects | `architecture` | `graph TD` |
+| Request lifecycle for one route (endpoint → handler → entity → DB → response) | `sequence` | `sequenceDiagram` |
+| Domain-event path (raise → publisher → in-memory + external consumers) | `dataflow` | `graph LR` |
+| Status transitions the handlers actually perform | `lifecycle` | `stateDiagram-v2` |
+| A multi-step business process or approval gate | `workflow` | `graph TD` |
+| Table structure | *(none — keep Mermaid)* | `erDiagram` |
 
-````md
-```mermaid
-graph TD
-    A --> B
+Commit both the spec and the export next to the docs that reference them:
+
 ```
-````
+docs/features/<feature>/diagrams/
+├── <feature>-slice.architecture.json     ← archify source, re-render from this
+├── <feature>-slice.svg                   ← exported, referenced from architecture.md
+├── <feature>-create.sequence.json
+└── <feature>-create.svg
+```
 
-They render automatically on GitHub, GitLab, VS Code (Markdown Preview), Docusaurus, and most modern wikis.
+Reference an export from markdown with a plain image link
+(`![Vertical slice](diagrams/<feature>-slice.svg)`), so it renders on GitHub, in VS Code preview and
+in a wiki without archify installed.
 
----
+**Fallback rule:** if archify is not installed and you cannot install it, write the diagram as a
+fenced ```mermaid block in the markdown itself and say in your report that the diagram is Mermaid
+pending an archify render. Never ship a feature doc with no diagram at all. An `erDiagram` stays
+Mermaid either way — archify has no table-schema type.
 
 ## Feature Docs Folder Structure
 
@@ -248,9 +280,10 @@ docs/
     └── purchase-orders/          ← kebab-case folder name
         ├── README.md             ← Overview (START HERE)
         ├── architecture.md       ← Diagrams + vertical slice
-        ├── api-reference.md      ← Endpoints + examples + curl
+        ├── api-reference.md      ← One section per route + examples + curl
         ├── data-model.md         ← Entity diagram + constraints
         ├── events.md             ← Domain events + subscribers
+        ├── diagrams/             ← archify sources + exported SVGs
         └── decisions/            ← Optional ADRs
             └── adr-001-idempotency-key-strategy.md
 ```
@@ -281,16 +314,25 @@ You are producing authoritative feature documentation for a vertical slice that 
    - how the acting user is attributed (`[FromClaim]` vs `DataOwnerHook`).
    For automated slices, read event names off the compiled assembly, not off a guess at the
    composition rule.
-2. Render the four required artifacts under `docs/features/<feature>/` (or `docs/<feature>/` if the slice is template-internal):
+2. Enumerate every route the feature publishes (generated + hand-mapped) before writing anything —
+   this is the spine of `api-reference.md` and the completeness check at the end.
+3. Render the required artifacts under `docs/features/<feature>/` (or `docs/<feature>/` if the slice is template-internal):
    - `README.md` (feature overview + quick links)
-   - `architecture.md` (Mermaid diagrams: layer flow, sequence for Create, ER snippet)
-   - `data-model.md`
-   - `api-reference.md`
-3. Cross-link from `docs/features/README.md` (or whichever index file lists features).
-4. Verify all referenced files exist and Mermaid blocks render (no stray fences).
+   - `architecture.md` (vertical slice, create sequence, event path — drawn with archify per
+     *Diagrams*, Mermaid only if archify is unavailable)
+   - `data-model.md` (ER diagram stays Mermaid)
+   - `api-reference.md` (one section per route, per the table in Step 4)
+   - `events.md` when the feature raises or consumes any event
+   - `diagrams/` holding each archify JSON source next to its exported SVG
+4. Cross-link from `docs/features/README.md` (or whichever index file lists features).
+5. Verify every route has a section, every referenced diagram file exists, and any Mermaid block
+   renders (no stray fences).
 
 ### Constraints
 
 - Do not invent fields, validators, events, or endpoints — only document what's in the code.
 - Use the templates in the skill folder verbatim where they fit; deviations need a one-line note.
 - No hand-wavey language ("flexible", "robust", "scalable") — describe what the code actually does.
+- Every route the feature publishes has its own `api-reference.md` section. A missing route is a
+  failed run, not a trim.
+- Diagrams are archify renders unless archify could not be installed; say which in the report.

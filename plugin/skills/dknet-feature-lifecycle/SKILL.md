@@ -24,32 +24,38 @@ behavior — which is exactly the confusion this section exists to prevent.
 
 ### At a glance: which one should I copy?
 
-**Copy `manual` (mirror `PurchaseOrder`)** when the feature needs any of:
+**Default to `auto` (mirror `Product`).** Declare the operation on the entity —
+`[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`/`[RaisesEvent]`/`[GenerateDto]` — and let
+`DKNet.SlimBus.Generators` emit the request, handler and route. Start here for every new aggregate
+and only step down when one of the reasons below actually applies to the feature in front of you.
 
-- Idempotent writes — safe client retries on `POST`.
+**Step down to `manual` (mirror `PurchaseOrder`)** when the feature needs any of:
+
+- Idempotent writes — safe client retries on `POST`. The generated create route has no
+  `.RequiredIdempotentKey()` and none can be added to it.
 - An attribute-declared (`DataAnnotations`) rule that must actually return `400`, not just be
-  present on the generated request.
+  present on the generated request (see the gap below) — and that cannot be re-expressed as a
+  FluentValidation rule.
 - An operation that writes more than one aggregate in one transaction.
 - A filtered or customized list/get query beyond the generic list route's `filter`/`search`/`orderBy`
   contract.
 - The acting user must come from a claim on the request itself (`[FromClaim]`).
 
-**Copy `auto` (mirror `Product`)** only when the aggregate is genuinely plain CRUD:
+None of these apply? Then `auto` is the answer, even for an aggregate with real business rules.
+Specifically, **none of the following is a reason to hand-write**:
 
-- Create/update/delete carry no rule a `[Required]`/`[StringLength]`/`[Range]` can't express — and
-  you accept those attributes are forwarded but never enforced on a generated route (see the gap
-  below).
-- No idempotency requirement on create.
-- The DTO can be every audited property, narrowed at most with `Exclude`/`Include`.
-- Any extra operations fit `[CrudAction]`'s shape (mutate, return `200` + DTO) or can be excluded and
-  hand-written when they can't.
-
-A rule that must **refuse** an operation is *not* by itself a reason to choose `manual`. A
-FluentValidation validator written against a generated request still runs — `UseEndpointConfigs`
-applies `AddFluentValidationAutoValidation()` to every endpoint group, generated routes included —
-so it can read stored data through `IRepositorySpec` and refuse before the generated handler runs.
-`Product` ships two such rules (`CreateProductRequestValidator`, `DeleteProductRequestValidator`),
-both answering `409` via a `PreconditionCodes`-prefixed error code.
+- **A rule that must refuse an operation.** A FluentValidation validator written against a generated
+  request still runs — `UseEndpointConfigs` applies `AddFluentValidationAutoValidation()` to every
+  endpoint group, generated routes included — so it can read stored data through `IRepositorySpec`
+  and refuse before the generated handler runs. `Product` ships two such rules
+  (`CreateProductRequestValidator`, `DeleteProductRequestValidator`), both answering `409` via a
+  `PreconditionCodes`-prefixed error code.
+- **A DTO that must hide fields.** `[GenerateDto(..., Exclude = [...])]` narrows the shape, and
+  `[SensitiveData]` travels from the entity onto the generated DTO.
+- **A derived response value.** A Mapster `IRegister` reaches the generated route's response with no
+  endpoint change (`ProductDto.GrossMargin`).
+- **A domain event.** `[RaisesEvent]` raises it from the save hook; the consumer is hand-written
+  either way.
 
 | Trade-off | `manual` | `auto` |
 |---|---|---|
@@ -75,20 +81,20 @@ against the real tree under both sample features.
 
 | # | Path | `manual` | `auto` |
 |---|---|---|---|
-| 1 | `Minimal.Domains/Features/<Feature>/Entities/` | entity + hand-written event record(s) | entity only — `[RaisesEvent]`/`[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` carry the rest |
-| 2 | `Minimal.Infra/Features/<Feature>/Mappers/` | `IEntityTypeConfiguration<T>` | same — **no generator produces this** |
-| 3 | `Minimal.Infra/Features/<Feature>/StaticData/` | optional `DataSeedingConfiguration<T>` | optional (neither sample ships one for `Product`) |
-| 4 | `Minimal.Infra/Features/<Feature>/ExternalEvents/` | not used by `PurchaseOrder` | optional broker consumer (`ProductCreatedNotificationHandler`) |
-| 5 | `Minimal.AppServices/<Feature>/V1/Actions/` | command requests + handlers | only operations excluded from the generated map (e.g. `Discontinue.cs`) |
-| 6 | `Minimal.AppServices/<Feature>/V1/Queries/` | hand-written read requests + handlers | custom read shapes the generic list can't express (e.g. a price-summary query) |
-| 7 | `Minimal.AppServices/<Feature>/V1/Specs/` | `Specification<T>` filters | specs backing a validator or an excluded query |
-| 8 | `Minimal.AppServices/<Feature>/V1/Events/` | domain event consumers | domain event consumers only — the generator raises, it does not consume |
-| 9 | `Minimal.AppServices/<Feature>/V1/Validators/` | not needed — validation is enforced on literal routes | validators against a **generated** request that must refuse (`CreateXRequestValidator`, `DeleteXRequestValidator`) |
-| 10 | `Minimal.AppServices/<Feature>/V1/<Feature>Dto.cs` (+ optional `<Feature>MappingRegister.cs`) | hand-written DTO record | one `[GenerateDto(typeof(Entity))] public sealed partial record` line; a Mapster `IRegister` only if a response value needs deriving from more than one column |
-| 11 | `Minimal.Api/ApiEndpoints/<Feature>/<Entity>V1Endpoint.cs` | every route a literal `Map*` call | one `group.Map<Entity>Crud(o => …)` call, plus any excluded route mapped literally below it |
-| 12 | `Minimal.App.Tests/Unit/<Feature>/` | entity/validator/spec tests | entity/handler tests |
-| 13 | `Minimal.App.Tests/Integration/<Feature>/V1/` | result-level handler + security tests | same |
-| 14 | `Minimal.App.BDDTests/Features/<Plural>/` | `*.feature` + `Steps/*.cs` | same |
+| 1 | `<YourApp>.Domains/Features/<Feature>/Entities/` | entity + hand-written event record(s) | entity only — `[RaisesEvent]`/`[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]` carry the rest |
+| 2 | `<YourApp>.Infra/Features/<Feature>/Mappers/` | `IEntityTypeConfiguration<T>` | same — **no generator produces this** |
+| 3 | `<YourApp>.Infra/Features/<Feature>/StaticData/` | optional `DataSeedingConfiguration<T>` | optional (neither sample ships one for `Product`) |
+| 4 | `<YourApp>.Infra/Features/<Feature>/ExternalEvents/` | not used by `PurchaseOrder` | optional broker consumer (`ProductCreatedNotificationHandler`) |
+| 5 | `<YourApp>.AppServices/<Feature>/V1/Actions/` | command requests + handlers | only operations excluded from the generated map (e.g. `Discontinue.cs`) |
+| 6 | `<YourApp>.AppServices/<Feature>/V1/Queries/` | hand-written read requests + handlers | custom read shapes the generic list can't express (e.g. a price-summary query) |
+| 7 | `<YourApp>.AppServices/<Feature>/V1/Specs/` | `Specification<T>` filters | specs backing a validator or an excluded query |
+| 8 | `<YourApp>.AppServices/<Feature>/V1/Events/` | domain event consumers | domain event consumers only — the generator raises, it does not consume |
+| 9 | `<YourApp>.AppServices/<Feature>/V1/Validators/` | not needed — validation is enforced on literal routes | validators against a **generated** request that must refuse (`CreateXRequestValidator`, `DeleteXRequestValidator`) |
+| 10 | `<YourApp>.AppServices/<Feature>/V1/<Feature>Dto.cs` (+ optional `<Feature>MappingRegister.cs`) | hand-written DTO record | one `[GenerateDto(typeof(Entity))] public sealed partial record` line; a Mapster `IRegister` only if a response value needs deriving from more than one column |
+| 11 | `<YourApp>.Api/ApiEndpoints/<Feature>/<Entity>V1Endpoint.cs` | every route a literal `Map*` call | one `group.Map<Entity>Crud(o => …)` call, plus any excluded route mapped literally below it |
+| 12 | `<YourApp>.App.Tests/Unit/<Feature>/` | entity/validator/spec tests | entity/handler tests |
+| 13 | `<YourApp>.App.Tests/Integration/<Feature>/V1/` | result-level handler + security tests | same |
+| 14 | `<YourApp>.App.BDDTests/Features/<Plural>/` | `*.feature` + `Steps/*.cs` | same |
 
 Generated code for `auto` lands in `obj/Generated/DKNet.SlimBus.Generators/` (requests, handlers,
 route registration) and `obj/Generated/DKNet.EfCore.DtoGenerator/` (the DTO's generated members) —
@@ -101,18 +107,18 @@ the reason a feature delete is a command and not an `rm -rf`.
 
 | Touchpoint | File | When it applies |
 |---|---|---|
-| Schema constant | `Minimal.Domains/Share/DomainSchemas.cs` | if the feature added its own `const string` (the samples instead use literal schema strings — `"manual_sample"`/`"sample"` — directly in their mapper's `ToTable` call) |
-| Broker topology | `Minimal.Infra/Extensions/ServiceBusSetup.cs` | the `azb.Produce<T>`/`azb.Consume<T>` pair, e.g. `ProductCreatedEvent` on `product-tp`/`product-sub` |
-| Feature flag | `Minimal.Share/Options/FeatureOptions.cs` + `FeatureManagement` section in every `appsettings*.json` | if the feature gated itself behind a flag |
+| Schema constant | `<YourApp>.Domains/Share/DomainSchemas.cs` | if the feature added its own `const string` (the samples instead use literal schema strings — `"manual_sample"`/`"sample"` — directly in their mapper's `ToTable` call) |
+| Broker topology | `<YourApp>.Infra/Extensions/ServiceBusSetup.cs` | the `azb.Produce<T>`/`azb.Consume<T>` pair, e.g. `ProductCreatedEvent` on `product-tp`/`product-sub` |
+| Feature flag | `<YourApp>.Share/Options/FeatureOptions.cs` + `FeatureManagement` section in every `appsettings*.json` | if the feature gated itself behind a flag |
 | Auth scopes | the feature's own scopes class (e.g. `ProductScopes`) + its `foreach` registration in `Configs/Auth/AuthConfig.cs` | if the feature registered per-route scope policies |
-| Precondition codes | `Minimal.AppServices/Share/PreconditionCodes.cs` | if a validator added a `precondition.`-prefixed code for this feature |
-| Test-support visibility | `InternalsVisibleTo` in the owning project's `.csproj` (e.g. `Minimal.Api.csproj` grants `Minimal.App.TestSupport` and `Minimal.App.Tests` visibility onto `internal` scope classes) | if the feature's `internal` types need to be visible to test doubles |
-| EF migration | `Minimal.Infra/Migrations/` | see §4 — never hand-delete an applied migration |
+| Precondition codes | `<YourApp>.AppServices/Share/PreconditionCodes.cs` | if a validator added a `precondition.`-prefixed code for this feature |
+| Test-support visibility | `InternalsVisibleTo` in the owning project's `.csproj` (e.g. `<YourApp>.Api.csproj` grants `<YourApp>.App.TestSupport` and `<YourApp>.App.Tests` visibility onto `internal` scope classes) | if the feature's `internal` types need to be visible to test doubles |
+| EF migration | `<YourApp>.Infra/Migrations/` | see §4 — never hand-delete an applied migration |
 
 Enumerate existing features at any time — no registry file to keep in sync:
 
 ```bash
-ls ApiEndpoints/Minimal.Domains/Features/
+ls ApiEndpoints/<YourApp>.Domains/Features/
 ```
 
 ## 4. Migration rules on removal
@@ -120,11 +126,11 @@ ls ApiEndpoints/Minimal.Domains/Features/
 The tables outlive the code. Decide by whether the feature's migration has been applied anywhere:
 
 - **Not applied and it is the newest migration** —
-  `dotnet ef migrations remove -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj` (run from
+  `dotnet ef migrations remove -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj` (run from
   `ApiEndpoints/`).
 - **Applied, or newer migrations sit on top of it** — do NOT touch the old migration. Delete the
   entity and mapper, then
-  `dotnet ef migrations add Drop<Feature> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`
+  `dotnet ef migrations add Drop<Feature> -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj`
   and let EF emit the drop. Rewriting applied history corrupts `__EFMigrationsHistory` for every
   environment already running it.
 

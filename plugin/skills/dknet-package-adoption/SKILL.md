@@ -5,7 +5,7 @@ description: Add DKNet's Core, EF Core, messaging/CQRS, or blob-storage NuGet pa
 
 # Skill: Adopting DKNet Packages in an Existing Project
 
-This skill is for a project that already exists with its own namespaces and folder layout — it does not assume `dotnet new dknet-minimal` was run, and never references `Minimal.*` types. If you're scaffolding a brand-new solution from the template instead, use **dknet-project-structure** and the other `dknet-*` skills.
+This skill is for a project that already exists with its own namespaces and folder layout — it does not assume `dotnet new dknet-minimal` was run, and never references the template's `<YourApp>.*` types. If you're scaffolding a brand-new solution from the template instead, use **dknet-project-structure** and the other `dknet-*` skills.
 
 Each package below is independent — install only what the feature needs. All packages target **.NET 10.0+** (EF Core packages additionally need **EF Core 10.0+**); consult `Directory.Packages.props` (or your project's own central version file) before adding a version attribute per-project.
 
@@ -232,7 +232,7 @@ Swapping providers later (e.g. `.Local` in dev, `.AzureStorage` in production) o
 
 - [ ] Only the packages the feature actually needs were added (no blanket "add everything")
 - [ ] EF Core additions layer onto the existing `DbContext`/provider — no assumption of a specific database engine
-- [ ] No `Minimal.*` namespace or template folder path (`Minimal.Domains`, `Minimal.AppServices`, …) appears anywhere in the guidance followed
+- [ ] No template-generated `<YourApp>.*` namespace or template folder path (`<YourApp>.Domains`, `<YourApp>.AppServices`, …) appears anywhere in the guidance followed
 - [ ] Repositories/specs/handlers registered in DI (`AddSpecRepo`, `AddSlimBusEfCoreInterceptor`, `AddAzureStorageAdapter`, etc.) — nothing relies on auto-discovery unless the package documents it
 - [ ] For blob storage, exactly one provider package installed alongside `Abstractions`
 - [ ] `dotnet build` passes with the new package references
@@ -245,7 +245,7 @@ Swapping providers later (e.g. `.Local` in dev, `.AzureStorage` in production) o
 | Building a dynamic predicate directly against `DbContext` without `.AsExpandable()` | Required for LinqKit to translate the expression; the `IRepositorySpec` extensions already apply it |
 | Installing more than one blob storage provider package for the same `IBlobService` | Register exactly one — the last registration wins and the others are dead weight |
 | Assuming a specific EF Core provider (SQL Server, Postgres, …) is required | Every package here is provider-agnostic; it only needs a working `DbContext` |
-| Copying `Minimal.*` namespaces/paths from the template's docs | This skill — and any project using it — has its own namespaces; the template's layout doesn't apply |
+| Copying the template's `<YourApp>.*` namespaces/paths from the template's docs | This skill — and any project using it — has its own namespaces; the template's layout doesn't apply |
 
 ## Next Steps
 

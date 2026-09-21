@@ -4,8 +4,10 @@ set -uo pipefail
 # ──────────────────────────────────────────────────────────────────────────────
 # validate-plugin.sh — Content validation for the dknet-minimal plugin
 #
-# The repository root IS the plugin: `.claude-plugin/plugin.json` + `skills/` +
-# `agents/` (Claude Code), `plugin.json` (GitHub Copilot), `package.json` (npm,
+# The plugin lives in `plugin/`: `plugin/.claude-plugin/plugin.json` +
+# `plugin/skills/` + `plugin/agents/` (Claude Code). The repository root carries
+# only the entry points that must be found there: `.claude-plugin/marketplace.json`
+# (pointing at ./plugin), `plugin.json` (GitHub Copilot) and `package.json` (npm,
 # `npx skills add`). This is content only (no compiled code), so these checks are
 # the coverage-equivalent gate and must all pass on a clean tree:
 #
@@ -16,7 +18,7 @@ set -uo pipefail
 #   2. no-foreign-reference  — no "Monxa"/"Mx.Pgw" anywhere in the plugin surface
 #   3. install-doc-complete  — every install channel the README advertises has a
 #                               non-empty instruction
-#   4. skill-portability     — every skills/<x>/SKILL.md is valid for Claude Code,
+#   4. skill-portability     — every plugin/skills/<x>/SKILL.md is valid for Claude Code,
 #                               GitHub Copilot and `npx skills add`: frontmatter
 #                               name matches its folder, single-line description
 #                               <= 1024 chars, only Agent Skills spec frontmatter
@@ -38,36 +40,38 @@ fail() { echo "  FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 pass() { echo "  ok: $1"; }
 
 SKILLS=()
-for d in skills/*/; do
+for d in plugin/skills/*/; do
   [[ -d "$d" ]] && SKILLS+=("$(basename "$d")")
 done
 
 echo "=== 1. manifest-consistency ==="
-NAMES=$(jq -r '.name' plugin.json .claude-plugin/plugin.json | sort -u)
+NAMES=$(jq -r '.name' plugin.json plugin/.claude-plugin/plugin.json | sort -u)
 if [[ "$(echo "$NAMES" | wc -l)" -eq 1 ]]; then pass "plugin name agrees: $NAMES"; else fail "plugin name diverges: $NAMES"; fi
 MP_NAME=$(jq -r '.plugins[0].name' .claude-plugin/marketplace.json)
 if [[ "$MP_NAME" == "$NAMES" ]]; then pass "marketplace entry names the plugin"; else fail "marketplace plugin name '$MP_NAME' != '$NAMES'"; fi
 
-VERSIONS=$(jq -r '.version' plugin.json .claude-plugin/plugin.json package.json | sort -u)
+VERSIONS=$(jq -r '.version' plugin.json plugin/.claude-plugin/plugin.json package.json | sort -u)
 if [[ "$(echo "$VERSIONS" | wc -l)" -eq 1 ]]; then
-  pass "version agrees across plugin.json, .claude-plugin/plugin.json, package.json: $VERSIONS (0.0.0 in git; the publish pipeline stamps the release)"
+  pass "version agrees across plugin.json, plugin/.claude-plugin/plugin.json, package.json: $VERSIONS (0.0.0 in git; the publish pipeline stamps the release)"
 else
   fail "version diverges across manifests (run: npm version <x.y.z> --no-git-tag-version): $(echo "$VERSIONS" | tr '\n' ' ')"
 fi
 
 declare -a DECLARED_PATHS=()
 while IFS= read -r p; do DECLARED_PATHS+=("$p"); done < <(jq -r '.agents, .skills[]?' plugin.json)
-while IFS= read -r p; do DECLARED_PATHS+=("$p"); done < <(jq -r '(.agents // empty | if type == "array" then .[] else . end), (.skills // empty | if type == "array" then .[] else . end)' .claude-plugin/plugin.json)
+while IFS= read -r p; do DECLARED_PATHS+=("plugin/${p#./}"); done < <(jq -r '(.agents // empty | if type == "array" then .[] else . end), (.skills // empty | if type == "array" then .[] else . end)' plugin/.claude-plugin/plugin.json)
 while IFS= read -r p; do DECLARED_PATHS+=("$p"); done < <(jq -r '.files[]' package.json)
 for p in "${DECLARED_PATHS[@]}"; do
   [[ -z "$p" || "$p" == "null" ]] && continue
   if [[ -e "$p" ]]; then pass "declared path exists: $p"; else fail "manifest declares missing path: $p"; fi
 done
-[[ -d skills ]] || fail "skills/ directory missing (Claude Code default skills dir)"
-[[ -d agents ]] || fail "agents/ directory missing"
+[[ -d plugin/skills ]] || fail "plugin/skills/ directory missing (Claude Code default skills dir)"
+[[ -d plugin/agents ]] || fail "plugin/agents/ directory missing"
+MP_SOURCE=$(jq -r '.plugins[0].source' .claude-plugin/marketplace.json)
+if [[ "$MP_SOURCE" == "./plugin" ]]; then pass "marketplace source points at ./plugin"; else fail "marketplace plugin source is '$MP_SOURCE', expected './plugin'"; fi
 
 if command -v claude >/dev/null 2>&1; then
-  for target in . skills agents; do
+  for target in . plugin plugin/skills plugin/agents; do
     if OUT=$(claude plugin validate "$target" --strict 2>&1); then
       pass "claude plugin validate $target --strict"
     elif [[ "$target" != "." && "$OUT" == *"No manifest found in directory"* ]]; then
@@ -127,9 +131,9 @@ echo "=== 4. skill-portability ==="
 # A skill is copied verbatim into other repositories (plugin cache, `npx skills add`
 # targets, node_modules), so its frontmatter must be self-describing and its body
 # must only carry paths that exist in a generated consumer solution.
-[[ ${#SKILLS[@]} -eq 0 ]] && fail "no skills found under skills/"
+[[ ${#SKILLS[@]} -eq 0 ]] && fail "no skills found under plugin/skills/"
 for s in "${SKILLS[@]}"; do
-  f="skills/$s/SKILL.md"
+  f="plugin/skills/$s/SKILL.md"
   if [[ ! -f "$f" ]]; then fail "$s: SKILL.md missing"; continue; fi
   if [[ "$(head -1 "$f")" != "---" ]]; then fail "$s: SKILL.md must start with a --- frontmatter block"; continue; fi
   FM=$(awk 'NR==1{next} /^---$/{exit} {print}' "$f")
@@ -147,10 +151,10 @@ for s in "${SKILLS[@]}"; do
   LINES=$(wc -l < "$f")
   [[ "$LINES" -le 500 ]] || fail "$s: SKILL.md has $LINES lines (max 500 — the release pipeline enforces this)"
   if command -v uvx >/dev/null 2>&1; then
-    OUT=$(uvx --from skills-ref agentskills validate "skills/$s" 2>&1) || fail "$s: agentskills validate failed: $(echo "$OUT" | tail -3 | tr '\n' ' ')"
+    OUT=$(uvx --from skills-ref agentskills validate "plugin/skills/$s" 2>&1) || fail "$s: agentskills validate failed: $(echo "$OUT" | tail -3 | tr '\n' ' ')"
   fi
 
-  BAD=$(grep -rnE 'src/ApiEndpoints|`src/|\(src/|\.claude/skills/|\.github/(skills|agents|prompts)/|docs/(samples|[a-z-]+\.md)|add-migration\.sh|remove-migration\.sh|DKNet\.Templates\.sln' "skills/$s" --include=*.md 2>/dev/null || true)
+  BAD=$(grep -rnE 'src/ApiEndpoints|`src/|\(src/|\.claude/skills/|\.github/(skills|agents|prompts)/|docs/(samples|[a-z-]+\.md)|add-migration\.sh|remove-migration\.sh|DKNet\.Templates\.sln' "plugin/skills/$s" --include=*.md 2>/dev/null || true)
   if [[ -z "$BAD" ]]; then
     pass "$s: portable (frontmatter + paths)"
   else

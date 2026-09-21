@@ -9,10 +9,21 @@ using Minimal.AppServices.Crud;
 namespace Minimal.Api.ApiEndpoints.AutomatedSample;
 
 /// <summary>
-/// Composite-first: the generated CRUD slice for <c>Product</c> is mapped first, each generated route
-/// carrying its own authorization scope, then the two hand-written business routes below it — one
-/// replacing a generated route the composite rule outgrew, one with no generated shape at all.
+/// Composite-first: the generated CRUD slice for <c>Product</c> is mapped first, then the two hand-written
+/// business routes below it — one replacing a generated route the composite rule outgrew, one with no
+/// generated shape at all.
+/// <para>
+/// Authorization is declared once per HTTP method with <see cref="EndpointGroupScopeAttribute"/> below,
+/// covering generated and hand-mapped routes alike. The attribute is applied only when
+/// <c>EndpointRegistrationOptions.RequireAuthorization</c> is on (Program.cs assigns it from
+/// <see cref="FeatureOptions.RequireAuthorization"/>), so it needs no flag check of its own. Only the two
+/// PUT routes whose scope their HTTP method cannot decide are overridden per route — and those calls do
+/// not self-gate, so they stay behind the flag read in <see cref="Map"/>.
+/// </para>
 /// </summary>
+[EndpointGroupScope(ProductScopes.Read, EndpointHttpMethods.Get)]
+[EndpointGroupScope(ProductScopes.Write, EndpointHttpMethods.Post, EndpointHttpMethods.Put,
+    EndpointHttpMethods.Delete)]
 internal sealed class ProductV1Endpoint : IEndpointConfig
 {
     #region Properties
@@ -28,8 +39,10 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
     public void Map(RouteGroupBuilder group)
     {
         // R2: a route's authorization metadata resolves against policies AddAuthConfig registers. With
-        // RequireAuthorization off, the host never calls AddAuthConfig, so RequireAuthorization(...) on a
-        // route would throw at request time — every scope call below is gated on this same flag.
+        // RequireAuthorization off, the host never calls AddAuthConfig, so a bare RequireAuthorization(...)
+        // would throw at request time. The class-level [EndpointGroupScope] declarations are applied only
+        // when the flag is on and need no guard; the two per-route overrides below do, so the flag is read
+        // once here for them.
         var requireAuthorization = ((IEndpointRouteBuilder)group).ServiceProvider
             .GetRequiredService<IOptions<FeatureOptions>>().Value.RequireAuthorization;
 
@@ -42,19 +55,14 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
             // Dropped by name and replaced below — see that route's comment for why (R1).
             o.Exclude("Discontinue");
 
-            if (!requireAuthorization)
+            // Every other generated route takes its scope from the group declarations: GET -> products.read,
+            // POST/PUT/DELETE -> products.write. Only this one needs its own — it is a PUT like Update, so no
+            // per-method declaration can separate the two, and holding products.write must not be enough to
+            // assign a supplier reference. A route that names its own policy is left alone by the group rule.
+            if (requireAuthorization)
             {
-                return;
+                o.Configure("AssignSupplierReference", rb => rb.RequireAuthorization(ProductScopes.Supplier));
             }
-
-            o.Configure(CrudOp.GetById, rb => rb.RequireAuthorization(ProductScopes.Read));
-            o.Configure(CrudOp.GetList, rb => rb.RequireAuthorization(ProductScopes.Read));
-            o.Configure(CrudOp.Create, rb => rb.RequireAuthorization(ProductScopes.Write));
-            o.Configure(CrudOp.Update, rb => rb.RequireAuthorization(ProductScopes.Write));
-            o.Configure(CrudOp.Delete, rb => rb.RequireAuthorization(ProductScopes.Write));
-            o.Configure("Approve", rb => rb.RequireAuthorization(ProductScopes.Write));
-            // Its own scope, not Write — holding only products.write must not be enough to assign it.
-            o.Configure("AssignSupplierReference", rb => rb.RequireAuthorization(ProductScopes.Supplier));
         });
 
         // An operation that writes more than one aggregate in one transaction cannot be generated:
@@ -72,12 +80,15 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
             .Produces<ProductDto>()
             .WithDescription("Discontinue a product and create its named replacement in the same transaction.");
 
+        // A PUT like Update and AssignSupplierReference, but with its own scope — the group's PUT
+        // declaration cannot separate the three, so this one names its policy explicitly.
         if (requireAuthorization)
         {
             discontinue.RequireAuthorization(ProductScopes.Discontinue);
         }
 
-        var summary = group.MapGet("summary", async (
+        // No scope call here: this is a GET, so the group's products.read declaration covers it.
+        group.MapGet("summary", async (
                 IMessageBus bus,
                 CancellationToken ct) =>
             {
@@ -86,11 +97,6 @@ internal sealed class ProductV1Endpoint : IEndpointConfig
             })
             .Produces<ProductPriceSummaryDto>()
             .WithDescription("Product count and average price across every product the caller can see.");
-
-        if (requireAuthorization)
-        {
-            summary.RequireAuthorization(ProductScopes.Read);
-        }
     }
 
     #endregion

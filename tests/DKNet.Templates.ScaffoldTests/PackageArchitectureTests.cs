@@ -142,7 +142,7 @@ public class PackageArchitectureTests
     }
 
     [Fact]
-    public void AllDKNetPackages_ShouldBePinnedTo_11_0_0()
+    public void AllDKNetPackages_ShouldBePinnedTo_13_1_3()
     {
         var srcDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
@@ -153,8 +153,8 @@ public class PackageArchitectureTests
         var doc = XDocument.Load(directoryPackagesPath);
         var distinctVersions = PackagePinGuard.DistinctDkNetVersions(doc);
 
-        distinctVersions.ShouldBe(["11.0.0"],
-            "DKNet packages must all be pinned to 11.0.0, found: " + string.Join(", ", distinctVersions));
+        distinctVersions.ShouldBe(["13.1.3"],
+            "DKNet packages must all be pinned to 13.1.3, found: " + string.Join(", ", distinctVersions));
     }
 
     [Fact]

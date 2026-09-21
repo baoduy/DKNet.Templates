@@ -16,14 +16,14 @@ Commands only: Create, Update, a business-rule transition, Delete, and the gener
 `dknet-queries-specs`. For DTO shape and Mapster wiring, load `dknet-dto-mapping`. For whether a
 rule belongs on the entity or in a handler, load `dknet-ddd-principles` first.
 
-## GlobalUsings already in Minimal.AppServices
+## GlobalUsings already in <YourApp>.AppServices
 
-`Minimal.AppServices/GlobalUsings.cs` gives every file in the project these without an explicit
+`<YourApp>.AppServices/GlobalUsings.cs` gives every file in the project these without an explicit
 `using`: `DKNet.AspCore.Extensions.ModelBinding` (`[FromClaim]`), `DKNet.SlimBus.Extensions`
 (`Fluents.*`, `NotFoundError`), `System.ComponentModel.DataAnnotations`, `System.Security.Claims`
-(`ClaimTypes`), `System.Text.Json.Serialization`, `FluentResults`, `Minimal.Domains.Services`,
+(`ClaimTypes`), `System.Text.Json.Serialization`, `FluentResults`, `<YourApp>.Domains.Services`,
 `Microsoft.Extensions.DependencyInjection`, `FluentValidation`, `Mapster`, `MapsterMapper`,
-`Minimal.AppServices.Extensions`, `DKNet.SlimBus.Extensions.LazyMapper`, `Minimal.AppServices.Share`
+`<YourApp>.AppServices.Extensions`, `DKNet.SlimBus.Extensions.LazyMapper`, `<YourApp>.AppServices.Share`
 (`PreconditionCodes`, `IPrincipalProvider`). An action file typically adds only the entity's and its
 own spec's namespace.
 
@@ -38,7 +38,7 @@ The handler method is `OnHandle(TRequest, CancellationToken)`, never `Handle`. B
 by assembly scan onto the in-memory bus — no per-message registration. Handlers never call
 `SaveChanges`: the SlimBus EF Core interceptor auto-saves once, after the handler returns. A request
 record is `public sealed record`; its validator and handler are `internal sealed class` — enforced
-by `Minimal.App.Tests/Architecture/AppServiceTests.cs`.
+by `<YourApp>.App.Tests/Architecture/AppServiceTests.cs`.
 
 File layout: one file per verb, request + validator + handler co-located —
 `<Feature>/V1/Actions/<Verb>.cs` (`ManualSample/V1/Actions/Create.cs`, `Update.cs`, `Cancel.cs`,
@@ -57,6 +57,10 @@ if (string.IsNullOrEmpty(request.ByUser))
     return Result.Fail<PurchaseOrderDto>("The caller is not authenticated.");
 }
 ```
+
+`[FromRequestHeader("X-Header-Name")]` (same populator, same overwrite-always guarantee) reads a
+named request header instead of a claim — for a correlation id or tenant hint, never for identity: a
+header is caller-supplied and is not an authorization signal.
 
 The demo authentication provider (`FeatureManagement:EnableDemoAuthentication`) supplies this claim
 locally and in tests, so the guard is reachable but rarely hit — an authenticated caller with a
@@ -88,7 +92,7 @@ from `DataOwnerHook`/the audit hook instead, or hand-write the action.
 ## FluentValidation
 
 A validator is `internal sealed class XValidator : AbstractValidator<TRequest>`, co-located with
-its request. There is no per-route opt-in call: `Minimal.Api/Configs/FluentValidationConfig.cs`
+its request. There is no per-route opt-in call: `<YourApp>.Api/Configs/FluentValidationConfig.cs`
 registers every validator in the assembly —
 
 ```csharp
@@ -99,7 +103,7 @@ builder.Services.AddValidatorsFromAssembly(typeof(AppSetup).Assembly, includeInt
 group (`Program.cs`), so it runs on generated routes exactly as it runs on hand-mapped ones. A
 request failing validation never reaches the handler; it short-circuits to `400` (or `409`, see
 below) with no handler code involved. Two hard constraints: the validator class must live in
-`Minimal.AppServices` (one in `Minimal.Api` is never registered), and it must be `internal sealed`.
+`<YourApp>.AppServices` (one in `<YourApp>.Api` is never registered), and it must be `internal sealed`.
 
 **Ordinary input rules** stay inline (`RuleFor(a => a.Amount).GreaterThan(0)`). Keep `Id` out of an
 update validator — an unknown/empty id is a `404` from the handler's spec lookup, not a `400` from
@@ -142,9 +146,9 @@ If it refused a missing id too, the route's own `404` would be hidden behind a `
 
 **Validators on generated requests are the supported way to add a business rule to a generated
 route.** `CreateProductRequestValidator` and `DeleteProductRequestValidator` both target generated
-request types (`Minimal.AppServices.Crud.CreateProductRequest` / `DeleteProductRequest`) — no
+request types (`<YourApp>.AppServices.Crud.CreateProductRequest` / `DeleteProductRequest`) — no
 literal `Map*` call is needed for FluentValidation to reach them, only the `using
-Minimal.AppServices.Crud;` and a constructor parameter naming the request type. This is the fix for
+<YourApp>.AppServices.Crud;` and a constructor parameter naming the request type. This is the fix for
 the one thing `[DataAnnotations]` cannot do on a generated route: `[Range]`/`[Required]`/etc.
 forwarded onto a generated request property is **not evaluated**, because .NET's validation source
 generator only recognizes literal `Map*(string, Delegate)` calls in the compiling project's own
@@ -229,7 +233,7 @@ Naming, mechanical from the entity's own signatures: `Create<Entity>Request` (fr
 `<Method><Entity>Request` (from `[CrudAction]`), `Delete<Entity>Request` (always). Handlers mirror
 the name with `Handler` instead of `Request` — `CreateProductHandler`, `ChangePriceProductHandler`,
 `ApproveProductHandler`, `DiscontinueProductHandler`, `AssignSupplierReferenceProductHandler` — all
-in namespace `Minimal.AppServices.Crud`, emitted under
+in namespace `<YourApp>.AppServices.Crud`, emitted under
 `obj/Generated/DKNet.SlimBus.Generators/.../<Entity>CrudRequests.g.cs` and `...Handlers.g.cs`. They
 are compiler output, not files in the repo — inspect them after a build, not by searching source.
 
@@ -255,7 +259,7 @@ Fetch by a private, generated `ProductByIdCrudSpec`, `404` if missing, call the 
 
 **Replacing a generated handler.** The generated file's own doc comment says how: "Write a class
 implementing the same IHandler to replace it." Add your own `internal sealed class` implementing
-`Fluents.Requests.IHandler<ChangePriceProductRequest, ProductDto>` in `Minimal.AppServices` — DI
+`Fluents.Requests.IHandler<ChangePriceProductRequest, ProductDto>` in `<YourApp>.AppServices` — DI
 registration is by interface via assembly scan, so yours and the generated one cannot coexist; keep
 only yours (there is no attribute to suppress generation of the handler alone — drop the whole
 route with `CrudMapOptions.Exclude` if you also need to change the request shape).
@@ -281,12 +285,12 @@ constructor.
 
 Every body shares `title: "Error"`, `status`, `type` (the status's name, e.g. `"Conflict"`), and
 `traceId` (the current `Activity` id, falling back to `TraceIdentifier`). One registration answers
-all three failure kinds — `Minimal.Api/Configs/FluentValidationConfig.cs`'s single
+all three failure kinds — `<YourApp>.Api/Configs/FluentValidationConfig.cs`'s single
 `AddErrorResponses(...)` call — there is no second place to configure this.
 
 ## Architecture rules enforced by tests
 
-`Minimal.App.Tests/Architecture/AppServiceTests.cs` and `RecordArchitectureTests.cs` pin, exactly:
+`<YourApp>.App.Tests/Architecture/AppServiceTests.cs` and `RecordArchitectureTests.cs` pin, exactly:
 
 - Every class implementing `IRequestHandler<>`/`IRequestHandler<,>`/`IConsumer<>` must be
   non-public and `sealed` (`AllHandlerClassesShouldBeInternalAndSealed`).
@@ -298,13 +302,14 @@ all three failure kinds — `Minimal.Api/Configs/FluentValidationConfig.cs`'s si
 - A `[GenerateDto]` type must expose no property whose type (or generic argument) inherits
   `DomainEntity` (`DtosWithGenerateDtoAttribute_ShouldNotHaveProperties_ThatAreDomainEntities`) —
   the DTO boundary must not leak an entity.
-- No record type in `Minimal.Domains` or `Minimal.AppServices` may declare a public property with a
+- No record type in `<YourApp>.Domains` or `<YourApp>.AppServices` may declare a public property with a
   **private** setter (`RecordTypes_ShouldNotContain_PrivateSetters_OnPublicProperties`) — AutoMapper
   (Mapster's `MapToConstructor`/property assignment) cannot fill it.
 
 ## Step-by-step
 
-**mode=manual** (mirror `ManualSample/PurchaseOrder`):
+**mode=manual** (mirror `ManualSample/PurchaseOrder`) — only after confirming the operation is one
+of the five the generator genuinely cannot express (`dknet-feature-lifecycle` §1):
 
 1. Add `<Feature>/V1/Actions/Create.cs`: request implementing `IWitResponse<TDto>` with
    `[FromClaim(ClaimTypes.Name)] ByUser`, a co-located validator, a handler constructing the
@@ -386,10 +391,17 @@ the entity to already carry `[CrudCreate]`/`[CrudUpdate]`/`[RaisesEvent]`, and t
 generate without them. If `mode=` was not supplied, detect it: grep the entity for `[CrudCreate]`;
 present it means `auto`, absent means `manual`. Say which you detected.
 
-Pick one per aggregate, don't mix them for the same entity:
+Pick one per aggregate, don't mix them for the same entity, and **start from the declarative
+shape**:
 
-- **Hand-written** (below) — every request/validator/handler/spec/DTO is a file you write. Needed whenever the aggregate has a business rule beyond DataAnnotations, a filtered query, idempotent writes, or a DTO that must hide fields.
-- **Declarative CRUD generation** (further down) — `[CrudCreate]`/`[CrudUpdate]`/`[GenerateDto]` on the entity itself; `DKNet.SlimBus.Generators` produces the request/handler/route types for you. Only for genuinely plain CRUD — read the validation-gap caveat before choosing it.
+- **Declarative CRUD generation (`mode=auto`, the default)** — `[CrudCreate]`/`[CrudUpdate]`/
+  `[CrudAction]` + `[GenerateDto]` on the entity itself; `DKNet.SlimBus.Generators` produces the
+  request/handler/route types for you. A business rule that must *refuse* the operation is written
+  as a FluentValidation validator against the generated request and still runs, so it is not a
+  reason to leave this path.
+- **Hand-written (`mode=manual`)** — every request/validator/handler/spec/DTO is a file you write.
+  Step down to it only for idempotent create, an enforced DataAnnotations rule, a multi-aggregate
+  transaction, a bespoke query, or `[FromClaim]` acting-user attribution.
 
 The `dknet-feature-lifecycle` skill §1 is the authoritative comparison between the two; use it to decide.
 
@@ -405,7 +417,7 @@ The `dknet-feature-lifecycle` skill §1 is the decision procedure if the mode is
 #### Required reading
 
 1. The reference sections above
-2. `ApiEndpoints/Minimal.AppServices/ManualSample/V1/` (exemplar: `Actions/{Create,Update,Cancel,Delete}.cs`, `Specs/SpecGetPurchaseOrder.cs`, `Queries/{GetPurchaseOrderById,ListPurchaseOrders}.cs`, `Events/`, `PurchaseOrderDto.cs`)
+2. `ApiEndpoints/<YourApp>.AppServices/ManualSample/V1/` (exemplar: `Actions/{Create,Update,Cancel,Delete}.cs`, `Specs/SpecGetPurchaseOrder.cs`, `Queries/{GetPurchaseOrderById,ListPurchaseOrders}.cs`, `Events/`, `PurchaseOrderDto.cs`)
 
 #### Steps
 
@@ -430,7 +442,7 @@ The `dknet-feature-lifecycle` skill §1 is the decision procedure if the mode is
 
 ### Path 2: Declarative CRUD generation (`mode=auto`)
 
-For a genuinely plain CRUD entity, declare the CRUD surface on the entity instead of writing it. Exemplar: `Product` (`ApiEndpoints/Minimal.Domains/Features/AutomatedSample/Entities/Product.cs`, `ApiEndpoints/Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`).
+The default path: declare the CRUD surface on the entity instead of writing it. Exemplar: `Product` (`ApiEndpoints/<YourApp>.Domains/Features/AutomatedSample/Entities/Product.cs`, `ApiEndpoints/<YourApp>.AppServices/AutomatedSample/V1/ProductDto.cs`).
 
 Most of the entity-side attributes are `/dknet-entity mode=auto`'s job. This command's own output at
 the AppServices layer is small on purpose: **one `[GenerateDto]` line, plus any hand-written event
@@ -460,7 +472,7 @@ consumer.** If you find yourself writing a request, validator, or handler here, 
 
 #### What gets generated
 
-`DKNet.SlimBus.Generators` produces (namespace `Minimal.AppServices.Crud`, not committed — inspect via `dotnet build` then `obj/Generated/DKNet.SlimBus.Generators/`):
+`DKNet.SlimBus.Generators` produces (namespace `<YourApp>.AppServices.Crud`, not committed — inspect via `dotnet build` then `obj/Generated/DKNet.SlimBus.Generators/`):
 
 - `Create<Entity>Request` / `Change<Member><Entity>Request` (named after the `[CrudUpdate]` method, e.g. `ChangePriceProductRequest`) + matching `internal sealed` handlers (`Create<Entity>Handler` / `Change<Member><Entity>Handler`) — no hand-written request/validator/handler exists for these.
 - `<Entity>CrudEndpointExtensions.Map<Entity>Crud()` — GetById/GetList/Delete map straight to `DKNet.AspCore.Extensions`'s generic `MapGetById<TEntity,TKey,TDto>`/`MapGetList`/`MapDeleteById`; Create/Update use the generated handlers above.
@@ -469,7 +481,7 @@ consumer.** If you find yourself writing a request, validator, or handler here, 
 
 - Do NOT hand-write a request or handler for a `[CrudCreate]`/`[CrudUpdate]` member while its route is still generated — that defeats the point of the generator. A **validator** is the exception and the supported shape: a FluentValidation validator for the generated request runs on the generated route through the group filter. Exclude a route by name (`CrudMapOptions.Exclude(string)`) and hand-write it below the `Map<Entity>Crud(...)` call only when the operation writes more than one aggregate in one transaction. Generated and hand-written routes coexisting in one endpoint is the shipped shape, not a smell — see `ProductV1Endpoint`.
 - **Validation gap, confirmed live**: a `[Range]`/`[Required]` on a `[CrudCreate]`/`[CrudUpdate]` parameter *is* forwarded onto the generated request property, but it is **never enforced** under this template's endpoint-registration convention — the .NET 10 validation source generator only recognizes literal `Map*(string, Delegate)` calls, and the generated route goes through `DKNet.AspCore.Extensions`'s generic `MapPost<TRequest,TDto>` wrapper instead. `POST /v1/products` with a negative price returns `201`, not `400`. Do not present a DataAnnotations attribute on a generated request as enforced without checking the endpoint's mapping style.
-- Acting-user attribution cannot use `[FromClaim]` on a generated request (the generator forwards only `System.ComponentModel.DataAnnotations` attributes) — it goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `Minimal.Api/Configs/ServiceConfigs.cs`, not per-entity.
+- Acting-user attribution cannot use `[FromClaim]` on a generated request (the generator forwards only `System.ComponentModel.DataAnnotations` attributes) — it goes through `DKNet.EfCore.DataAuthorization`'s `DataOwnerHook` instead, wired once in `<YourApp>.Api/Configs/ServiceConfigs.cs`, not per-entity.
 - No idempotency key support on the generated create route — see `/dknet-endpoint`'s "Alternative: generated CRUD route" section if the feature needs it.
 
 #### Steps

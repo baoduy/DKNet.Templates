@@ -50,7 +50,7 @@ erDiagram
 
 ## EF Core Mapping Configuration
 
-Source: `ApiEndpoints/Minimal.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs`
+Source: `ApiEndpoints/<YourApp>.Infra/Features/{EntityFolder}/Mappers/{EntityName}Mapper.cs`
 
 Key mapping decisions:
 
@@ -96,4 +96,4 @@ Key mapping decisions:
 | `Initial_{EntityName}` | Create initial `{EntityTableName}` table |
 | `Add_{Field}_To_{EntityName}` | {Reason for the change} |
 
-> Keep this table updated when running `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`.
+> Keep this table updated when running `dotnet ef migrations add <Name> -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj`.

@@ -1,12 +1,18 @@
 ---
 name: dknet-queries-specs
-description: Write read/query logic for a DKNet feature — Specification<T> filters, hand-written query requests/handlers dispatched over IMessageBus, and the generic filter/search/order/page list route every generator-driven CRUD slice gets for free. Use after the domain entity and DTO exist, whenever a feature needs anything more than the default GET-by-id.
+description: Write read/query logic for a DKNet feature — the generic filter/search/order/page list route every generator-driven CRUD slice gets for free, Specification<T> filters, and hand-written query requests/handlers over IMessageBus for the shapes that route cannot express. Use after the domain entity and DTO exist, whenever a feature needs anything more than the default GET-by-id.
 ---
 
 # Skill: Queries and Specifications
 
-Covers the read side of a feature: specifications, hand-written queries (`mode=manual`), and the
-generic list route every `[CrudCreate]`-declared entity gets automatically (`mode=auto`).
+Covers the read side of a feature: specifications, the generic list route every `[CrudCreate]`-declared
+entity gets automatically (`mode=auto`), and hand-written queries (`mode=manual`).
+
+**Check the generic list route (§3) before writing a query.** Its `filter`/`search`/`orderBy`/paging
+plus `fromDate`/`toDate` contract covers most list needs with no handler, validator or query object
+at all. Write a hand-written query (§2) only for what it cannot express: a predicate over something
+that is not a DTO field, a projection that is not the DTO, an aggregate/summary shape, or a
+get-by-id that must apply an extra rule.
 
 ## 1. Specifications — why, and the WHERE-FALSE trap
 
@@ -39,7 +45,7 @@ internal sealed class SpecGetPurchaseOrder : Specification<PurchaseOrder>
 }
 ```
 
-(`Minimal.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs`; the automated sample's
+(`<YourApp>.AppServices/ManualSample/V1/Specs/SpecGetPurchaseOrder.cs`; the automated sample's
 `SpecGetProduct` and `SpecProductByName` follow the same shape.)
 
 - **`CreatePredicate()`** with no `.And(...)`/`.Or(...)` ever called compiles to `WHERE FALSE`. Any
@@ -51,14 +57,16 @@ internal sealed class SpecGetPurchaseOrder : Specification<PurchaseOrder>
   building `predicator` without ever calling it is a no-op spec.
 - **Specs live in `<Feature>/V1/Specs/`, `internal sealed`** — `SpecGetPurchaseOrder`,
   `SpecGetProduct`, `SpecProductByName` all follow this.
-- **Specs are reused outside query handlers, too.** `SpecProductByName` (`Minimal.AppServices/
+- **Specs are reused outside query handlers, too.** `SpecProductByName` (`<YourApp>.AppServices/
   AutomatedSample/V1/Specs/SpecProductByName.cs`) exists purely so `CreateProductRequestValidator` can
   check for a duplicate name before create — a spec is not only a query-handler concern.
 - **Unit-test a spec without EF Core or a database**: compile `.FilterQuery!.Compile()` into a plain
   `Func<TEntity, bool>` and assert against in-memory instances (`SpecGetPurchaseOrderTests.cs` — see
   [Testing pointers](#5-testing-pointers)).
 
-## 2. Hand-written queries (`mode=manual`)
+## 2. Hand-written queries (`mode=manual`) — the fallback
+
+Reach for this only after §3's generic list route has been ruled out for the shape you need.
 
 A query is a record implementing one of two `SlimBus.Extensions.Fluents.Queries` interfaces,
 dispatched from the endpoint via `IMessageBus.Send(...)` exactly like a command.
@@ -125,7 +133,7 @@ internal sealed class ListPurchaseOrdersQueryHandler(IRepositorySpec repository,
 }
 ```
 
-(`Minimal.AppServices/ManualSample/V1/Queries/GetPurchaseOrderById.cs`,
+(`<YourApp>.AppServices/ManualSample/V1/Queries/GetPurchaseOrderById.cs`,
 `ListPurchaseOrders.cs`.)
 
 - **Nullable paging parameters + `[AsParameters]` + a co-located validator with `.When(x =>
@@ -142,7 +150,7 @@ internal sealed class ListPurchaseOrdersQueryHandler(IRepositorySpec repository,
 ### Aggregate/summary queries over `repository.Query(spec)`
 
 Not every read is "one row" or "a page of rows". `ProductPriceSummaryQuery`
-(`Minimal.AppServices/AutomatedSample/V1/Queries/ProductPriceSummary.cs`) computes a count and an
+(`<YourApp>.AppServices/AutomatedSample/V1/Queries/ProductPriceSummary.cs`) computes a count and an
 average directly against the queryable a spec produces:
 
 ```csharp
@@ -246,7 +254,7 @@ inherit a latent failure.
 
 ### Behavioral spec: `ProductList.feature`
 
-`Minimal.App.BDDTests/Features/Products/ProductList.feature` is the regression fence for this whole
+`<YourApp>.App.BDDTests/Features/Products/ProductList.feature` is the regression fence for this whole
 contract — it exists specifically because nothing in the slice is hand-written, so a future package
 bump could silently change behavior. Representative scenarios:
 
@@ -265,9 +273,9 @@ bump could silently change behavior. Representative scenarios:
 ## 4. Status counts
 
 `group.MapGetStatusCounts<TEntity>("status", new StatusPropertyInfo(nameof(X.Status), typeof(XStatus)))`
-(`Minimal.Api/Configs/Endpoints/StatusCountsEndpointMapperExtensions.cs`) is template-local — not part
+(`<YourApp>.Api/Configs/Endpoints/StatusCountsEndpointMapperExtensions.cs`) is template-local — not part
 of the published `DKNet.AspCore.Extensions` package. It groups rows by an enum-backed property using
-`ModelSpecStatusCounts<TEntity>` (`Minimal.AppServices/Share/Generics/ModelSpecGenericStatusCounts.cs`):
+`ModelSpecStatusCounts<TEntity>` (`<YourApp>.AppServices/Share/Generics/ModelSpecGenericStatusCounts.cs`):
 
 ```csharp
 public class ModelSpecStatusCounts<TEntity> : Specification<TEntity> where TEntity : DomainEntity
@@ -306,11 +314,11 @@ this today; wire it into a `Map(RouteGroupBuilder)` like any other route (see th
 
 - **Spec unit tests** — compile the spec's `.FilterQuery!.Compile()` and assert against
   hand-constructed entities, no EF Core or database involved
-  (`Minimal.App.Tests/Unit/ManualSample/SpecGetPurchaseOrderTests.cs`): a "no filter matches
+  (`<YourApp>.App.Tests/Unit/ManualSample/SpecGetPurchaseOrderTests.cs`): a "no filter matches
   everything" case is the WHERE-FALSE regression guard, plus one case per optional filter argument and
   one for combining them.
 - **List/paging integration tests** — exercise the real HTTP route against `ApiFixture`
-  (`Minimal.App.Tests/Integration/ManualSample/V1/PurchaseOrderListPagingTests.cs`): the shape to copy
+  (`<YourApp>.App.Tests/Integration/ManualSample/V1/PurchaseOrderListPagingTests.cs`): the shape to copy
   is asserting the *declared default* is served when a nullable paging parameter is omitted (not just
   "200 OK"), and asserting an out-of-range value produces the same `ValidationProblemDetails` shape as
   every other validation failure, not a `500`.

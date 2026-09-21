@@ -14,7 +14,7 @@ template — not `[RaisesEvent]`, not `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction
 
 ## Mapper
 
-`Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` — the whole file:
+`<YourApp>.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs` — the whole file:
 
 ```csharp
 internal sealed class PurchaseOrderConfigs : DefaultEntityTypeConfiguration<PurchaseOrder>
@@ -32,7 +32,7 @@ internal sealed class PurchaseOrderConfigs : DefaultEntityTypeConfiguration<Purc
 }
 ```
 
-`Minimal.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs` — the whole file:
+`<YourApp>.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs` — the whole file:
 
 ```csharp
 internal sealed class ProductConfigs : DefaultEntityTypeConfiguration<Product>
@@ -52,7 +52,7 @@ internal sealed class ProductConfigs : DefaultEntityTypeConfiguration<Product>
 }
 ```
 
-Location: `Minimal.Infra/Features/<Feature>/Mappers/<Entity>Configs.cs`. Discovered by
+Location: `<YourApp>.Infra/Features/<Feature>/Mappers/<Entity>Configs.cs`. Discovered by
 `UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(Sequences).Assembly])` — an **assembly
 scan for every `IEntityTypeConfiguration<T>`**, not a Scrutor convention scan (see Infra services,
 below, for what Scrutor actually is and isn't used for here). This call is wired in **both**
@@ -103,7 +103,7 @@ configured where its owner is, not in a shared file.
 
 ## Static data seeding
 
-`Minimal.Infra/Features/ManualSample/StaticData/PurchaseOrderStaticData.cs` — the whole file:
+`<YourApp>.Infra/Features/ManualSample/StaticData/PurchaseOrderStaticData.cs` — the whole file:
 
 ```csharp
 internal sealed class PurchaseOrderStaticData : DataSeedingConfiguration<PurchaseOrder>
@@ -127,7 +127,7 @@ internal sealed class PurchaseOrderStaticData : DataSeedingConfiguration<Purchas
 }
 ```
 
-Location: `Minimal.Infra/Features/<Feature>/StaticData/<Entity>StaticData.cs`. Inherit the
+Location: `<YourApp>.Infra/Features/<Feature>/StaticData/<Entity>StaticData.cs`. Inherit the
 **base class** `DataSeedingConfiguration<T>` (`DKNet.EfCore.Extensions.Configurations`) — not an
 `IDataSeedingConfiguration<T>` interface. Override the `protected` `GetDataAsync(CancellationToken)`
 and return the fixed rows via the entity's `internal` rehydration constructor (known `Guid`s,
@@ -149,9 +149,9 @@ first seeded.
 for every `IDataSeedingConfiguration` implementer by assembly scan (same style as
 `UseAutoConfigModel`, not Scrutor) and must be called in **both**:
 
-- `Minimal.Infra/Extensions/InfraSetup.cs` → `AddInfraServices` (the DI-registered `CoreDbContext`
+- `<YourApp>.Infra/Extensions/InfraSetup.cs` → `AddInfraServices` (the DI-registered `CoreDbContext`
   the running app uses)
-- `Minimal.Infra/Extensions/InfraMigration.cs` → `MigrateDb` (a **separate** `CoreDbContext` built
+- `<YourApp>.Infra/Extensions/InfraMigration.cs` → `MigrateDb` (a **separate** `CoreDbContext` built
   for the startup-migration path; seeding runs as part of `db.Database.MigrateAsync()`)
 
 This is a real bug the template hit once already: `PurchaseOrderStaticData` was correctly discovered
@@ -159,22 +159,22 @@ by the DI-path context but the migration path built its own context without the 
 `.UseAutoDataSeeding(...)` call, so seed rows never appeared in a real database even though the
 migration itself ran. When adding new seed data, verify both call sites, not just one.
 
-**No test fixture wires this.** Neither `Minimal.App.Tests`' `ApiFixture` nor
-`Minimal.App.BDDTests`' `BddApiFactory` calls `.UseAutoDataSeeding(...)` on their in-memory
+**No test fixture wires this.** Neither `<YourApp>.App.Tests`' `ApiFixture` nor
+`<YourApp>.App.BDDTests`' `BddApiFactory` calls `.UseAutoDataSeeding(...)` on their in-memory
 `DbContext` — that wiring exists only in the two real composition-root call sites above. Tests that
 actually exercise seeded data:
 
-- `Minimal.App.Tests/Unit/ManualSample/PurchaseOrderStaticDataTests.cs` — invokes the `protected
+- `<YourApp>.App.Tests/Unit/ManualSample/PurchaseOrderStaticDataTests.cs` — invokes the `protected
   GetDataAsync` via reflection (nothing public exposes it for a direct call) and asserts the three
   fixed rows, owned by `SharedConsts.SystemAccount`, with distinct `Id`s.
-- `Minimal.App.Tests/Integration/ManualSample/V1/InfraMigrationSeedingTests.cs` — runs
+- `<YourApp>.App.Tests/Integration/ManualSample/V1/InfraMigrationSeedingTests.cs` — runs
   `InfraMigration.MigrateDb` itself against a real, ephemeral Postgres `Testcontainers` instance,
   then reads `/v1/purchase-orders` over HTTP. This is the one test that fails if
   `.UseAutoDataSeeding(...)` is ever removed from `InfraMigration.MigrateDb`.
 
 ## `CoreDbContext`
 
-`Minimal.Infra/Contexts/CoreDbContext.cs` — `internal class CoreDbContext(DbContextOptions options,
+`<YourApp>.Infra/Contexts/CoreDbContext.cs` — `internal class CoreDbContext(DbContextOptions options,
 IEnumerable<IDataOwnerProvider>? dataKeyProviders = null) : DbContext(options), IDataOwnerDbContext`.
 No `DbSet<T>` declarations anywhere — the model is built entirely from the `IEntityTypeConfiguration<T>`
 scan. It exposes `AccessibleKeys` from the first registered `IDataOwnerProvider`
@@ -235,7 +235,7 @@ internal static DbContextOptionsBuilder UseNpgsqlWithMigration(
         .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
 ```
 
-`Minimal.Infra/Extensions/InfraMigration.cs` — the startup-migration path, in full:
+`<YourApp>.Infra/Extensions/InfraMigration.cs` — the startup-migration path, in full:
 
 ```csharp
 public static async Task MigrateDb(string connectionString)
@@ -253,7 +253,7 @@ public static async Task MigrateDb(string connectionString)
 ```
 
 `AddSpecRepo<CoreDbContext>()` wires `IRepositorySpec` (see `dknet-queries-specs`).
-`AddEventPublisher<CoreDbContext, EventPublisher>()` wires `Minimal.Infra/Services/EventPublisher.cs`
+`AddEventPublisher<CoreDbContext, EventPublisher>()` wires `<YourApp>.Infra/Services/EventPublisher.cs`
 — a `DefaultEventPublisher` override that does `bus.Publish(eventObj)` — as the sink both raise
 styles (`AddEvent`/`[RaisesEvent]`) publish through after a successful save.
 
@@ -263,28 +263,28 @@ Always from the solution's `ApiEndpoints/` directory (there is no wrapper script
 `dotnet ef` command):
 
 ```bash
-dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
-dotnet ef migrations remove -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj
+dotnet ef migrations add <Name> -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj
+dotnet ef migrations remove -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj
 ```
 
-Inspect the generated migration under `Minimal.Infra/Migrations/` before continuing — confirm the
+Inspect the generated migration under `<YourApp>.Infra/Migrations/` before continuing — confirm the
 table, columns, and any index/constraint match what the mapper declares. Never edit an
 already-applied migration; add a new one instead. `Architecture/MigrationSchemaTests.cs` pins
 specific facts about the compiled model: `Product.Name` has a **unique** single-column index,
 the model declares a sequence in schema `seq` and a sequence named `Seq_Membership` (never one named
-after `Sequences.None`), the provider is not SQL Server, and both `Minimal.AppHost` and
-`Minimal.Infra` reference PostgreSQL/Npgsql packages, never SQL Server ones. At application start,
+after `Sequences.None`), the provider is not SQL Server, and both `<YourApp>.AppHost` and
+`<YourApp>.Infra` reference PostgreSQL/Npgsql packages, never SQL Server ones. At application start,
 `FeatureManagement:RunDbMigrationWhenAppStart` (or the `migration` launch argument — `dotnet run
---project ApiEndpoints/Minimal.Api -- migration`) is what actually calls this path; removing a
+--project ApiEndpoints/<YourApp>.Api -- migration`) is what actually calls this path; removing a
 feature's tables is a **drop migration**, covered by `dknet-feature-lifecycle`, not here.
 
 ## Infra domain services
 
-`Minimal.Domains/Services/` holds the interface, `Minimal.Infra/Services/` the implementation,
+`<YourApp>.Domains/Services/` holds the interface, `<YourApp>.Infra/Services/` the implementation,
 `InfraSetup.AddInfraServices` the registration — **by explicit `AddScoped<TInterface,
 TImplementation>()`, one line per service.** There is no Scrutor convention scan anywhere in this
-template's `Minimal.Infra` registration path — the only `Scan(` call in the whole solution is
-Mapster's `TypeAdapterConfig.Scan` in `Minimal.AppServices/Extensions/MapsToExtensions.cs`, unrelated
+template's `<YourApp>.Infra` registration path — the only `Scan(` call in the whole solution is
+Mapster's `TypeAdapterConfig.Scan` in `<YourApp>.AppServices/Extensions/MapsToExtensions.cs`, unrelated
 to service registration. Do not rely on a naming convention or namespace
 (`.Services`/`.Repos`) to get a service registered — add the `AddScoped` line yourself. `internal
 sealed` is still required by the same architecture rule that covers mappers/handlers/validators
@@ -294,7 +294,7 @@ implementation like `MembershipService` isn't targeted by that rule either, but 
 `internal sealed` convention regardless).
 
 ```csharp
-// Minimal.Infra/Services/SequenceService.cs — internal abstract base, one per sequence-backed service
+// <YourApp>.Infra/Services/SequenceService.cs — internal abstract base, one per sequence-backed service
 internal abstract class SequenceService(DbContext dbContext, Sequences sequence) : ISequenceServices
 {
     public virtual async ValueTask<string> NextValueAsync() =>
@@ -303,7 +303,7 @@ internal abstract class SequenceService(DbContext dbContext, Sequences sequence)
             : Guid.NewGuid().ToString();
 }
 
-// Minimal.Infra/Services/MembershipService.cs — the whole file
+// <YourApp>.Infra/Services/MembershipService.cs — the whole file
 internal sealed class MembershipService(CoreDbContext dbContext)
     : SequenceService(dbContext, Sequences.Membership), IMembershipService;
 ```
@@ -311,19 +311,19 @@ internal sealed class MembershipService(CoreDbContext dbContext)
 `NextValueAsync()` formats the next value with the sequence's `FormatString` on PostgreSQL
 (`NextSeqValueWithFormat`), and falls back to a plain `Guid` when the context isn't Npgsql — so a
 unit test against an in-memory/SQLite context never needs a real Postgres sequence. Add your own
-service the same way: an interface in `Minimal.Domains/Services/`, an `internal sealed`
-implementation in `Minimal.Infra/Services/`, one `AddScoped` line in `AddInfraServices`.
+service the same way: an interface in `<YourApp>.Domains/Services/`, an `internal sealed`
+implementation in `<YourApp>.Infra/Services/`, one `AddScoped` line in `AddInfraServices`.
 
-## Architecture tests constraining `Minimal.Infra`
+## Architecture tests constraining `<YourApp>.Infra`
 
 `Architecture/InfraTests.cs`:
 
 - `AllEfConfigClassesShouldBeInternalAndSealed` — every `IEntityTypeConfiguration<T>` implementer.
 - `AllSeedingDataClassesShouldBeInternalAndSealed` — every `IDataSeedingConfiguration` implementer.
 - `AllHandlerClassesShouldBeInternalAndSealed` — every `IRequestHandler<>`/`IRequestHandler<,>`/
-  `IConsumer<>` implementer (covers `Minimal.Infra/Features/*/ExternalEvents/*` consumers).
+  `IConsumer<>` implementer (covers `<YourApp>.Infra/Features/*/ExternalEvents/*` consumers).
 - `AllValidatorClassesShouldBeInternalAndSealed` — every `AbstractValidator<T>` subclass found in
-  `Minimal.Infra` (none shipped there today; validators live in `Minimal.AppServices`).
+  `<YourApp>.Infra` (none shipped there today; validators live in `<YourApp>.AppServices`).
 - `AllEnumProperties_StoringToDb_ShouldHaveStringConversion` — every enum property in the built
   model must have `ProviderClrType == typeof(string)`.
 - `NoEntityString_ShouldBe_ConfiguredAs_Max` — every mapped `string` property must have an explicit
@@ -334,34 +334,34 @@ implementation in `Minimal.Infra/Services/`, one `AddScoped` line in `AddInfraSe
 
 ## Step-by-step
 
-1. Create `Minimal.Infra/Features/<Feature>/Mappers/<Entity>Configs.cs`: `internal sealed class
+1. Create `<YourApp>.Infra/Features/<Feature>/Mappers/<Entity>Configs.cs`: `internal sealed class
    <Entity>Configs : DefaultEntityTypeConfiguration<Entity>`, call `base.Configure(builder)` first,
    then indexes, `HasMaxLength`/`HasPrecision` on every column, `HasConversion<string>()` on every
    enum, `ToTable("<Plural>", "<schema>")`.
-2. If the feature needs reference data, create `Minimal.Infra/Features/<Feature>/StaticData/<Entity>StaticData.cs`:
+2. If the feature needs reference data, create `<YourApp>.Infra/Features/<Feature>/StaticData/<Entity>StaticData.cs`:
    `internal sealed class <Entity>StaticData : DataSeedingConfiguration<Entity>`, override
    `GetDataAsync`, build rows via the entity's `internal` rehydration constructor with fixed `Guid`s
    and `SharedConsts.SystemAccount`.
-3. If the feature needs a new domain service, add the interface under `Minimal.Domains/Services/`,
-   an `internal sealed` implementation under `Minimal.Infra/Services/`, and one `AddScoped<...>()`
+3. If the feature needs a new domain service, add the interface under `<YourApp>.Domains/Services/`,
+   an `internal sealed` implementation under `<YourApp>.Infra/Services/`, and one `AddScoped<...>()`
    line in `InfraSetup.AddInfraServices`.
 4. Generate and inspect the migration from `ApiEndpoints/`:
-   `dotnet ef migrations add <Name> -c CoreDbContext -p Minimal.Infra/Minimal.Infra.csproj`.
+   `dotnet ef migrations add <Name> -c CoreDbContext -p <YourApp>.Infra/<YourApp>.Infra.csproj`.
 5. `dotnet build -c Release` and `dotnet test --settings coverage.runsettings` from the solution
    root.
 
 ## Validation checklist
 
 - [ ] Mapper inherits `DefaultEntityTypeConfiguration<TEntity>` and calls `base.Configure(builder)` first
-- [ ] Mapper class is `internal sealed`, under `Minimal.Infra/Features/<Feature>/Mappers/`
+- [ ] Mapper class is `internal sealed`, under `<YourApp>.Infra/Features/<Feature>/Mappers/`
 - [ ] Every mapped `string` has an explicit `HasMaxLength`; every mapped enum has `HasConversion<string>()`
 - [ ] A real business uniqueness needs `.IsUnique()` on the index, not just a validator check
 - [ ] `ToTable("Name", "schema")` set — literal string or a `DomainSchemas` constant
 - [ ] If seeding: class is `internal sealed`, extends `DataSeedingConfiguration<T>` (not an
       interface), uses the entity's rehydration constructor, and `UseAutoDataSeeding(...)` is
       present in **both** `InfraSetup.AddInfraServices` and `InfraMigration.MigrateDb`
-- [ ] If adding a domain service: interface in `Minimal.Domains/Services/`, `internal sealed`
-      implementation in `Minimal.Infra/Services/`, explicit `AddScoped<...>()` line added — no
+- [ ] If adding a domain service: interface in `<YourApp>.Domains/Services/`, `internal sealed`
+      implementation in `<YourApp>.Infra/Services/`, explicit `AddScoped<...>()` line added — no
       convention scan will pick it up on its own
 - [ ] Migration generated from `ApiEndpoints/` and inspected before continuing
 - [ ] `dotnet build -c Release` passes

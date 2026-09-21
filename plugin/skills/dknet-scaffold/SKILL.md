@@ -81,8 +81,9 @@ re-running the template; change them later by editing `Directory.Packages.props`
 ```
 
 **Path convention:** every other skill in this plugin writes paths relative to the solution root
-using the template's own placeholder names (`Minimal.Api`, `ApiEndpoints/Minimal.Domains/...`) —
-substitute your own `<YourApp>.*` prefix mentally when working in a generated solution.
+with the placeholder `<YourApp>` standing in for your solution prefix (`<YourApp>.Api`,
+`ApiEndpoints/<YourApp>.Domains/...`). Substitute the name you passed to `-n` — a skill never
+hard-codes `Minimal.*`, because that prefix exists only in the template's own source tree.
 
 **No `.claude/`, `.github/`, or `docs/` reaches a generated solution.** Only `AGENTS.md`, the four
 solution-level files above, and `ApiEndpoints/**` are packed (`DKNet.Minimal.Template.nuspec`) —

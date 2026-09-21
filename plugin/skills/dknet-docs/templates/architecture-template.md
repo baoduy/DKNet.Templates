@@ -1,5 +1,11 @@
 # {FeatureName} — Architecture
 
+> Diagrams below are written as Mermaid so this template stays readable on its own. Render the
+> architecture, sequence, data-flow and lifecycle diagrams with **archify**
+> (<https://github.com/tt-a1i/archify>) and replace each fenced block with an image link to the
+> exported SVG in `diagrams/`, keeping the archify JSON source beside it. Keep `erDiagram` as
+> Mermaid — archify has no table-schema type. See the `dknet-docs` skill, *Diagrams*.
+
 ## Vertical Slice Overview
 
 This feature follows the DKNet vertical slice architecture.
@@ -9,11 +15,11 @@ Each layer has a single, focused responsibility for this feature.
 graph TD
     Client["Client / Browser"]
 
-    subgraph API["Minimal.Api"]
+    subgraph API["<YourApp>.Api"]
         EP["{EntityName}V1Endpoint\n(IEndpointConfig)"]
     end
 
-    subgraph AppServices["Minimal.AppServices"]
+    subgraph AppServices["<YourApp>.AppServices"]
         REQ["Request Types\n(Create / Update / Delete\n+ custom actions)"]
         VAL["Validators\n(FluentValidation)"]
         HDL["Command Handlers\n(IHandler)"]
@@ -21,11 +27,11 @@ graph TD
         EVT["Domain Events\n({EntityName}CreatedEvent etc.)"]
     end
 
-    subgraph Domains["Minimal.Domains"]
+    subgraph Domains["<YourApp>.Domains"]
         ENT["{EntityName}\n(AggregateRoot)"]
     end
 
-    subgraph Infra["Minimal.Infra"]
+    subgraph Infra["<YourApp>.Infra"]
         MAP["{EntityName}Mapper.cs\n(EF Core Config)"]
         REPO["IRepositorySpec\n(EF Core + Spec)"]
         EVH["Event Handlers\n(Azure Bus / In-Memory)"]
@@ -160,7 +166,7 @@ graph LR
 
 | Layer | Responsibility in this feature |
 |-------|-------------------------------|
-| `Minimal.Api` | Route mapping only; zero business logic |
-| `Minimal.AppServices` | Command handling, validation, event publishing |
-| `Minimal.Domains` | Entity state, domain rules, invariants |
-| `Minimal.Infra` | Persistence, EF Core config, message bus setup |
+| `<YourApp>.Api` | Route mapping only; zero business logic |
+| `<YourApp>.AppServices` | Command handling, validation, event publishing |
+| `<YourApp>.Domains` | Entity state, domain rules, invariants |
+| `<YourApp>.Infra` | Persistence, EF Core config, message bus setup |

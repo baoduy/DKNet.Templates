@@ -59,21 +59,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           # Node 20 resolves an old Claude Code (2.1.197) whose `plugin validate` cannot take a bare
-          # skills/ or agents/ directory; the current CLI needs Node >= 22.
+          # plugin/skills/ or plugin/agents/ directory; the current CLI needs Node >= 22.
           node-version: "24"
 
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code@latest
 
       - name: claude plugin validate
-        # skills/ and agents/ are validated inside validate-plugin.sh, which skips them on a CLI too old
-        # to validate a bare directory.
+        # `.` is the marketplace manifest, `plugin` the plugin itself; plugin/skills and plugin/agents
+        # are validated inside validate-plugin.sh, which skips them on a CLI too old to validate a
+        # bare directory.
         run: |
           claude --version
           claude plugin validate . --strict
+          claude plugin validate plugin --strict
 
       - name: validate-plugin.sh
         run: ./validate-plugin.sh
 
       - name: Skills CLI discovery (npx skills add --list)
+        # The CLI walks the checkout, so it finds plugin/skills/ from the repository root.
         run: npx -y skills@latest add . --list -y | grep -E 'dknet-feature|dknet-endpoint' || (echo "skills CLI did not discover the dknet skills" && exit 1)
