@@ -1,3 +1,5 @@
+using Refit;
+
 namespace Minimal.Client.Contracts;
 
 /// <summary>A product as the API returns it.</summary>
@@ -69,6 +71,7 @@ public sealed record DiscontinueProductRequest
 public sealed record ProductListQuery
 {
     /// <summary>Filter conditions (<c>field:Operator:value</c>), all of which must hold.</summary>
+    [Query(CollectionFormat.Multi)]
     public IReadOnlyList<string>? Filter { get; init; }
 
     public string? Search { get; init; }
@@ -81,7 +84,9 @@ public sealed record ProductListQuery
 
     public int? PageSize { get; init; }
 
+    [Query(Format = "O")]
     public DateTimeOffset? FromDate { get; init; }
 
+    [Query(Format = "O")]
     public DateTimeOffset? ToDate { get; init; }
 }

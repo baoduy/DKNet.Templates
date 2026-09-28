@@ -102,6 +102,8 @@ the package version supports it, dropping to `o.Configure(...)`/`.RequireAuthori
 behind the `FeatureOptions.RequireAuthorization` guard — only for a route whose HTTP method cannot
 decide its scope.
 
+Client, either mode: keep `ApiEndpoints/<YourApp>.Client` in step by adding the matching client methods — one Refit method per route on a new `I{Plural}Client`, its contracts under `Contracts/` — in the same change; `<YourApp>.App.Tests/Client/ClientEndpointParityTests.cs` must stay green.
+
 Build green.
 
 ### Phase 5 — Unit/integration tests

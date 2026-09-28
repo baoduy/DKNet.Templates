@@ -7,6 +7,7 @@
     <Project Path="src/ApiEndpoints/Minimal.App.TestSupport/Minimal.App.TestSupport.csproj" />
     <Project Path="src/ApiEndpoints/Minimal.AppHost/Minimal.AppHost.csproj" />
     <Project Path="src/ApiEndpoints/Minimal.AppServices/Minimal.AppServices.csproj" />
+    <Project Path="src/ApiEndpoints/Minimal.Client/Minimal.Client.csproj" />
     <Project Path="src/ApiEndpoints/Minimal.Domains/Minimal.Domains.csproj" />
     <Project Path="src/ApiEndpoints/Minimal.Infra/Minimal.Infra.csproj" />
     <Project Path="src/ApiEndpoints/Minimal.Share/Minimal.Share.csproj" />

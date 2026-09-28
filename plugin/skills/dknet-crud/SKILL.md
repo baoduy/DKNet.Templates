@@ -321,6 +321,7 @@ of the five the generator genuinely cannot express (`dknet-feature-lifecycle` §
    `Result.Ok()`.
 4. Wire each into `<Feature>V1Endpoint.cs` with a literal `Map*` call (`dknet-endpoint`) so
    DataAnnotations validation, if any, is actually enforced.
+5. Keep `ApiEndpoints/<YourApp>.Client` in step by adding the matching client methods (`I{Plural}Client`, contracts under `Contracts/`) in the same change.
 
 **mode=auto** (mirror `AutomatedSample/Product`):
 
@@ -332,6 +333,7 @@ of the five the generator genuinely cannot express (`dknet-feature-lifecycle` §
 4. For an operation that must write more than one aggregate, or must reject a repeat call as a
    domain failure rather than a `200`, write a `...Command` (not `...Request`) and drop the
    generated route for that member with `CrudMapOptions.Exclude("MethodName")` in the endpoint.
+5. Keep `ApiEndpoints/<YourApp>.Client` in step by adding the matching client methods for every route the endpoint maps, in the same change.
 
 ## Validation checklist
 
