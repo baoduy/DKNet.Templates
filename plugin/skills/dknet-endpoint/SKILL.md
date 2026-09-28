@@ -404,6 +404,7 @@ skill.
    through `IMessageBus`.
 4. Add `.RequiredIdempotentKey()` to the create route if a duplicate submit must not create two rows.
 5. Add `.WithDescription(...)`/`.Produces<T>(...)` to every route.
+6. Keep `ApiEndpoints/<YourApp>.Client` in step by adding the matching client method (one Refit method per route, on `I{Plural}Client`) in the same change — `<YourApp>.App.Tests/Client/ClientEndpointParityTests.cs` fails on any endpoint without one.
 
 ### `mode=auto`
 
@@ -416,6 +417,7 @@ skill.
    `o.Configure(...)` only for a route whose scope its HTTP method cannot decide.
 4. For anything the generator can't express, hand-map it below the composite call, dropping the
    generated route it replaces via `o.Exclude(...)` when one exists.
+5. Keep `ApiEndpoints/<YourApp>.Client` in step by adding the matching client method for every generated and hand-mapped route (on `I{Plural}Client`) in the same change — the parity test fails on any drift.
 
 ## Verification
 

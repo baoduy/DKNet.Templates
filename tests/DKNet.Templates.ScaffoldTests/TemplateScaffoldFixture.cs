@@ -105,6 +105,17 @@ public sealed class TemplateScaffoldFixture : IDisposable
         return result;
     }
 
+    /// <summary>
+    /// <c>dotnet pack</c> of <paramref name="csprojPath" /> into a fresh directory under this fixture's temp
+    /// root (not cached — each call packs again). Returns that directory with the exit code and output.
+    /// </summary>
+    public (int ExitCode, string Output, string OutputDir) PackFor(string csprojPath)
+    {
+        var outputDir = Path.Combine(_rootTempDir, "pack-" + Guid.NewGuid().ToString("N"));
+        var result = Run("dotnet", $"pack \"{csprojPath}\" -o \"{outputDir}\" -v quiet");
+        return (result.ExitCode, result.Output, outputDir);
+    }
+
     /// <summary>Relative path → SHA-256 hash of every non-build-output file under <paramref name="dir" />.</summary>
     public static IReadOnlyDictionary<string, string> Manifest(string dir) =>
         Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
@@ -116,10 +127,11 @@ public sealed class TemplateScaffoldFixture : IDisposable
                 f => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(f))),
                 StringComparer.Ordinal);
 
-    private static (int ExitCode, string Output) Run(string fileName, string arguments)
+    internal static (int ExitCode, string Output) Run(string fileName, string arguments, string? workingDirectory = null)
     {
         var startInfo = new ProcessStartInfo(fileName, arguments)
         {
+            WorkingDirectory = workingDirectory ?? string.Empty,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
