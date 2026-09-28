@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- DRK-1789 acceptance-test stub: package references only, so the client ATs compile.
+         Packaging (IsPackable, README, PackageIcon) is the Build stage's §3 row 2. -->
+    <ItemGroup>
+        <PackageReference Include="Refit"/>
+        <PackageReference Include="Refit.HttpClientFactory"/>
+        <PackageReference Include="Microsoft.Extensions.Http"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+    </ItemGroup>
+
+</Project>
