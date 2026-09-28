@@ -1,6 +1,7 @@
 using Minimal.App.Tests.Client.Support;
 using Minimal.Client;
 using Minimal.Client.Contracts;
+using Refit;
 
 namespace Minimal.App.Tests.Integration.Client;
 
@@ -88,7 +89,7 @@ public sealed class ClientRoundTripTests(ClientApiFixture fixture) : IClassFixtu
 
         var created = await purchaseOrders.CreatePurchaseOrderAsync(
             new CreatePurchaseOrderRequest { CustomerName = "PO-2001", Amount = 40.00m }, "po-2001-a");
-        created.Status.ShouldNotBeNullOrWhiteSpace();
+        created.Status.ShouldBe("placed");
         created.CreatedBy.ShouldNotBeNullOrWhiteSpace();
 
         var fetched = await purchaseOrders.GetPurchaseOrderAsync(created.Id);
@@ -104,7 +105,7 @@ public sealed class ClientRoundTripTests(ClientApiFixture fixture) : IClassFixtu
 
         var cancelled = await purchaseOrders.CancelPurchaseOrderAsync(created.Id);
         cancelled.Id.ShouldBe(created.Id);
-        cancelled.Status.ShouldNotBe(created.Status);
+        cancelled.Status.ShouldBe("cancelled");
 
         await purchaseOrders.DeletePurchaseOrderAsync(created.Id);
         (await purchaseOrders.ListPurchaseOrdersAsync()).ShouldBeEmpty();
@@ -121,8 +122,7 @@ public sealed class ClientRoundTripTests(ClientApiFixture fixture) : IClassFixtu
         var thrown = await Record.ExceptionAsync(() => provider.GetRequiredService<IPurchaseOrdersClient>()
             .CreatePurchaseOrderAsync(new CreatePurchaseOrderRequest { CustomerName = "PO-2002", Amount = 1.00m }, " "));
 
-        var refusal = thrown as ArgumentException ?? thrown?.InnerException as ArgumentException;
-        refusal.ShouldNotBeNull();
+        var refusal = thrown.ShouldBeOfType<ApiRequestException>().InnerException.ShouldBeOfType<ArgumentException>();
         refusal.Message.ShouldBe("An idempotency key is required: pass a non-blank value for the X-Idempotency-Key header.");
         api.Requests.ShouldBeEmpty();
     }

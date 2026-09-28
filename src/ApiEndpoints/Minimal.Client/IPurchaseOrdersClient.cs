@@ -9,8 +9,9 @@ namespace Minimal.Client;
 public interface IPurchaseOrdersClient
 {
     /// <summary>Creates a purchase order. <paramref name="idempotencyKey" /> is required and is sent as
-    /// the <c>X-Idempotency-Key</c> header; a null or blank key is refused with an
-    /// <see cref="ArgumentException" /> before any request is sent.</summary>
+    /// the <c>X-Idempotency-Key</c> header; a null or blank key is refused before any request is sent, with an
+    /// <see cref="ApiRequestException" /> whose <see cref="Exception.InnerException" /> is the
+    /// <see cref="ArgumentException" /> naming the missing header.</summary>
     [Post("/v1/purchase-orders")]
     Task<PurchaseOrderResponse> CreatePurchaseOrderAsync(
         [Body] CreatePurchaseOrderRequest request,

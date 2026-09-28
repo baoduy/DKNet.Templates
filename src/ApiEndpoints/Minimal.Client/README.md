@@ -39,8 +39,8 @@ var order = await purchaseOrders.CreatePurchaseOrderAsync(
 ```
 
 Creating a purchase order requires an idempotency key, sent as the `X-Idempotency-Key` header. A null or
-blank key is refused with an `ArgumentException` before any request is sent (Refit may wrap it in an
-`ApiRequestException`, with the `ArgumentException` as its inner exception).
+blank key is refused before any request is sent: the call throws `Refit.ApiRequestException`, whose
+`InnerException` is the `ArgumentException` naming the missing header.
 
 ## Handle a refused call
 
