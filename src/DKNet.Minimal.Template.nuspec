@@ -44,5 +44,8 @@
         <file src="ApiEndpoints\**\*"
           target="content\ApiEndpoints\"
           exclude="ApiEndpoints\**\bin\**;ApiEndpoints\**\obj\**;ApiEndpoints\**\TestResults\**;ApiEndpoints\**\*.user;ApiEndpoints\**\*.sh;ApiEndpoints\**\.DS_Store;ApiEndpoints\docs\**;ApiEndpoints\**\docs\**;ApiEndpoints\**\README.md" />
+
+    <!-- The client's README ships with the scaffold: the client project packs it as its NuGet readme -->
+    <file src="ApiEndpoints\Minimal.Client\README.md" target="content\ApiEndpoints\Minimal.Client\" />
   </files>
 </package>

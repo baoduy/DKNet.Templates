@@ -62,10 +62,11 @@ intermediate build failure points at real coupling rather than at the ordering.
    generated `*.feature.cs`, plus `Steps/`).
 3. Tests — `<YourApp>.App.Tests/Unit/<Feature>/` and `<YourApp>.App.Tests/Integration/<Feature>/`.
    Also grep `<YourApp>.App.Tests/Architecture/` — a convention test may assert on this feature by name.
-4. Api — `<YourApp>.Api/ApiEndpoints/<Feature>/`.
-5. AppServices — `<YourApp>.AppServices/<Feature>/`.
-6. Infra — `<YourApp>.Infra/Features/<Feature>/`.
-7. Domains — `<YourApp>.Domains/Features/<Feature>/`.
+4. Client — keep `<YourApp>.Client` in step by removing the matching client methods (the feature's `I{Plural}Client` and the `Contracts/` only it uses) in the same change. A removed sample also takes its named tests in `<YourApp>.App.Tests/Client/` with it — the drift ATs in `Client/ClientEndpointParityTests.cs` name `ManualSample` and `AutomatedSample` routes.
+5. Api — `<YourApp>.Api/ApiEndpoints/<Feature>/`.
+6. AppServices — `<YourApp>.AppServices/<Feature>/`.
+7. Infra — `<YourApp>.Infra/Features/<Feature>/`.
+8. Domains — `<YourApp>.Domains/Features/<Feature>/`.
 
 ## Phase 2 — Out-of-folder touchpoints
 
