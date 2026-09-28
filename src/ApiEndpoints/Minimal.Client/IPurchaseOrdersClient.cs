@@ -17,9 +17,10 @@ public interface IPurchaseOrdersClient
         [Header(IdempotencyKeyGuard.HeaderName)] string idempotencyKey,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Gets one page of purchase orders, optionally filtered by customer name.</summary>
+    /// <summary>Gets one page of purchase orders, optionally filtered by customer name. The API returns the
+    /// page's items only, with no paging envelope.</summary>
     [Get("/v1/purchase-orders")]
-    Task<PagedResponse<PurchaseOrderResponse>> ListPurchaseOrdersAsync(
+    Task<IReadOnlyList<PurchaseOrderResponse>> ListPurchaseOrdersAsync(
         [Query] PurchaseOrderListQuery? query = null,
         CancellationToken cancellationToken = default);
 

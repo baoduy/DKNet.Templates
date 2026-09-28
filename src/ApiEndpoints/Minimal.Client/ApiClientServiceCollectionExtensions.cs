@@ -21,7 +21,6 @@ public static class ApiClientServiceCollectionExtensions
         Uri baseAddress,
         Func<DelegatingHandler>? handlerFactory = null)
     {
-        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(baseAddress);
 
         var builder = services.AddHttpClient(HttpClientName, c => c.BaseAddress = baseAddress)
