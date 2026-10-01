@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Minimal.Domains.Features.AutomatedSample.Entities;
+using Minimal.Domains.Features.ManualSample.Entities;
 using Minimal.Infra.Contexts;
+using Minimal.Infra.Migrations;
 
 namespace Minimal.App.Tests.Architecture;
 
@@ -22,6 +25,36 @@ public class MigrationSchemaTests
         nameIndex!.IsUnique.ShouldBeTrue("Product.Name's index must be unique.");
     }
 
+
+    [Fact]
+    public void EfCoreModel_ShouldDeclarePurchaseOrderOwnedBy_AsRequired_WithMaxLength500()
+    {
+        // DRK-1901: the column DataOwnerAuthQuery filters every purchase-order read on.
+        using var dbContext = new DbContextFactory().CreateDbContext([]);
+        var ownedBy = dbContext.Model.FindEntityType(typeof(PurchaseOrder))?.FindProperty(nameof(PurchaseOrder.OwnedBy));
+
+        ownedBy.ShouldNotBeNull();
+        ownedBy!.IsNullable.ShouldBeFalse();
+        ownedBy.GetMaxLength().ShouldBe(500);
+    }
+
+    [Fact]
+    public void AddPurchaseOrderOwnedByMigration_ShouldAddTheOwnedByColumn_AndDropItOnRollback()
+    {
+        var migration = new AddPurchaseOrderOwnedBy();
+
+        var added = migration.UpOperations.ShouldHaveSingleItem().ShouldBeOfType<AddColumnOperation>();
+        added.Name.ShouldBe("OwnedBy");
+        added.Schema.ShouldBe("manual_sample");
+        added.Table.ShouldBe("PurchaseOrders");
+        added.ColumnType.ShouldBe("character varying(500)");
+        added.IsNullable.ShouldBeFalse();
+
+        var dropped = migration.DownOperations.ShouldHaveSingleItem().ShouldBeOfType<DropColumnOperation>();
+        dropped.Name.ShouldBe("OwnedBy");
+        dropped.Schema.ShouldBe("manual_sample");
+        dropped.Table.ShouldBe("PurchaseOrders");
+    }
 
     [Fact]
     public void Migration_ShouldCreate_SeqSchema()
