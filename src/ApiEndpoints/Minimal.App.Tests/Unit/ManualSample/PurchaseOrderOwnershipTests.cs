@@ -1,5 +1,7 @@
 using DKNet.EfCore.DataAuthorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Minimal.App.Tests.Integration.Support;
 using Minimal.Domains.Features.ManualSample.Entities;
 using Minimal.Infra.Contexts;
 
@@ -10,9 +12,23 @@ namespace Minimal.App.Tests.Unit.ManualSample;
 /// ownership key (an authenticated caller with no subject claim), a new order with no <c>OwnedBy</c> is refused
 /// before EF Core saves it, while a seeded order that already carries its owner is saved unchanged.
 /// </summary>
-public sealed class PurchaseOrderOwnershipTests
+public sealed class PurchaseOrderOwnershipTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 {
     #region Methods
+
+    [Fact]
+    public void HandBuiltContext_DoesNotShareTheApiHostsModel_SoTheHostKeepsItsOwnerFilter()
+    {
+        // The facts below build CoreDbContext by hand, outside the API host. EF Core caches one model per internal
+        // service provider; sharing it would let a model built here first, before any host registered the owner
+        // filter, be handed to the host, so the host would serve every caller's rows.
+        using var handBuilt = new CoreDbContext(NewOptions());
+        using var scope = fixture.CreateScope();
+        var host = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+
+        handBuilt.Model.ShouldNotBeSameAs(host.Model);
+        host.Model.FindEntityType(typeof(PurchaseOrder))!.GetDeclaredQueryFilters().ShouldNotBeEmpty();
+    }
 
     [Fact]
     public async Task NewOrder_WithNoResolvableOwnershipKey_IsRefused_AndNothingIsSaved()
@@ -54,10 +70,14 @@ public sealed class PurchaseOrderOwnershipTests
         saved.OwnedBy.ShouldBe("System");
     }
 
+    // Service-provider caching off: each hand-built context gets its own internal service provider, and so its own
+    // model, instead of sharing the API host's. The InMemory store lives in that provider too, so the writer and
+    // reader of one fact share it through an explicit database root.
     private static DbContextOptions NewOptions() =>
         new DbContextOptionsBuilder<CoreDbContext>()
-            .UseInMemoryDatabase($"po-ownership-{Guid.NewGuid():N}")
+            .UseInMemoryDatabase($"po-ownership-{Guid.NewGuid():N}", new InMemoryDatabaseRoot())
             .UseAutoConfigModel([typeof(CoreDbContext).Assembly])
+            .EnableServiceProviderCaching(false)
             .Options;
 
     #endregion
