@@ -22,6 +22,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Create_ShouldPersistOrder_AndReturnMatchingDto()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
@@ -47,6 +48,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Create_ShouldFail_WhenByUserIsMissing()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
@@ -63,6 +65,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Update_ShouldChangeAmount_WhenOrderExists()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
@@ -88,6 +91,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Update_ShouldFail_WhenOrderNotFound()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
@@ -105,6 +109,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Update_ShouldFail_WhenByUserIsMissing()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
@@ -126,6 +131,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Cancel_ShouldSucceedOnce_ThenFail_WhenAlreadyCancelled()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
@@ -146,6 +152,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Cancel_ShouldFail_WhenOrderNotFound()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
@@ -158,6 +165,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Cancel_ShouldFail_WhenByUserIsMissing()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
@@ -179,6 +187,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Delete_ShouldRemoveOrder()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
@@ -198,6 +207,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Delete_ShouldFail_WhenOrderNotFound()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
@@ -210,6 +220,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task Delete_ShouldFail_WhenByUserIsMissing()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
@@ -231,6 +242,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task GetById_ShouldReturnNull_WhenNotFound()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
@@ -243,6 +255,7 @@ public sealed class PurchaseOrderActionsIntegrationTests(ApiFixture fixture) : I
     public async Task List_ShouldFilterByCustomerName()
     {
         await fixture.ResetDatabaseAsync();
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();

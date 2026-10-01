@@ -206,6 +206,8 @@ internal static class SampleDataGenerator
             }
 
             db.AddRange(orders);
+            foreach (var order in orders)
+                db.Entry(order).Property(nameof(PurchaseOrder.OwnedBy)).CurrentValue = SharedConsts.SystemAccount;
             await db.SaveChangesAsync(cancellationToken);
             db.ChangeTracker.Clear();
         }

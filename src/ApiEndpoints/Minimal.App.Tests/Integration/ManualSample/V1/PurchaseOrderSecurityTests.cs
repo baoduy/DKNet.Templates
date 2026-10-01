@@ -72,6 +72,7 @@ public sealed class PurchaseOrderSecurityTests(AuthOnApiFixture fixture) : IClas
         // DataOwnerHook either way (DKNet 10.1.12 also closed that hook's own UpdatedBy gap, see
         // ProductSecurityTests.Update_ShouldStampUpdatedByFromAuthenticatedCallersOwnershipKey). PurchaseOrderDto
         // has no UpdatedBy field, so assert it on the entity directly.
+        using var caller = CallerHttpContext.Subject(fixture.Services, TestAuthHandler.CallerProfileId.ToString());
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
         var order = await repository.FirstOrDefaultAsync(new SpecGetPurchaseOrder(created.Id), CancellationToken.None);
@@ -101,6 +102,7 @@ public sealed class PurchaseOrderSecurityTests(AuthOnApiFixture fixture) : IClas
         cancelResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         // PurchaseOrderDto has no UpdatedBy field, so assert it on the entity directly (see the Update test above).
+        using var caller = CallerHttpContext.Subject(fixture.Services, TestAuthHandler.CallerProfileId.ToString());
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
         var order = await repository.FirstOrDefaultAsync(new SpecGetPurchaseOrder(created.Id), CancellationToken.None);

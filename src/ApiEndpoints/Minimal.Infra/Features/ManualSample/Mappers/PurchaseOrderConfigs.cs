@@ -14,6 +14,7 @@ internal sealed class PurchaseOrderConfigs : DefaultEntityTypeConfiguration<Purc
         builder.Property(p => p.CustomerName).HasMaxLength(200).IsRequired();
         builder.Property(p => p.Amount).HasPrecision(18, 2);
         builder.Property(p => p.Status).HasConversion<string>();
+        builder.Property(p => p.OwnedBy).HasMaxLength(500).IsRequired();
         builder.ToTable("PurchaseOrders", "manual_sample");
     }
 

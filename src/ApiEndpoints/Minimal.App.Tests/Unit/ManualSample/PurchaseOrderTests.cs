@@ -46,6 +46,22 @@ public class PurchaseOrderTests
     }
 
     [Fact]
+    public void Ctor_ShouldLeaveOwnedByEmpty_ForDataOwnerHookToStampFromTheCaller()
+    {
+        var order = new PurchaseOrder("Acme Pte Ltd", 250.00m, "alice");
+
+        order.OwnedBy.ShouldBe(string.Empty);
+    }
+
+    [Fact]
+    public void RehydrationCtor_UsedByStaticSeeding_ShouldOwnTheOrderAsTheSeedingUser()
+    {
+        var order = new PurchaseOrder(Guid.NewGuid(), "Acme Pte Ltd", 1250.00m, "System");
+
+        order.OwnedBy.ShouldBe("System");
+    }
+
+    [Fact]
     public void ChangeAmount_ShouldUpdateAmount_AndStampUpdatedBy()
     {
         var order = new PurchaseOrder("Acme Pte Ltd", 100m, "alice");
