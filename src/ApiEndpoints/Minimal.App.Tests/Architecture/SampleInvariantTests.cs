@@ -85,7 +85,7 @@ public class SampleInvariantTests
     }
 
     [Fact]
-    public void ExactlyTwoMigrations_ShouldExist_WithNoRemovedDemoStorage()
+    public void ExactlyThreeMigrations_ShouldExist_WithNoRemovedDemoStorage()
     {
         var migrationsDir = Path.Combine(SrcDir, "ApiEndpoints/Minimal.Infra/Migrations");
         Directory.Exists(migrationsDir).ShouldBeTrue();
@@ -94,10 +94,10 @@ public class SampleInvariantTests
             .Where(f => !Path.GetFileName(f).EndsWith("ModelSnapshot.cs", StringComparison.Ordinal))
             .ToArray();
 
-        // Exactly two migrations = InitDb (DRK-714) + AddProductSupplierSensitiveColumns (DRK-1188), each as
-        // <Timestamp>_<Name>.cs + its .Designer.cs.
-        migrationFiles.Length.ShouldBe(4,
-            $"Expected exactly two migrations (4 files: 2 migrations + 2 designers). Found: {string.Join(", ", migrationFiles.Select(Path.GetFileName))}");
+        // Exactly three migrations = InitDb (DRK-714) + AddProductSupplierSensitiveColumns (DRK-1188) +
+        // AddPurchaseOrderOwnedBy (DRK-1901), each as <Timestamp>_<Name>.cs + its .Designer.cs.
+        migrationFiles.Length.ShouldBe(6,
+            $"Expected exactly three migrations (6 files: 3 migrations + 3 designers). Found: {string.Join(", ", migrationFiles.Select(Path.GetFileName))}");
 
         foreach (var file in migrationFiles)
         {

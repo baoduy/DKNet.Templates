@@ -80,6 +80,7 @@ public sealed class PurchaseOrderListPagingTests(ApiFixture fixture) : IClassFix
 
     private async Task SeedOrdersAsync(int count)
     {
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
         for (var i = 0; i < count; i++)
