@@ -39,9 +39,12 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
 
     /// <summary>
     /// Fails closed, before EF Core attempts the insert, when an authenticated caller's ownership key cannot be
-    /// resolved and a new row would be left with no <see cref="IAuditedProperties.CreatedBy"/> — otherwise EF
-    /// Core's own required-property check throws a raw <see cref="DbUpdateException"/> that leaks column/entity
-    /// names into the response (DRK-899 R3: null key means "no stamp", never a crash).
+    /// resolved and a new row would be left with no <see cref="IAuditedProperties.CreatedBy"/>, or a new
+    /// <see cref="IOwnedBy"/> row with no <see cref="IOwnedBy.OwnedBy"/> — otherwise EF Core's own
+    /// required-property check throws a raw <see cref="DbUpdateException"/> that leaks column/entity names into
+    /// the response (DRK-899 R3: null key means "no stamp", never a crash), or the row is saved but readable by
+    /// nobody (DRK-1901). A row that already carries its own <see cref="IOwnedBy.OwnedBy"/>, such as static seed
+    /// data, is kept as it is.
     /// </summary>
     private void EnsureOwnershipResolvable()
     {
@@ -50,8 +53,9 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
 
         var hasUnattributableInsert = ChangeTracker.Entries()
             .Any(e => e.State == EntityState.Added
-                      && e.Entity is IAuditedProperties { CreatedBy: null or "" }
-                      && e.Metadata.FindProperty(nameof(IAuditedProperties.CreatedBy)) is { IsNullable: false });
+                      && (e.Entity is IOwnedBy { OwnedBy: null or "" }
+                          || (e.Entity is IAuditedProperties { CreatedBy: null or "" }
+                              && e.Metadata.FindProperty(nameof(IAuditedProperties.CreatedBy)) is { IsNullable: false })));
 
         if (hasUnattributableInsert) throw new OwnershipRequiredException();
     }

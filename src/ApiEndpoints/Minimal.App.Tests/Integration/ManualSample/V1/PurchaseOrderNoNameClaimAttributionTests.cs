@@ -17,6 +17,9 @@ namespace Minimal.App.Tests.Integration.ManualSample.V1;
 public sealed class PurchaseOrderNoNameClaimAttributionTests(AuthOnNoNameClaimApiFixture fixture)
     : IClassFixture<AuthOnNoNameClaimApiFixture>
 {
+    // The subject NoNameClaimAuthHandler signs every request in with — the ownership key the seeded order needs.
+    private const string NoNameClaimCallerSubject = "no-name-claim-caller";
+
     [Fact]
     public async Task Update_WithNoNameClaim_IsRefused_AndAmountIsUnchanged()
     {
@@ -61,6 +64,7 @@ public sealed class PurchaseOrderNoNameClaimAttributionTests(AuthOnNoNameClaimAp
 
     private async Task<PurchaseOrder> SeedOrderAsync()
     {
+        using var caller = CallerHttpContext.Subject(fixture.Services, NoNameClaimCallerSubject);
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
         var order = new PurchaseOrder("Acme Pte Ltd", 100m, "seed");
@@ -71,6 +75,7 @@ public sealed class PurchaseOrderNoNameClaimAttributionTests(AuthOnNoNameClaimAp
 
     private async Task<PurchaseOrder?> FindAsync(Guid id)
     {
+        using var caller = CallerHttpContext.Subject(fixture.Services, NoNameClaimCallerSubject);
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
         return await repository.FirstOrDefaultAsync(new SpecGetPurchaseOrder(id), CancellationToken.None);

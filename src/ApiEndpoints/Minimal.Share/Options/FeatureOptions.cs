@@ -23,9 +23,9 @@ public class FeatureOptions
     public bool EnableHealthCheck { get; set; } = true;
 
     /// <summary>
-    ///     Gets or sets a value indicating whether HTTPS redirection is enabled.
+    ///     Gets or sets a value indicating whether HTTPS redirection is enabled. Default is true.
     /// </summary>
-    public bool EnableHttps { get; set; }
+    public bool EnableHttps { get; set; } = true;
 
     /// <summary>
     ///     Gets or sets a value indicating whether OpenTelemetry instrumentation is enabled.
@@ -53,9 +53,9 @@ public class FeatureOptions
     public bool EnableVersioning { get; set; } = true;
 
     /// <summary>
-    ///     Gets or sets a value indicating whether authorization is required for API endpoints.
+    ///     Gets or sets a value indicating whether authorization is required for API endpoints. Default is true.
     /// </summary>
-    public bool RequireAuthorization { get; set; }
+    public bool RequireAuthorization { get; set; } = true;
 
     /// <summary>
     ///     Gets or sets a value indicating whether the built-in demonstration authentication provider is

@@ -21,6 +21,7 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
     {
         await fixture.ResetDatabaseAsync();
 
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
 
@@ -46,6 +47,7 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
     {
         await fixture.ResetDatabaseAsync();
 
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
 
@@ -76,6 +78,7 @@ public sealed class StatusCountsEndpointMapperExtensionsTests(ApiFixture fixture
     {
         await fixture.ResetDatabaseAsync();
 
+        using var caller = CallerHttpContext.System(fixture.Services);
         using var scope = fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositorySpec>();
 
