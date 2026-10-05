@@ -90,22 +90,6 @@ public class MigrationSchemaTests
     }
 
     [Fact]
-    public void AppHost_ShouldReference_PostgreSqlNotSqlServer()
-    {
-        var srcDir = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory,
-                "../../../../../ApiEndpoints/Minimal.AppHost"));
-
-        var csprojPath = Path.Combine(srcDir, "Minimal.AppHost.csproj");
-        File.Exists(csprojPath).ShouldBeTrue();
-
-        var content = File.ReadAllText(csprojPath);
-
-        content.Contains("Aspire.Hosting.PostgreSQL", StringComparison.Ordinal).ShouldBeTrue();
-        content.Contains("Aspire.Hosting.SqlServer", StringComparison.OrdinalIgnoreCase).ShouldBeFalse();
-    }
-
-    [Fact]
     public void InfraCsproj_ShouldReference_NpgsqlNotSqlServer()
     {
         var srcDir = Path.GetFullPath(

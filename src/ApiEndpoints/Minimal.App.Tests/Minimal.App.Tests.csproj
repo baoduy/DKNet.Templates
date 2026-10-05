@@ -44,7 +44,6 @@
     <ItemGroup>
         <ProjectReference Include="..\Minimal.Api\Minimal.Api.csproj" />
         <ProjectReference Include="..\Minimal.App.TestSupport\Minimal.App.TestSupport.csproj" />
-        <ProjectReference Include="..\Minimal.AppHost\Minimal.AppHost.csproj" />
         <ProjectReference Include="..\Minimal.Client\Minimal.Client.csproj" />
     </ItemGroup>
 
