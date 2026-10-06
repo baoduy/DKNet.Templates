@@ -36,8 +36,6 @@ public class FeatureOptionsSecureDefaultsTests
     /// <summary>Today's offenders (DRK-1903). Only ever remove entries; never add one.</summary>
     private static readonly HashSet<string> KnownViolations = new(StringComparer.Ordinal)
     {
-        nameof(FeatureOptions.RequireAuthorization),
-        nameof(FeatureOptions.EnableHttps),
     };
 
     private static string[] InsecureClassDefaults()

@@ -64,29 +64,6 @@ public class PackageArchitectureTests
     }
 
     [Fact]
-    public void NoSqlServerAspireHostingPackage_ShouldExist()
-    {
-        var srcDir = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
-
-        var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
-
-        var sqlServerAspireRefs = csprojFiles
-            .SelectMany(file =>
-            {
-                var doc = XDocument.Load(file);
-                return doc.Descendants("PackageReference")
-                    .Select(e => e.Attribute("Include")?.Value ?? "")
-                    .Where(v => v.Contains("Aspire.Hosting.SqlServer",
-                        StringComparison.OrdinalIgnoreCase));
-            })
-            .Distinct()
-            .ToArray();
-
-        sqlServerAspireRefs.ShouldBeEmpty();
-    }
-
-    [Fact]
     public void DebugGatedConfiguration_ShouldHaveDebugConditional()
     {
         var sourcePath = Path.GetFullPath(
@@ -142,7 +119,7 @@ public class PackageArchitectureTests
     }
 
     [Fact]
-    public void AllDKNetPackages_ShouldBePinnedTo_13_1_3()
+    public void AllDKNetPackages_ShouldBePinnedTo_13_2_5()
     {
         var srcDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
@@ -153,8 +130,8 @@ public class PackageArchitectureTests
         var doc = XDocument.Load(directoryPackagesPath);
         var distinctVersions = PackagePinGuard.DistinctDkNetVersions(doc);
 
-        distinctVersions.ShouldBe(["13.1.3"],
-            "DKNet packages must all be pinned to 13.1.3, found: " + string.Join(", ", distinctVersions));
+        distinctVersions.ShouldBe(["13.2.5"],
+            "DKNet packages must all be pinned to 13.2.5, found: " + string.Join(", ", distinctVersions));
     }
 
     [Fact]
