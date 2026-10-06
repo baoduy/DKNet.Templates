@@ -57,7 +57,7 @@ The template carries two side-by-side vertical slices demonstrating opposite end
 - Tests currently live mainly under `ApiEndpoints/Minimal.App.Tests/` (Shouldly + xUnit patterns) and `ApiEndpoints/Minimal.App.BDDTests/` (Reqnroll + NUnit).
 - `Minimal.App.Tests.csproj` disables analyzers for tests; production projects enforce strict warnings-as-errors from `Directory.Packages.props`.
 - `Minimal.AppHost` (`ApiEndpoints/Minimal.AppHost`): The AppHost is for local runs only: it is excluded from coverage and has no tests.
-- Coverage filters are defined in `coverage.runsettings`; avoid placing real logic in excluded paths (`Minimal.AppHost`, `bin/`, `obj/`, `*Test*.cs`).
+- **Coverage scope: application code only.** `coverage.runsettings` measures `Minimal.*` (Api, AppServices, Domains, Infra, Share, Client) and excludes test assemblies, `*.TestSupport`, `*.AppHost`, `**/Migrations/**`, `bin/`, `obj/`, `GlobalUsings.cs` and `*.g.cs`. Write unit tests for the API and business modules only; never write a test just to raise coverage on local-run or startup plumbing (Aspire `AppHost`, EF migrations, migration jobs, `DbContextFactory`, `*Config` wiring). Mark such plumbing `[ExcludeFromCodeCoverage]` instead — the existing `Minimal.Api/Configs/*` and `Minimal.Infra/Extensions/*` classes show the convention. Never put business logic in an excluded path or type.
 
 ## BDD Testing (Reqnroll + NUnit)
 - BDD tests live in `ApiEndpoints/Minimal.App.BDDTests/`.

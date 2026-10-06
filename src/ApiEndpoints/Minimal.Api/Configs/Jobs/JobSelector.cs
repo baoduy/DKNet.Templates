@@ -12,6 +12,7 @@ namespace Minimal.Api.Configs.Jobs;
 ///     (case-insensitive). Meaningless when <see cref="HasJobName" /> is <c>false</c>.
 /// </param>
 /// <param name="KnownJobNames">Every job name the registry recognises, for the R3 failure message.</param>
+[ExcludeFromCodeCoverage]
 internal sealed record JobSelection(string? RequestedJobName, bool IsRecognized, IReadOnlyList<string> KnownJobNames)
 {
     /// <summary>True when a non-option argument was present at all — recognized or not (R3).</summary>
@@ -24,6 +25,7 @@ internal sealed record JobSelection(string? RequestedJobName, bool IsRecognized,
 ///     that option and is never itself a job-name candidate; a "--key=value" option carries its own value, so
 ///     the argument after it is still a job-name candidate.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class JobSelector
 {
     public static JobSelection Select(IReadOnlyList<string> args, IReadOnlyCollection<string> knownJobNames)

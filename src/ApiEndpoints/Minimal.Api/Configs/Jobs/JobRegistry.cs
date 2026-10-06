@@ -5,6 +5,7 @@ namespace Minimal.Api.Configs.Jobs;
 ///     no new branch in the start-up path, no new project, no second container image. Names are matched
 ///     case-insensitively by <see cref="JobSelector" />.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class JobRegistry
 {
     public static IReadOnlyDictionary<string, Func<WebApplicationBuilder, Task<int>>> Jobs { get; } =

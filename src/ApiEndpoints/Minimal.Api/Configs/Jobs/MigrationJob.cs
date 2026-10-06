@@ -5,6 +5,7 @@ namespace Minimal.Api.Configs.Jobs;
 ///     success or failure by exit code alone (R5) — no host is built, no HTTP listener is bound, no message bus
 ///     connection is opened (R4).
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class MigrationJob
 {
     [SuppressMessage("Design", "CA1031:Do not catch general exception types",

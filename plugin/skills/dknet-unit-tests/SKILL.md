@@ -296,9 +296,23 @@ dotnet test ApiEndpoints/<YourApp>.App.Tests/<YourApp>.App.Tests.csproj --filter
 dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
 ```
 
-`coverage.runsettings` includes `[DKNet*]*` and `[<YourApp>*]*`, excludes `*.Tests`/`*Tests` assemblies and
-`**/bin/**, **/obj/**, **/*Tests.cs, **/GlobalUsings.cs, **/*.g.cs` by file — don't put real logic in an
-excluded path expecting it to be measured.
+`coverage.runsettings` measures application code only: it includes `[<YourApp>*]*` and excludes test
+assemblies, `[*.TestSupport]*`, `[*.AppHost]*`, and by file `**/bin/**, **/obj/**, **/*Tests.cs,
+**/GlobalUsings.cs, **/Migrations/**, **/*.g.cs`.
+
+**Coverage rule** — test the API and business modules (`<YourApp>.Api` endpoints, `<YourApp>.AppServices`,
+`<YourApp>.Domains`, `<YourApp>.Infra` repositories/services, `<YourApp>.Share`); never write a test only to
+lift coverage on local-run or startup plumbing:
+
+| Code | Do |
+|---|---|
+| Aspire `<YourApp>.AppHost`, `<YourApp>.App.TestSupport` | Nothing — excluded by assembly |
+| EF Core `Migrations/` (migrations + model snapshot) | Nothing — excluded by file; schema shape is asserted by `MigrationSchemaTests` |
+| Startup/migration wiring: `*Config` classes, `InfraSetup`, `InfraMigration`, `DbContextFactory`, migration jobs | Mark the type `[ExcludeFromCodeCoverage]`, no test |
+| Entities, validators, specs, handlers, endpoints, Infra services | Test it |
+
+Never put business logic in an excluded path or an `[ExcludeFromCodeCoverage]` type expecting it to be
+measured — move the logic into a measured class and test that.
 
 ## Step-by-step
 

@@ -424,8 +424,9 @@ package's generic `MapPost<TRequest,TDto>`/`MapPutById<TRequest,TKey,TDto>`.
   separately by `Minimal.App.Tests/Architecture/*` (NetArchTest). A new feature that violates one of
   these fails the build, not a code review.
 - Coverage target is at least 80% on every class you touch. `src/coverage.runsettings` scopes
-  collection to `[DKNet*]`/`[Minimal*]` and excludes `*Tests`/`bin`/`obj`/`GlobalUsings.cs` — don't
-  put real logic in an excluded path.
+  collection to `[Minimal*]` and excludes tests, `*.TestSupport`, `*.AppHost`, `Migrations/`,
+  `bin`/`obj`/`GlobalUsings.cs` — test API and business code only; mark startup/migration plumbing
+  `[ExcludeFromCodeCoverage]` instead of testing it, and don't put real logic in an excluded path.
 - `Unit/ManualSample/`, `Unit/AutomatedSample/`, `Integration/ManualSample/V1/`, and
   `Integration/AutomatedSample/V1/` already hold tests for both samples. Use them as your
   reference shape alongside the production code; dev-qc extends this coverage at Verify.

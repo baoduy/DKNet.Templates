@@ -204,4 +204,19 @@ public class TemplateRepositoryAssertions
             "expected RunConfiguration/MaxCpuCount=1 (R4): the two scaffold fixtures both mutate the " +
             "global dotnet-new template store for DKNet.Minimal.Template and must not run concurrently");
     }
+
+    /// <summary>Coverage measures application code only: local-run hosts (Aspire AppHost), test helpers
+    /// and EF Core migrations must stay out of the numbers a team reads.</summary>
+    [Fact]
+    public void CoverageRunSettings_ExcludesLocalRunAndMigrationCode()
+    {
+        var doc = XDocument.Load(Path.Combine(SrcDir, "coverage.runsettings"));
+        var config = doc.Descendants("Configuration").Single();
+        string Entries(string name) => config.Element(name)?.Value ?? string.Empty;
+
+        Entries("Exclude").ShouldContain("[*.AppHost]*");
+        Entries("Exclude").ShouldContain("[*.TestSupport]*");
+        Entries("ExcludeByFile").ShouldContain("**/Migrations/**");
+        Entries("Include").ShouldNotContain("[DKNet*]");
+    }
 }

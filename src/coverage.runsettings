@@ -10,8 +10,10 @@
         <DataCollectors>
             <DataCollector friendlyName="XPlat Code Coverage">
                 <Configuration>
+                    <!-- Measure only the application: Api, AppServices, Domains, Infra, Share, Client.
+                         Local-run hosts (AppHost), test helpers (TestSupport), EF migrations and
+                         startup/migration plumbing marked [ExcludeFromCodeCoverage] are not business code. -->
                     <Include>
-                        [DKNet*]*,
                         [Minimal*]*
                     </Include>
                     <Exclude>
@@ -19,7 +21,8 @@
                         [*Tests]*,
                         [*.TestObjects]*,
                         [*TestDataLayer]*,
-                        [Minimal.AppHost]*
+                        [*.TestSupport]*,
+                        [*.AppHost]*
                     </Exclude>
                     <ExcludeByFile>
                         **/bin/**,
@@ -28,6 +31,7 @@
                         **/*Test.cs,
                         **/TestObjects/**,
                         **/GlobalUsings.cs,
+                        **/Migrations/**,
                         **/*.g.cs
                     </ExcludeByFile>
                     <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
