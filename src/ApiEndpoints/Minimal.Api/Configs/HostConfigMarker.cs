@@ -7,6 +7,7 @@ namespace Minimal.Api.Configs;
 ///     same process (e.g. two <c>WebApplicationFactory</c> instances) would otherwise leak each other's feature
 ///     state.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class HostConfigMarker
 {
     public static IServiceCollection MarkConfigAdded(this IServiceCollection services, string configName)
