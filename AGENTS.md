@@ -56,7 +56,8 @@ The template carries two side-by-side vertical slices demonstrating opposite end
 - **Both suites are business-domain tests only.** Write tests for your entities, validators, specs, handlers, CRUD routes and domain events. Do not add tests for logging, telemetry, health probes, Swagger/OpenAPI documents, CORS, HSTS, security headers, rate limiting, JWT configuration, host startup plumbing or config binding — that is framework behaviour covered upstream, and it buries the examples a new team member reads to learn the conventions. The only non-business tests that belong here are the `Architecture/` layer rules.
 - Tests currently live mainly under `ApiEndpoints/Minimal.App.Tests/` (Shouldly + xUnit patterns) and `ApiEndpoints/Minimal.App.BDDTests/` (Reqnroll + NUnit).
 - `Minimal.App.Tests.csproj` disables analyzers for tests; production projects enforce strict warnings-as-errors from `Directory.Packages.props`.
-- Coverage filters are defined in `coverage.runsettings`; avoid placing real logic in excluded paths (`bin/`, `obj/`, `*Test*.cs`).
+- `Minimal.AppHost` (`ApiEndpoints/Minimal.AppHost`): The AppHost is for local runs only: it is excluded from coverage and has no tests.
+- Coverage filters are defined in `coverage.runsettings`; avoid placing real logic in excluded paths (`Minimal.AppHost`, `bin/`, `obj/`, `*Test*.cs`).
 
 ## BDD Testing (Reqnroll + NUnit)
 - BDD tests live in `ApiEndpoints/Minimal.App.BDDTests/`.

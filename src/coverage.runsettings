@@ -18,7 +18,8 @@
                         [*.Tests]*,
                         [*Tests]*,
                         [*.TestObjects]*,
-                        [*TestDataLayer]*
+                        [*TestDataLayer]*,
+                        [Minimal.AppHost]*
                     </Exclude>
                     <ExcludeByFile>
                         **/bin/**,

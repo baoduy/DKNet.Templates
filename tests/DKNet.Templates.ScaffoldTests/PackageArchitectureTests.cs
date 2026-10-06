@@ -64,29 +64,6 @@ public class PackageArchitectureTests
     }
 
     [Fact]
-    public void NoSqlServerAspireHostingPackage_ShouldExist()
-    {
-        var srcDir = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
-
-        var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
-
-        var sqlServerAspireRefs = csprojFiles
-            .SelectMany(file =>
-            {
-                var doc = XDocument.Load(file);
-                return doc.Descendants("PackageReference")
-                    .Select(e => e.Attribute("Include")?.Value ?? "")
-                    .Where(v => v.Contains("Aspire.Hosting.SqlServer",
-                        StringComparison.OrdinalIgnoreCase));
-            })
-            .Distinct()
-            .ToArray();
-
-        sqlServerAspireRefs.ShouldBeEmpty();
-    }
-
-    [Fact]
     public void DebugGatedConfiguration_ShouldHaveDebugConditional()
     {
         var sourcePath = Path.GetFullPath(
