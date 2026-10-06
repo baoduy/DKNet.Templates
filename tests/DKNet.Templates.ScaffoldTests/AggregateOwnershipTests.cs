@@ -20,7 +20,6 @@ public class AggregateOwnershipTests
     /// <summary>Today's offenders by full type name (DRK-1901). Only ever remove entries.</summary>
     private static readonly HashSet<string> KnownViolations = new(StringComparer.Ordinal)
     {
-        "Minimal.Domains.Features.ManualSample.Entities.PurchaseOrder",
     };
 
     private static Type[] ConcreteAggregates() =>
