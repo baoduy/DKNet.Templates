@@ -38,5 +38,25 @@ internal sealed class AzureAppConfigOptions
     /// </summary>
     public string? Label { get; set; }
 
+    /// <summary>
+    ///     Refresh interval for configuration values, in seconds
+    /// </summary>
+    public int CacheExpirationInSeconds { get; set; }
+
+    /// <summary>
+    ///     The label the setup selects keys with
+    /// </summary>
+    public string ResolvedLabel => Label ?? SharedConsts.ApiName;
+
+    /// <summary>
+    ///     The refresh interval the setup registers
+    /// </summary>
+    public TimeSpan RefreshInterval => throw new NotImplementedException();
+
+    /// <summary>
+    ///     The feature flag name filter the setup selects with; <see langword="null" /> selects all flags
+    /// </summary>
+    public string? FeatureFlagFilter => throw new NotImplementedException();
+
     #endregion
 }
