@@ -1,3 +1,5 @@
+using Azure.Data.AppConfiguration;
+
 namespace Minimal.Api.Configs.AzureAppConfig;
 
 /// <summary>
@@ -66,6 +68,28 @@ internal sealed class AzureAppConfigOptions
               .Replace(@"\", @"\\", StringComparison.Ordinal)
               .Replace("*", @"\*", StringComparison.Ordinal)
               .Replace(",", @"\,", StringComparison.Ordinal) + "*";
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>
+    ///     Whether a setting fetched from the store is kept. Non-flag keys are always kept. A feature flag
+    ///     (<c>.appconfig.featureflag/&lt;name&gt;</c>) is kept only when <see cref="LoadFeatureFlags" /> is on and its
+    ///     name starts with <see cref="FeatureFlagPrefix" /> (ordinal), when one is set. This also covers flags the
+    ///     label selector fetches.
+    /// </summary>
+    public bool ShouldLoadSetting(string key)
+    {
+        var flagPrefix = FeatureFlagConfigurationSetting.KeyPrefix;
+        if (!key.StartsWith(flagPrefix, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return LoadFeatureFlags && (string.IsNullOrWhiteSpace(FeatureFlagPrefix) ||
+                                    key.AsSpan(flagPrefix.Length).StartsWith(FeatureFlagPrefix, StringComparison.Ordinal));
+    }
 
     #endregion
 }

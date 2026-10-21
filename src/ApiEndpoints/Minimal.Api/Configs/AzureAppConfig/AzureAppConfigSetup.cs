@@ -49,6 +49,9 @@ internal static class AzureAppConfigSetup
             }
 
             op.Select(KeyFilter.Any, options.ResolvedLabel);
+
+            // Drops feature flags the label selector also fetches, when flags are off or outside the prefix.
+            op.Map(setting => ValueTask.FromResult(options.ShouldLoadSetting(setting.Key) ? setting : null));
         });
 
         builder.Services.MarkConfigAdded(nameof(AzureAppConfigSetup));
