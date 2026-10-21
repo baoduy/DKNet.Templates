@@ -68,4 +68,13 @@ internal sealed class AzureAppConfigOptions
               .Replace(",", @"\,", StringComparison.Ordinal) + "*";
 
     #endregion
+
+    #region Methods
+
+    /// <summary>
+    ///     Whether a setting fetched from the store is kept
+    /// </summary>
+    public bool ShouldLoadSetting(string key) => throw new NotImplementedException();
+
+    #endregion
 }
