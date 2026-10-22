@@ -2,7 +2,7 @@
 using DKNet.AspCore.Idempotency.RedisStore;
 using Minimal.Api.Configs.Auth;
 using Minimal.Api.Configs.AzureAppConfig;
-using Minimal.Api.Configs.RateLimits;
+using DKNet.AspCore.Extensions.RateLimits;
 using Minimal.Api.Configs.Swagger;
 
 namespace Minimal.Api.Configs;
@@ -58,9 +58,17 @@ internal static class AppConfig
             services.AddAppVersioning();
         }
 
-        services.AddForwardedHeadersConfig(features, configuration)
-            .AddSecurityHeadersConfig(features)
-            .AddRequestBoundsConfig(features, configuration);
+        if (features.EnableForwardedHeaders)
+        {
+            services.AddForwardedHeadersConfig(configuration);
+        }
+
+        services.AddSecurityHeadersConfig(features);
+
+        if (features.EnableRequestBounds)
+        {
+            services.AddRequestBoundsConfig(configuration);
+        }
 
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
@@ -81,7 +89,7 @@ internal static class AppConfig
         }
 
         return services
-            .AddCrosConfig(configuration)
+            .AddCorsConfig(configuration)
             .AddAllAppServices(configuration, features)
             .AddHealthzConfig(features);
     }
@@ -94,8 +102,7 @@ internal static class AppConfig
         app.UseAzureAppConfig()
             .UseForwardedHeadersConfig()
             .UseSecurityHeadersConfig()
-            .UseAntiforgeryConfig()
-            .UseCrosConfig()
+            .UseCorsConfig()
             .UseHttpsConfig()
             .UseHealthzConfig();
 
@@ -105,6 +112,9 @@ internal static class AppConfig
 
         //This must be after UseRouting
         app.UseAuthConfig();
+
+        //This must be after UseRouting and the authentication/authorization above
+        app.UseAntiforgeryConfig();
 
         //This is UseEndpoints
         extra?.Invoke(app);

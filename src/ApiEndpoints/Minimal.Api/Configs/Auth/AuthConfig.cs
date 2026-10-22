@@ -24,7 +24,7 @@ internal static class AuthConfig
     /// </remarks>
     public static IServiceCollection AddAuthConfig(this IServiceCollection services)
     {
-        services.MarkConfigAdded(nameof(AuthConfig));
+        services.MarkFeatureAdded(nameof(AuthConfig));
 
         services.AddAuthentication()
             .AddJwtBearer();
@@ -72,14 +72,14 @@ internal static class AuthConfig
     /// </remarks>
     public static WebApplication UseAuthConfig(this WebApplication app)
     {
-        if (app.Services.IsConfigAdded(nameof(AuthConfig)))
+        if (app.Services.IsFeatureAdded(nameof(AuthConfig)))
         {
             app.UseAuthentication();
             app.UseAuthorization();
             app.Logger.LogInformation("{Feature} enabled", nameof(AuthConfig));
         }
 
-        if (app.Services.IsConfigAdded(nameof(DemoAuthConfig)))
+        if (app.Services.IsFeatureAdded(nameof(DemoAuthConfig)))
         {
             app.UseAuthentication();
             app.Logger.LogInformation("{Feature} enabled", nameof(DemoAuthConfig));
