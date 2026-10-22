@@ -139,17 +139,11 @@ public class StartupAnnouncementGuardTests
 
     public static TheoryData<string, string> AnnouncementSites() => new()
     {
-        { "ForwardedHeadersConfig.cs", "ForwardedHeadersConfig" },
         { "SecurityHeadersConfig.cs", "SecurityHeadersConfig" },
-        { "HttpsConfig.cs", "HttpsConfig" },
-        { "RequestBoundsConfig.cs", "RequestBoundsConfig" },
         { "Healthz/HealthzConfig.cs", "HealthzConfig" },
-        { "Antiforgery/AntiforgeryConfig.cs", "AntiforgeryConfig" },
-        { "CrosConfig.cs", "CrosConfig" },
         { "Swagger/SwaggerConfig.cs", "SwaggerConfig" },
         { "Auth/AuthConfig.cs", "AuthConfig" },
         { "Auth/AuthConfig.cs", "DemoAuthConfig" },
-        { "RateLimits/RateLimitConfig.cs", "RateLimitConfig" },
         { "AzureAppConfig/AzureAppConfigSetup.cs", "AzureAppConfigSetup" },
     };
 

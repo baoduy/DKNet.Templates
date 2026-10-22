@@ -9,7 +9,7 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-        <!-- The FrameworkReference below (needed for ForwardedHeadersOptions) makes NuGet consider the
+        <!-- The FrameworkReference below (needed for the ASP.NET Core hosting types) makes NuGet consider the
              explicit Configuration.Json/Configuration.Binder PackageReferences below redundant with what
              Microsoft.AspNetCore.App already provides. Kept explicit per DECISION-A; NU1510 is informational. -->
         <NoWarn>$(NoWarn);NU1510</NoWarn>
@@ -40,11 +40,16 @@
         <ProjectReference Include="..\..\src\ApiEndpoints\Minimal.Api\Minimal.Api.csproj" />
     </ItemGroup>
 
+    <!-- DRK-2364 hosting characterization (SharedHostingBehaviourTests) boots Minimal.Api through the shared
+         WebApplicationFactory host substitution; Microsoft.AspNetCore.Mvc.Testing flows in through it. -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\ApiEndpoints\Minimal.App.TestSupport\Minimal.App.TestSupport.csproj" />
+    </ItemGroup>
+
     <!-- Minimal.Api's Sdk.Web FrameworkReference does not flow transitively over ProjectReference
-         (confirmed: absent from this project's restored frameworkReferences) — needed to resolve
-         Microsoft.AspNetCore.Builder.ForwardedHeadersOptions, the type §3's tests assert on. Web SDK
-         projects get it via an implicit global using; this plain Sdk project does not, so tests spell
-         out `using Microsoft.AspNetCore.Builder;` explicitly. -->
+         (confirmed: absent from this project's restored frameworkReferences) — needed to resolve the
+         ASP.NET Core types the hosting tests drive (TestServer, HttpContext). Web SDK projects get them
+         via implicit global usings; this plain Sdk project does not, so tests spell out their usings. -->
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
