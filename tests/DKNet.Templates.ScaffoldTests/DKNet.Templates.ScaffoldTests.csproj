@@ -40,6 +40,12 @@
         <ProjectReference Include="..\..\src\ApiEndpoints\Minimal.Api\Minimal.Api.csproj" />
     </ItemGroup>
 
+    <!-- DRK-2364 hosting characterization (SharedHostingBehaviourTests) boots Minimal.Api through the shared
+         WebApplicationFactory host substitution; Microsoft.AspNetCore.Mvc.Testing flows in through it. -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\ApiEndpoints\Minimal.App.TestSupport\Minimal.App.TestSupport.csproj" />
+    </ItemGroup>
+
     <!-- Minimal.Api's Sdk.Web FrameworkReference does not flow transitively over ProjectReference
          (confirmed: absent from this project's restored frameworkReferences) — needed to resolve
          Microsoft.AspNetCore.Builder.ForwardedHeadersOptions, the type §3's tests assert on. Web SDK
