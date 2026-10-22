@@ -22,7 +22,7 @@ internal static class HealthzConfig
         services.AddHealthChecks()
             .AddDbContextCheck<CoreDbContext>()
             .AddCheck<HealthCheckHandler>(SharedConsts.ApiName);
-        services.MarkConfigAdded(nameof(HealthzConfig));
+        services.MarkFeatureAdded(nameof(HealthzConfig));
         return services;
     }
 
@@ -33,7 +33,7 @@ internal static class HealthzConfig
     /// <returns></returns>
     public static WebApplication UseHealthzConfig(this WebApplication endpoints)
     {
-        if (!endpoints.Services.IsConfigAdded(nameof(HealthzConfig)))
+        if (!endpoints.Services.IsFeatureAdded(nameof(HealthzConfig)))
         {
             return endpoints;
         }
@@ -60,7 +60,7 @@ internal static class HealthzConfig
 
         // Only enforceable when AuthConfig actually wired UseAuthorization() — with RequireAuthorization off
         // there is no authorization middleware to evaluate the requirement (same guard as SwaggerConfig).
-        if (endpoints.Services.IsConfigAdded(nameof(AuthConfig)))
+        if (endpoints.Services.IsFeatureAdded(nameof(AuthConfig)))
         {
             detail.RequireAuthorization();
         }
