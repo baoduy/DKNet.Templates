@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text;
 using Minimal.App.TestSupport;
+using Xunit.Abstractions;
 
 namespace DKNet.Templates.ScaffoldTests;
 
@@ -18,7 +19,7 @@ namespace DKNet.Templates.ScaffoldTests;
 /// here lives in <see cref="SharedHostingCollection" />, which never runs in parallel with anything else.
 /// </remarks>
 [Collection(SharedHostingCollection.Name)]
-public class SharedHostingBehaviourTests
+public class SharedHostingBehaviourTests(ITestOutputHelper output)
 {
     #region Fields
 
@@ -43,6 +44,7 @@ public class SharedHostingBehaviourTests
     [Fact]
     public async Task ShippedRateLimit_OneCallerSends101RequestsWithinOneSecond_LastRequestIsRefusedWith429()
     {
+        await WarmUpPipelineAsync();
         using var host = new SharedHostingHost(new() { [EnableRateLimit] = "true" });
         using var client = host.CreateClient();
 
@@ -56,6 +58,7 @@ public class SharedHostingBehaviourTests
     [Fact]
     public async Task RateLimitSwitchedOff_CallerSends101RequestsWithinOneSecond_NoneIsRefusedWith429()
     {
+        await WarmUpPipelineAsync();
         using var host = new SharedHostingHost(new() { [EnableRateLimit] = "false" });
         using var client = host.CreateClient();
 
@@ -262,18 +265,23 @@ public class SharedHostingBehaviourTests
     }
 
     /// <summary>
-    /// Sends <paramref name="count" /> sequential GETs after one warm-up request on another host name, and fails
-    /// if the burst itself took a second or more — the scenarios say "within 1 second", and a slower burst would
-    /// span two fixed windows and prove nothing.
+    /// Pays the process-wide JIT cost of the pipeline on a throwaway host, so the burst host's first request — the
+    /// one that opens its rate-limit window — is as fast as the rest. Never on the burst host itself: a request
+    /// with no client address shares one bucket there, and an unmeasured warm-up would open the window early.
     /// </summary>
-    private static async Task<List<HttpStatusCode>> SendBurstAsync(HttpClient client, int count)
+    private static async Task WarmUpPipelineAsync()
     {
-        using (var warmUp = new HttpRequestMessage(HttpMethod.Get, "/healthz"))
-        {
-            warmUp.Headers.Host = "warm-up.example";
-            using var _ = await client.SendAsync(warmUp);
-        }
+        using var warmUpHost = new SharedHostingHost([]);
+        using var client = warmUpHost.CreateClient();
+        using var _ = await client.GetAsync("/healthz");
+    }
 
+    /// <summary>
+    /// Sends <paramref name="count" /> sequential GETs and fails if the burst took a second or more — the scenarios
+    /// say "within 1 second", and a slower burst would span two fixed windows and prove nothing.
+    /// </summary>
+    private async Task<List<HttpStatusCode>> SendBurstAsync(HttpClient client, int count)
+    {
         var statuses = new List<HttpStatusCode>(count);
         var stopwatch = Stopwatch.StartNew();
         for (var i = 0; i < count; i++)
@@ -283,6 +291,7 @@ public class SharedHostingBehaviourTests
         }
 
         stopwatch.Stop();
+        output.WriteLine($"{count} requests in {stopwatch.ElapsedMilliseconds} ms");
         stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(1));
         return statuses;
     }
