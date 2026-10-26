@@ -61,7 +61,7 @@ Creates a purchase order for a customer and amount.
 - **Example:**
 
   ```bash
-  curl -i -X POST http://localhost:5077/v1/purchase-orders \
+  curl -i -X POST http://localhost:5000/v1/purchase-orders \
     -H "Content-Type: application/json" \
     -H "X-Idempotency-Key: $(uuidgen)" \
     -d '{"customerName":"Acme Pte Ltd","amount":250.00}'
@@ -113,7 +113,7 @@ orders.
 - **Example:**
 
   ```bash
-  curl -i "http://localhost:5077/v1/purchase-orders?CustomerName=Acme%20Pte%20Ltd&PageIndex=1&PageSize=2"
+  curl -i "http://localhost:5000/v1/purchase-orders?CustomerName=Acme%20Pte%20Ltd&PageIndex=1&PageSize=2"
   ```
 
   ```json
@@ -135,7 +135,7 @@ Gets one purchase order by id.
 - **Example:**
 
   ```bash
-  curl -i http://localhost:5077/v1/purchase-orders/00000000-0000-0000-0000-000000000000
+  curl -i http://localhost:5000/v1/purchase-orders/00000000-0000-0000-0000-000000000000
   ```
 
   ```http
@@ -171,7 +171,7 @@ Changes an order's amount. No other field can be changed through this route.
 - **Example:**
 
   ```bash
-  curl -i -X PUT http://localhost:5077/v1/purchase-orders/6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e02 \
+  curl -i -X PUT http://localhost:5000/v1/purchase-orders/6e6f4d3c-1b7e-4c7a-9f1d-8a2b5c6d7e02 \
     -H "Content-Type: application/json" -d '{"amount":999.99}'
   ```
 
@@ -198,7 +198,7 @@ Cancels an order. Refuses a second cancel rather than silently repeating it.
 - **Example:**
 
   ```bash
-  curl -i -X POST http://localhost:5077/v1/purchase-orders/8daca0f3-a90e-4501-91b5-21cbcb76c8bb/cancel
+  curl -i -X POST http://localhost:5000/v1/purchase-orders/8daca0f3-a90e-4501-91b5-21cbcb76c8bb/cancel
   ```
 
   First call:
@@ -231,7 +231,7 @@ Deletes an order outright — there is no soft delete.
 - **Example:**
 
   ```bash
-  curl -i -X DELETE http://localhost:5077/v1/purchase-orders/00000000-0000-0000-0000-000000000000
+  curl -i -X DELETE http://localhost:5000/v1/purchase-orders/00000000-0000-0000-0000-000000000000
   ```
 
   ```json

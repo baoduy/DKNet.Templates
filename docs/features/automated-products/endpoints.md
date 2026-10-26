@@ -45,7 +45,7 @@ Creates a product. Generated from the `[CrudCreate]` constructor on `Product`.
 - **Example** (captured live):
 
   ```bash
-  curl -s -i -X POST http://localhost:5077/v1/products \
+  curl -s -i -X POST http://localhost:5000/v1/products \
     -H "Content-Type: application/json" \
     -d '{"name":"Docs-Widget-A","price":19.99}'
   # HTTP/1.1 201 Created
@@ -53,7 +53,7 @@ Creates a product. Generated from the `[CrudCreate]` constructor on `Product`.
   #  "createdBy":"System","createdOn":"2026-10-26T04:59:24.068094+00:00",
   #  "id":"01a17693-dc06-7cf5-b296-8ec04941f254"}
 
-  curl -s -i -X POST http://localhost:5077/v1/products \
+  curl -s -i -X POST http://localhost:5000/v1/products \
     -H "Content-Type: application/json" \
     -d '{"name":"Docs-Widget-A","price":25}'
   # HTTP/1.1 409 Conflict
@@ -62,7 +62,7 @@ Creates a product. Generated from the `[CrudCreate]` constructor on `Product`.
   #             "code":"precondition.product-name-taken","field":"Name"}],
   #  "traceId":"0HNPJ3KIFAEF9:00000001","code":"precondition.product-name-taken"}
 
-  curl -s -i -X POST http://localhost:5077/v1/products \
+  curl -s -i -X POST http://localhost:5000/v1/products \
     -H "Content-Type: application/json" \
     -d '{"name":"Docs-Widget-Neg","price":-5}'
   # HTTP/1.1 201 Created — the [Range] gap: a negative price still creates the product.
@@ -92,12 +92,12 @@ Generic list (`DKNet.AspCore.Extensions`'s `MapGetList`) over `ProductDto`, with
 - **Example** (captured live, abridged to two items):
 
   ```bash
-  curl -s -i "http://localhost:5077/v1/products?pageSize=2"
+  curl -s -i "http://localhost:5000/v1/products?pageSize=2"
   # HTTP/1.1 200 OK
   # {"items":[{"name":"Docs-Widget-Neg","price":-5.00, ...},{"name":"Docs-Widget-A","price":19.99, ...}],
   #  "pageCount":1,"pageNumber":1,"pageSize":2,"totalItemCount":2,"hasNextPage":false,"hasPreviousPage":false}
 
-  curl -s -i "http://localhost:5077/v1/products?orderBy=grossMargin"
+  curl -s -i "http://localhost:5000/v1/products?orderBy=grossMargin"
   # HTTP/1.1 400 Bad Request
   # {"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"Bad Request","status":400,
   #  "detail":"Cannot sort by 'grossMargin': no such field on ProductDto.",
@@ -120,13 +120,13 @@ Generic `MapGetById`.
 - **Example** (captured live):
 
   ```bash
-  curl -s -i http://localhost:5077/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254
+  curl -s -i http://localhost:5000/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254
   # HTTP/1.1 200 OK
   # {"name":"Docs-Widget-A","price":19.99,"isDiscontinued":false,"supplierReferenceCode":null,
   #  "createdBy":"System","createdOn":"2026-10-26T04:59:24.068094+00:00",
   #  "id":"01a17693-dc06-7cf5-b296-8ec04941f254"}
 
-  curl -s -i http://localhost:5077/v1/products/00000000-0000-0000-0000-000000000000
+  curl -s -i http://localhost:5000/v1/products/00000000-0000-0000-0000-000000000000
   # HTTP/1.1 404 Not Found
   # (empty body)
   ```
@@ -150,11 +150,11 @@ Changes `Price`. Generated from `Product.ChangePrice(decimal)`. Raises `ProductP
 - **Example** (captured live):
 
   ```bash
-  curl -s -i -X PUT http://localhost:5077/v1/products/01a17696-72c2-774c-bfc8-8bb5cdb25e86 \
+  curl -s -i -X PUT http://localhost:5000/v1/products/01a17696-72c2-774c-bfc8-8bb5cdb25e86 \
     -H "Content-Type: application/json" -d '{"price":-1}'
   # HTTP/1.1 200 OK (abridged) — price:-1 accepted, the same [Range] gap as POST /.
 
-  curl -s -i -X PUT http://localhost:5077/v1/products/00000000-0000-0000-0000-000000000000 \
+  curl -s -i -X PUT http://localhost:5000/v1/products/00000000-0000-0000-0000-000000000000 \
     -H "Content-Type: application/json" -d '{"price":5}'
   # HTTP/1.1 404 Not Found
   # {"type":"NotFound","title":"Error","status":404,
@@ -186,14 +186,14 @@ Generic `MapDeleteById`, bound to the generated `DeleteProductRequest`.
 - **Example** (captured live):
 
   ```bash
-  curl -s -i -X DELETE http://localhost:5077/v1/products/01a17694-2084-7947-b17d-c062e59fa912
+  curl -s -i -X DELETE http://localhost:5000/v1/products/01a17694-2084-7947-b17d-c062e59fa912
   # HTTP/1.1 409 Conflict — product still for sale
   # {"type":"Conflict","title":"Error","status":409,
   #  "errors":[{"message":"The product is still for sale and cannot be deleted.",
   #             "code":"precondition.product-delete-while-for-sale","field":"Id"}],
   #  "traceId":"0HNPJ3KIFAEFL:00000001","code":"precondition.product-delete-while-for-sale"}
 
-  curl -s -i -X DELETE http://localhost:5077/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254
+  curl -s -i -X DELETE http://localhost:5000/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254
   # HTTP/1.1 204 No Content — a different product, already discontinued
   ```
 
@@ -216,12 +216,12 @@ Domain action — `[CrudAction("approval")] Approve(string byUser)`. Stamps `Upd
 - **Example** (captured live):
 
   ```bash
-  curl -s -i -X POST http://localhost:5077/v1/products/01a17696-9841-79f6-ac4e-150606e38228/approval \
+  curl -s -i -X POST http://localhost:5000/v1/products/01a17696-9841-79f6-ac4e-150606e38228/approval \
     -H "Content-Type: application/json" -d '{"byUser":"doc-approver"}'
   # HTTP/1.1 200 OK (abridged)
   # {"name":"Docs-Widget-Approve","price":3.00, ..., "updatedBy":"doc-approver", ...}
 
-  curl -s -i -X POST http://localhost:5077/v1/products/00000000-0000-0000-0000-000000000000/approval \
+  curl -s -i -X POST http://localhost:5000/v1/products/00000000-0000-0000-0000-000000000000/approval \
     -H "Content-Type: application/json" -d '{"byUser":"x"}'
   # HTTP/1.1 404 Not Found
   # {"type":"NotFound","title":"Error","status":404,
@@ -254,12 +254,12 @@ Domain action overriding both segment and verb — `[CrudAction("supplier-refere
 - **Example** (captured live):
 
   ```bash
-  curl -s -i -X PUT http://localhost:5077/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254/supplier-reference \
+  curl -s -i -X PUT http://localhost:5000/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254/supplier-reference \
     -H "Content-Type: application/json" -d '{"supplierReferenceCode":"DOCS-REF-1"}'
   # HTTP/1.1 200 OK (abridged)
   # {"name":"Docs-Widget-A","price":29.99,"isDiscontinued":false,"supplierReferenceCode":"DOCS-REF-1", ...}
 
-  curl -s -i -X PUT http://localhost:5077/v1/products/00000000-0000-0000-0000-000000000000/supplier-reference \
+  curl -s -i -X PUT http://localhost:5000/v1/products/00000000-0000-0000-0000-000000000000/supplier-reference \
     -H "Content-Type: application/json" -d '{"supplierReferenceCode":"x"}'
   # HTTP/1.1 404 Not Found
   # {"type":"NotFound","title":"Error","status":404,
@@ -295,7 +295,7 @@ Hand-written. Excluded from the generated map by name (`o.Exclude("Discontinue")
 - **Example** (captured live):
 
   ```bash
-  curl -s -i -X PUT http://localhost:5077/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254/discontinue \
+  curl -s -i -X PUT http://localhost:5000/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254/discontinue \
     -H "Content-Type: application/json" \
     -d '{"replacementName":"Docs-Widget-A (replacement)","replacementPrice":21.99}'
   # HTTP/1.1 200 OK
@@ -304,7 +304,7 @@ Hand-written. Excluded from the generated map by name (`o.Exclude("Discontinue")
   #  "updatedBy":"System","updatedOn":"2026-10-26T04:59:34.839962+00:00",
   #  "id":"01a17693-dc06-7cf5-b296-8ec04941f254"}
 
-  curl -s -i -X PUT http://localhost:5077/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254/discontinue \
+  curl -s -i -X PUT http://localhost:5000/v1/products/01a17693-dc06-7cf5-b296-8ec04941f254/discontinue \
     -H "Content-Type: application/json" \
     -d '{"replacementName":"Docs-Widget-A (replacement 2)","replacementPrice":22.99}'
   # HTTP/1.1 400 Bad Request
@@ -312,7 +312,7 @@ Hand-written. Excluded from the generated map by name (`o.Exclude("Discontinue")
   #  "errors":[{"message":"The product 01a17693-dc06-7cf5-b296-8ec04941f254 is already discontinued."}],
   #  "traceId":"0HNPJ3KIFAEFI:00000001"}
 
-  curl -s -i -X PUT http://localhost:5077/v1/products/00000000-0000-0000-0000-000000000000/discontinue \
+  curl -s -i -X PUT http://localhost:5000/v1/products/00000000-0000-0000-0000-000000000000/discontinue \
     -H "Content-Type: application/json" -d '{"replacementName":"x","replacementPrice":1}'
   # HTTP/1.1 404 Not Found
   # {"type":"NotFound","title":"Error","status":404,
@@ -333,7 +333,7 @@ Hand-written — no generated shape exists for an aggregate query. `{ productCou
 - **Example** (captured live, verbatim — note the decimal's full scale):
 
   ```bash
-  curl -s http://localhost:5077/v1/products/summary
+  curl -s http://localhost:5000/v1/products/summary
   # {"productCount":3,"averagePrice":15.6600000000000000}
   ```
 

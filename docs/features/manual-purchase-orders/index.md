@@ -46,12 +46,13 @@ Products: a different aggregate, a different schema (`manual_sample` vs. `sample
 
 ## 🚀 Quick Start
 
-No separate token step — the Development environment runs with `FeatureManagement:RequireAuthorization`
+Start the API as the [service README](../../../README.md#-quick-start) describes; it listens on
+`http://localhost:5000`. No separate token step — the Development environment runs with `FeatureManagement:RequireAuthorization`
 off and the built-in demonstration identity on, so every call below is already "authenticated" as that
 identity. Create one order; `X-Idempotency-Key` is required even on this first call:
 
 ```bash
-curl -i -X POST http://localhost:5077/v1/purchase-orders \
+curl -i -X POST http://localhost:5000/v1/purchase-orders \
   -H "Content-Type: application/json" \
   -H "X-Idempotency-Key: 4581d150-d72f-4384-ae88-d6e0341b743d" \
   -d '{"customerName":"Docs Test Co","amount":99.90}'

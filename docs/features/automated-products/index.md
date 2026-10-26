@@ -34,10 +34,10 @@ This is a catalogue-management slice: it owns a product's identity, price and sa
 
 ## 🚀 Quick Start
 
-Start the API as the service README describes, then set `BASE` to wherever it is listening (the examples on this page were captured against `http://localhost:5077`). No auth token is needed against a Development instance (`FeatureManagement:RequireAuthorization=false`); the built-in demonstration authenticator attaches a fixed identity to every request regardless (see ❓ Open questions).
+Start the API as the [service README](../../../README.md#-quick-start) describes; it listens on `http://localhost:5000`. No auth token is needed against a Development instance (`FeatureManagement:RequireAuthorization=false`); the built-in demonstration authenticator attaches a fixed identity to every request regardless (see ❓ Open questions).
 
 ```bash
-BASE=http://localhost:5077
+BASE=http://localhost:5000
 curl -s -i -X POST "$BASE/v1/products" \
   -H "Content-Type: application/json" \
   -d '{"name":"Docs-Widget-A","price":19.99}'
