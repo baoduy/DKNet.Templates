@@ -105,8 +105,8 @@
     {
       "id": "handlers",
       "type": "backend",
-      "label": "Minimal.AppServices",
-      "sublabel": "handlers, validators",
+      "label": "App + Domains",
+      "sublabel": "handlers, aggregates",
       "pos": [
         890,
         40
@@ -119,23 +119,7 @@
         {
           "path": "src/ApiEndpoints/Minimal.AppServices/ManualSample/V1/Actions/Create.cs",
           "line": 1
-        }
-      ]
-    },
-    {
-      "id": "domains",
-      "type": "backend",
-      "label": "Minimal.Domains",
-      "sublabel": "aggregates",
-      "pos": [
-        1090,
-        40
-      ],
-      "size": [
-        130,
-        64
-      ],
-      "sources": [
+        },
         {
           "path": "src/ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs",
           "line": 1
@@ -258,6 +242,53 @@
           "end_line": 98
         }
       ]
+    },
+    {
+      "id": "telemetry",
+      "type": "cloud",
+      "label": "OTLP / Azure Monitor",
+      "sublabel": "optional exporters",
+      "pos": [
+        1090,
+        40
+      ],
+      "size": [
+        130,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.Api/Configs/LogConfigs.cs",
+          "line": 57,
+          "end_line": 65
+        }
+      ]
+    },
+    {
+      "id": "appconfig",
+      "type": "cloud",
+      "label": "Azure App Config",
+      "sublabel": "optional, start-up",
+      "pos": [
+        30,
+        430
+      ],
+      "size": [
+        130,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs",
+          "line": 20,
+          "end_line": 46
+        },
+        {
+          "path": "src/ApiEndpoints/Minimal.Api/Program.cs",
+          "line": 13,
+          "end_line": 14
+        }
+      ]
     }
   ],
   "boundaries": [
@@ -269,7 +300,6 @@
         "endpoints",
         "bus",
         "handlers",
-        "domains",
         "dbctx"
       ]
     },
@@ -312,12 +342,6 @@
       "variant": "emphasis"
     },
     {
-      "id": "c-handlers-domains",
-      "from": "handlers",
-      "to": "domains",
-      "label": "call"
-    },
-    {
       "id": "c-handlers-dbctx",
       "from": "handlers",
       "to": "dbctx",
@@ -350,6 +374,20 @@
       "from": "endpoints",
       "to": "redis",
       "label": "idempotency",
+      "variant": "dashed"
+    },
+    {
+      "id": "c-handlers-telemetry",
+      "from": "handlers",
+      "to": "telemetry",
+      "label": "telemetry",
+      "variant": "dashed"
+    },
+    {
+      "id": "c-appconfig-edge",
+      "from": "appconfig",
+      "to": "edge",
+      "label": "config",
       "variant": "dashed"
     }
   ],
@@ -385,6 +423,14 @@
       "items": [
         "Domain events leave CoreDbContext through EventPublisher onto IMessageBus",
         "Forwarded to Azure Service Bus only with EnableServiceBus and ConnectionStrings:AzureBus"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Optional Azure",
+      "items": [
+        "Azure App Configuration: read once at start-up with EnableAzureAppConfig, via DefaultAzureCredential",
+        "OTLP and Azure Monitor exporters: only with EnableOpenTelemetry, each when its key is set"
       ]
     }
   ]

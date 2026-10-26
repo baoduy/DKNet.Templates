@@ -2,11 +2,11 @@
 
 How `CreatedBy`/`CreatedOn`/`UpdatedBy`/`UpdatedOn` get populated, and why a caller can never forge
 them. Full API surface for the three packages behind this: `DKNet.EfCore.Abstractions`
-([docs/EfCore/DKNet.EfCore.Abstractions.md](https://github.com/baoduy/DKNet/blob/dev/docs/DKNet.EfCore.Abstractions/index.md)),
+([DKNet.EfCore.Abstractions]((https://github.com/baoduy/DKNet/blob/dev/docs/DKNet.EfCore.Abstractions/index.md))),
 `DKNet.EfCore.DataAuthorization`
-([docs/EfCore/DKNet.EfCore.DataAuthorization.md](https://github.com/baoduy/DKNet/blob/dev/docs/DKNet.EfCore.DataAuthorization/index.md))
+([DKNet.EfCore.DataAuthorization]((https://github.com/baoduy/DKNet/blob/dev/docs/DKNet.EfCore.DataAuthorization/index.md)))
 and `DKNet.EfCore.AuditLogs`
-([docs/EfCore/DKNet.EfCore.AuditLogs.md](https://github.com/baoduy/DKNet/blob/dev/docs/DKNet.EfCore.AuditLogs/index.md)).
+([DKNet.EfCore.AuditLogs]((https://github.com/baoduy/DKNet/blob/dev/docs/DKNet.EfCore.AuditLogs/index.md))).
 
 ## The audit fields
 

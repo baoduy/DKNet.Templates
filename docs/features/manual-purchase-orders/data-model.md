@@ -18,7 +18,7 @@ One row is a single customer purchase order and its current lifecycle status.
 | `CreatedOn` | `CreatedOn` | `timestamp with time zone` | — | yes | — | — | when the order was created |
 | `UpdatedBy` | `UpdatedBy` | `character varying` | 255 | no | — | — | acting user of the last amount change or cancel; `null` until either happens |
 | `UpdatedOn` | `UpdatedOn` | `timestamp with time zone` | — | no | — | — | when the order was last changed |
-| `OwnedBy` | `OwnedBy` | `character varying` | 500 | yes | — | empty string | the tenant/caller ownership key that scopes row-level read and write access; stamped by `DataOwnerHook`, independent of `CreatedBy` — see [Row-level ownership filtering](../../auditing-and-data-ownership.md#row-level-ownership-filtering) |
+| `OwnedBy` | `OwnedBy` | `character varying` | 500 | yes | — | — | the tenant/caller ownership key that scopes row-level read and write access; stamped by `DataOwnerHook`, independent of `CreatedBy` — see [Row-level ownership filtering](../../auditing-and-data-ownership.md#row-level-ownership-filtering) |
 
 No foreign keys: `PurchaseOrder` is a single-table aggregate with no child entities.
 
