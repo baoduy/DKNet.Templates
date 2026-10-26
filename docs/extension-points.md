@@ -7,7 +7,7 @@ seam.
 
 Paths use the template's own project names (`Minimal.Api`, `Minimal.AppServices`, …); a generated
 solution renames them to `<YourApp>.*`. For the configuration keys these seams read, see
-[`configuration-reference.md`](configuration-reference.md).
+[`configuration.md`](configuration.md).
 
 ## At a glance
 
@@ -201,7 +201,7 @@ discovers the register with no per-DTO wiring. The customisation stays a respons
 no generated route, request or handler is written or dropped for it, and the added property is
 response-only, so the list route refuses to filter or order on it with a `400`. Worked example —
 `ProductDto.GrossMargin`:
-[automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
+[automated sample](features/automated-products/endpoints.md#a-response-value-the-convention-cannot-produce).
 
 ## Persistence
 

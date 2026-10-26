@@ -83,7 +83,7 @@ ingress's.
 `TrustedProxies` entries are single IP addresses parsed with `IPAddress.Parse`; a CIDR range there is
 not accepted and fails at startup. For a proxy whose address is not fixed — a Kubernetes ingress,
 Container Apps — list its CIDR range in `TrustedNetworks` instead, parsed with `IPNetwork.Parse`.
-Keys: [`configuration-reference.md`](configuration-reference.md#security).
+Keys: [`configuration.md`](configuration.md#security).
 
 ## Security response headers
 
@@ -136,7 +136,7 @@ is not called on any path.
 
 Both lists fall back to those defaults only when the key is absent. A key present but empty (`[]`)
 means "nothing allowed" and is not widened back. Per-key detail:
-[`configuration-reference.md`](configuration-reference.md#cors).
+[`configuration.md`](configuration.md#cors).
 
 Entries are absolute origins: scheme included, no trailing slash and no path —
 `https://app.example.com`, not `app.example.com` or `https://app.example.com/`.

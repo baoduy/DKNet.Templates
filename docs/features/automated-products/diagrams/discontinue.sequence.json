@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Discontinue a product and create its replacement",
+    "output": "out/automated-products/discontinue.html",
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/baoduy/DKNet.Templates.git",
+      "provider": "github",
+      "revision": "4796f354370da68e89fe3bcb06471e9dca4c9923"
+    }
+  },
+  "participants": [
+    { "id": "caller", "type": "external", "label": "Caller", "sublabel": "PUT /{id}/discontinue" },
+    { "id": "route", "type": "backend", "label": "ProductV1Endpoint", "sublabel": "hand-written route",
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs", "line": 71, "end_line": 80 }] },
+    { "id": "validate", "type": "security", "label": "DiscontinueCommandValidator", "sublabel": "replacement name/price rules",
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.AppServices/AutomatedSample/V1/Actions/Discontinue.cs", "line": 33, "end_line": 44 }] },
+    { "id": "handler", "type": "backend", "label": "DiscontinueCommandHandler", "sublabel": "discontinues + creates replacement",
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.AppServices/AutomatedSample/V1/Actions/Discontinue.cs", "line": 52, "end_line": 79 }] },
+    { "id": "db", "type": "database", "label": "Postgres", "sublabel": "sample.Products",
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs", "line": 13, "end_line": 19 }] }
+  ],
+  "segments": [
+    { "from": 160, "to": 300, "label": "Validate" },
+    { "from": 310, "to": 510, "label": "Discontinue + create replacement (one SaveChanges)" }
+  ],
+  "messages": [
+    { "id": "req", "from": "caller", "to": "route", "y": 170, "label": "PUT {id}/discontinue", "variant": "default" },
+    { "id": "to-validate", "from": "route", "to": "validate", "y": 200, "label": "ReplacementName/Price", "variant": "default" },
+    { "id": "validate-fail", "from": "validate", "to": "route", "y": 230, "label": "400 if empty name or price <= 0", "variant": "return", "note": "Caller-supplied values only — no stored data read here." },
+    { "id": "to-handler", "from": "route", "to": "handler", "y": 290, "label": "bus.Send(DiscontinueProductCommand)", "variant": "emphasis" },
+    { "id": "load", "from": "handler", "to": "db", "y": 335, "label": "FirstOrDefaultAsync(SpecGetProduct)", "variant": "default" },
+    { "id": "not-found", "from": "db", "to": "handler", "y": 373, "label": "null → 404, or already-discontinued → 400", "variant": "return", "note": "Unknown id or an already-discontinued product short-circuits here, before any write." },
+    { "id": "save", "from": "handler", "to": "db", "y": 440, "label": "SaveChangesAsync — both rows in one transaction", "variant": "emphasis", "note": "product.Discontinue() and new Product(replacementName, replacementPrice) both commit in this one call." },
+    { "id": "resp", "from": "handler", "to": "route", "y": 495, "label": "200 ProductDto (the discontinued product)", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "route", "from": 165, "to": 500, "type": "backend" },
+    { "participant": "validate", "from": 195, "to": 234, "type": "security" },
+    { "participant": "handler", "from": 285, "to": 498, "type": "backend" },
+    { "participant": "db", "from": 330, "to": 445, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Why this route is hand-written",
+      "items": [
+        "Discontinuing also creates a named replacement Product — two aggregates in one transaction, which no [CrudAction] can express",
+        "The generated Discontinue route is excluded by name (Exclude(\"Discontinue\")) and replaced by this one"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Already-discontinued is a handler-level failure",
+      "items": [
+        "A second call against the same id returns 400 from the handler (\"already discontinued\"), not a validator precondition",
+        "A generated [CrudAction] route could have expressed this refusal too — as a FluentValidation validator against its generated request, the same way CreateProductRequestValidator and DeleteProductRequestValidator work. It stays hand-written because of the two-aggregate transaction, not because of this rule."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "What this cannot show",
+      "items": [
+        "A replacement name that collides with an existing product's unique index is not caught by the validator — it reaches SaveChangesAsync and surfaces as an unhandled 500, confirmed live",
+        "EfAutoSavePostInterceptor commits once after the handler returns, so a failed insert rolls back the Discontinue() call too — the original product is unchanged on that 500"
+      ]
+    }
+  ]
+}

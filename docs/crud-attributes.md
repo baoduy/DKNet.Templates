@@ -95,7 +95,7 @@ one place the generated field set is written down; other pages link here rather 
 
 `ProductDto` additionally carries `GrossMargin`, which the generator did not produce: it is
 hand-written onto the partial record and mapped by a Mapster `IRegister` — see
-[the automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
+[the automated sample](features/automated-products/endpoints.md#a-response-value-the-convention-cannot-produce).
 
 Generated DTOs and `[MapsFrom]`-tagged hand-written DTOs both register with Mapster the same way.
 `Minimal.AppServices/Extensions/MapsToExtensions.cs`'s `ScanMaps` reflects over the assembly for
