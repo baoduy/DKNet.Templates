@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Runtime architecture of a service scaffolded from DKNet.Minimal.Template",
+    "output": "out/runtime/runtime.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/baoduy/DKNet.Templates.git",
+      "revision": "4796f354370da68e89fe3bcb06471e9dca4c9923"
+    }
+  },
+  "components": [
+    { "id": "caller", "type": "external", "label": "API caller", "sublabel": "HTTP client", "pos": [30, 40], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Client/IProductsClient.cs", "line": 1 }] },
+    { "id": "edge", "type": "security", "label": "Minimal.Api edge", "sublabel": "headers, CORS, auth", "pos": [260, 40], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Api/Configs/AppConfig.cs", "line": 97, "end_line": 117 }] },
+    { "id": "endpoints", "type": "backend", "label": "IEndpointConfig", "sublabel": "/v1 route groups", "pos": [470, 40], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Api/Program.cs", "line": 46, "end_line": 51 },
+                  { "path": "src/ApiEndpoints/Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs", "line": 14 },
+                  { "path": "src/ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs", "line": 27 }] },
+    { "id": "bus", "type": "messagebus", "label": "IMessageBus", "sublabel": "ImMemory child bus", "pos": [680, 40], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Infra/Extensions/ServiceBusSetup.cs", "line": 64 }] },
+    { "id": "handlers", "type": "backend", "label": "Minimal.AppServices", "sublabel": "handlers, validators", "pos": [890, 40], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.AppServices/ManualSample/V1/Actions/Create.cs", "line": 1 }] },
+    { "id": "domains", "type": "backend", "label": "Minimal.Domains", "sublabel": "aggregates", "pos": [1090, 40], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs", "line": 1 }] },
+    { "id": "dbctx", "type": "backend", "label": "CoreDbContext", "sublabel": "Minimal.Infra, hooks", "pos": [890, 240], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Infra/Extensions/InfraSetup.cs", "line": 27, "end_line": 40 },
+                  { "path": "src/ApiEndpoints/Minimal.Api/Configs/ServiceConfigs.cs", "line": 24 }] },
+    { "id": "idp", "type": "security", "label": "Identity provider", "sublabel": "OIDC metadata", "pos": [260, 430], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Api/Configs/Auth/AuthConfig.cs", "line": 29, "end_line": 30 }] },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "idempotency keys", "pos": [470, 430], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Api/Configs/AppConfig.cs", "line": 78, "end_line": 88 },
+                  { "path": "src/ApiEndpoints/Minimal.AppHost/AppHost.cs", "line": 8 }] },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "AppDb", "pos": [890, 430], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Infra/Extensions/InfraSetup.cs", "line": 66 },
+                  { "path": "src/ApiEndpoints/Minimal.AppHost/AppHost.cs", "line": 9, "end_line": 12 }] },
+    { "id": "azurebus", "type": "cloud", "label": "Azure Service Bus", "sublabel": "optional", "pos": [1090, 430], "size": [130, 64],
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Infra/Extensions/ServiceBusSetup.cs", "line": 96, "end_line": 98 }] }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "Trust boundary: Minimal.Api process", "wraps": ["edge", "endpoints", "bus", "handlers", "domains", "dbctx"] },
+    { "kind": "region", "label": "Provisioned by Minimal.AppHost (local runs)", "wraps": ["redis", "postgres"] }
+  ],
+  "connections": [
+    { "id": "c-caller-edge", "from": "caller", "to": "edge", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "c-edge-endpoints", "from": "edge", "to": "endpoints", "label": "route", "variant": "emphasis" },
+    { "id": "c-endpoints-bus", "from": "endpoints", "to": "bus", "label": "Send", "variant": "emphasis" },
+    { "id": "c-bus-handlers", "from": "bus", "to": "handlers", "label": "dispatch", "variant": "emphasis" },
+    { "id": "c-handlers-domains", "from": "handlers", "to": "domains", "label": "call" },
+    { "id": "c-handlers-dbctx", "from": "handlers", "to": "dbctx", "label": "SaveChanges", "variant": "emphasis" },
+    { "id": "c-dbctx-postgres", "from": "dbctx", "to": "postgres", "label": "Npgsql", "variant": "emphasis" },
+    { "id": "c-dbctx-azurebus", "from": "dbctx", "to": "azurebus", "label": "events", "variant": "dashed" },
+    { "id": "c-idp-edge", "from": "idp", "to": "edge", "label": "signing keys", "variant": "security" },
+    { "id": "c-endpoints-redis", "from": "endpoints", "to": "redis", "label": "idempotency", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Edge pipeline", "items": ["Forwarded headers, security headers, CORS, HTTPS, /healthz", "Request bounds, rate limiter, then authentication", "Validation runs as a route-group filter"] },
+    { "dot": "rose", "title": "Auth switch", "items": ["FeatureManagement:RequireAuthorization on: JWT bearer against your OIDC tenant", "Off: built-in demo authentication, no token needed"] },
+    { "dot": "emerald", "title": "Stores", "items": ["ConnectionStrings:AppDb is required: start-up migration throws without it", "ConnectionStrings:Redis unset: in-process cache and idempotency store, single instance only"] },
+    { "dot": "amber", "title": "Events", "items": ["Domain events leave CoreDbContext through EventPublisher onto IMessageBus", "Forwarded to Azure Service Bus only with EnableServiceBus and ConnectionStrings:AzureBus"] }
+  ]
+}

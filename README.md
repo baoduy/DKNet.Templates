@@ -7,182 +7,161 @@
 DDD/CQRS — for a team starting a new .NET 10 service that wants the layering, the hardening and the
 CRUD plumbing decided before the first feature is written.
 
-Take it when your service is a handful of aggregates behind an HTTP API, persisted in PostgreSQL and
-run under .NET Aspire. Skip it if you need a different persistence story or a single-project API —
-the layer boundaries here are enforced by tests, not suggestions.
+## 📖 Overview
 
-## Why take it
+A scaffolded solution is a running HTTP API that ships with two worked features, each the same shape
+of slice built a different way:
 
-- **The layering is held by the build, not by review.** Every project reference points inward, so an
-  outward one is a circular reference MSBuild refuses; NetArchTest rules in
-  `Minimal.App.Tests/Architecture/` fail the test run on the shape rules a compiler cannot see —
-  `internal sealed` endpoints and handlers, an explicit max length on every mapped string,
-  `HasConversion<string>()` on every mapped enum, Npgsql-only packages.
-- **The HTTP surface ships hardened.** Default-deny authorization, security response headers, stated
-  request bounds (30 s / 1 MB / 10 s), a status-only public health probe, an enumerated CORS
-  allow-list, a non-root image, and a dependency audit that fails the build — all on in the base
-  `appsettings.json` and relaxable for local work by configuration alone.
-- **Most CRUD is declared, not written.** Four attributes produce the requests, handlers, routes and
-  DTO for an aggregate, domain actions included — so you write the aggregate and the operations that
-  actually carry business orchestration.
-- **Both test levels are already scaffolded** — xUnit + Shouldly unit/integration tests, and
-  Reqnroll + NUnit BDD tests against a real host.
-- **One image, one entry point.** With no argument the service serves; with a registered job name it
-  runs that job and exits on its own status, so the same image migrates the database as a Kubernetes
-  `Job` and serves as a `Deployment`.
+- [Products](docs/features/automated-products/index.md) — create, price, approve, discontinue and list
+  the products in a caller's own catalogue; most of it is declared by attribute and generated.
+- [Purchase Orders](docs/features/manual-purchase-orders/index.md) — create, correct, cancel and look
+  up a customer's purchase orders, with a safe-to-retry create call; every layer is written by hand.
 
-## Quick start
+The API is called over HTTP by front-ends and other services, directly or through the typed
+`Minimal.Client` package the solution also scaffolds. Which sample to copy for a feature of your own:
+[Manual vs. Automated](docs/samples/manual-vs-automated.md#at-a-glance-which-one-should-i-copy).
+
+## 🏗️ Runtime architecture
+
+![A caller's HTTPS request crosses the Minimal.Api edge (security headers, CORS, authentication against your identity provider), reaches an IEndpointConfig route group, is sent over the in-memory IMessageBus to a Minimal.AppServices handler that calls a Minimal.Domains aggregate and saves through CoreDbContext to PostgreSQL, with idempotency keys in Redis and domain events forwarded to Azure Service Bus when it is configured.](docs/diagrams/runtime.svg)
+
+Everything inside the trust boundary runs in the one `Minimal.Api` process. PostgreSQL is required:
+the start-up migration throws without `ConnectionStrings:AppDb`. Redis is optional: without
+`ConnectionStrings:Redis` the cache and the idempotency store fall back to in-process stores, correct
+for a single instance only. Azure Service Bus is used only with `FeatureManagement:EnableServiceBus`
+and `ConnectionStrings:AzureBus` both set. With `FeatureManagement:RequireAuthorization` on, tokens are
+validated against your OIDC tenant; with it off, a built-in demonstration identity is attached to every
+request. On local runs `Minimal.AppHost` (.NET Aspire) provisions the Redis and PostgreSQL containers
+and injects both connection strings.
+
+## 🌐 Downstream systems
+
+| System | Direction | How | What for | When it is down |
+|---|---|---|---|---|
+| PostgreSQL | we call it | Npgsql through `CoreDbContext` | every stored aggregate, the start-up migration, the static seed rows | Without a connection string the host does not start. At run time Npgsql's `EnableRetryOnFailure()` defaults retry a transient failure before the request fails; `/healthz` carries a `CoreDbContext` check. Locally, with the database container stopped, `/healthz` answered `504 Gateway Timeout`. |
+| Redis | we call it | StackExchange.Redis | distributed cache and idempotency keys | Not set: in-process stores, single instance only. Set but unreachable: see ❓ Open questions. |
+| Identity provider (OIDC) | we call it | JWT bearer metadata fetch, only with `RequireAuthorization` on | signing keys, issuer and audience for token validation | See ❓ Open questions. |
+| Azure Service Bus | it consumes our events | SlimMessageBus `AzureBus` child bus, topic `product-tp`, subscription `product-sub` | forwards `ProductCreatedEvent` | Off unless `EnableServiceBus` and `ConnectionStrings:AzureBus` are both set; the in-memory bus keeps working either way. |
+| Azure App Configuration | we call it | `DefaultAzureCredential`, at start-up, only with `EnableAzureAppConfig` on | configuration and feature flags | See ❓ Open questions. |
+| OTLP collector / Azure Monitor | we call it | OpenTelemetry exporters, only with `EnableOpenTelemetry` on | traces, metrics, logs | See ❓ Open questions. |
+
+The keys that point at each system: [Configuration](docs/configuration.md#connectionstrings).
+
+## 🚀 Quick Start
+
+You need the .NET 10 SDK and a running Docker engine (the Aspire host starts Redis and PostgreSQL in
+containers).
+
+From any directory, add the GitHub Packages feed and install the template — the feed needs a GitHub
+personal access token with `read:packages`:
 
 ```bash
-# 1. add the feed, install the template
 dotnet nuget add source --username <GITHUB_USERNAME> --password <GITHUB_PAT_WITH_READ_PACKAGES> \
   --store-password-in-clear-text --name github "https://nuget.pkg.github.com/baoduy/index.json"
 dotnet new install DKNet.Minimal.Template --nuget-source "https://nuget.pkg.github.com/baoduy/index.json"
+```
 
-# 2. scaffold (a dotted name works: -n DKNet.Accounts)
+Scaffold a solution (a dotted name works: `-n DKNet.Accounts`), then start the whole stack from the
+new solution's root:
+
+```bash
 dotnet new dknet-minimal -n MyCompany.MyService
 cd MyCompany.MyService
-
-# 3. run the full stack — Aspire provisions Redis and PostgreSQL via Docker
-dotnet run --project MyCompany.MyService.ApiEndpoints/MyCompany.MyService.AppHost
+dotnet run --project ApiEndpoints/MyCompany.MyService.AppHost
 ```
 
-`dotnet run --project <Name>.ApiEndpoints/<Name>.Api` starts the API alone, without containers.
+The host prints the Aspire dashboard address, waits for both containers, starts the API on
+`http://localhost:5000`, and fills the database with generated sample rows. Then make one call:
 
-> **`--TenantId` and `--ApiAudience` ship as placeholders, not working values.** Left as shipped, the
-> OIDC metadata fetch runs against a tenant that does not exist and every token is rejected on
-> audience mismatch. Replace them before you turn on `FeatureManagement:RequireAuthorization` — see
-> [what you must change before shipping](docs/template-usage.md#what-you-must-change-before-shipping).
-
-Every scaffold parameter, plus the run/test/migrate/pack commands:
-[`docs/template-usage.md`](docs/template-usage.md).
-
-## The shape your endpoints should take
-
-**Composite-first.** One endpoint class per aggregate: declare the group's authorization scopes on the
-class, map the generated CRUD composite at the top, then hand-write below it only the routes that
-carry real orchestration. Generated and hand-written routes live in the same group — this is not a
-choice between two styles of endpoint.
-
-`ProductV1Endpoint` (`Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs`) is that shape,
-trimmed here to its structure:
-
-```csharp
-[EndpointGroupScope(ProductScopes.Read, EndpointHttpMethods.Get)]
-[EndpointGroupScope(ProductScopes.Write, EndpointHttpMethods.Post, EndpointHttpMethods.Put,
-    EndpointHttpMethods.Delete)]
-internal sealed class ProductV1Endpoint : IEndpointConfig
-{
-    public void Map(RouteGroupBuilder group)
-    {
-        group.MapProductCrud(o =>
-        {
-            o.Exclude("Discontinue");                                        // hand-written below
-
-            // a PUT like Update, so the per-method declaration cannot separate them — holding
-            // products.write must not be enough to assign a supplier reference
-            if (requireAuthorization)
-                o.Configure("AssignSupplierReference", rb => rb.RequireAuthorization(ProductScopes.Supplier));
-        });
-
-        // writes two aggregates in one transaction — outside what the generator can express
-        group.MapPut("{id:guid}/discontinue", /* ... */).Produces<ProductDto>();
-
-        // a response shape the generator has none for; the group's GET declaration already covers it
-        group.MapGet("summary", /* ... */).Produces<ProductPriceSummaryDto>();
-    }
-}
+```bash
+curl -s "http://127.0.0.1:5000/v1/products?pageSize=1"
 ```
 
-Seven of the nine routes come from `MapProductCrud`. `[EndpointGroupScope]` names the scope per HTTP
-method once and covers generated and hand-mapped routes alike; a per-route `Configure`/
-`RequireAuthorization` is needed only where two routes share an HTTP method but not a scope. Scopes
-are applied only when `FeatureManagement:RequireAuthorization` is on, so a stock Development run
-enforces none of them — the attribute checks that flag itself, which is why the per-route overrides
-are the only calls that need an explicit guard.
+```json
+{"items":[{"name":"Handcrafted Granite Hat 55rgks","price":6342.90,"isDiscontinued":false,"supplierReferenceCode":null,"createdBy":"System","createdOn":"2026-10-26T05:48:51.74292+00:00","id":"01a176c1-269e-7fdd-ae0d-0158fd30fe95"}],"pageCount":10000,"pageNumber":1,"pageSize":1,"totalItemCount":10000,"hasNextPage":true,"hasPreviousPage":false}
+```
 
-### When an operation needs a hand-written route
+The product name and ids are generated, so yours differ. To work on the template itself, the same
+host runs from a fresh clone of this repository: `dotnet run --project src/ApiEndpoints/Minimal.AppHost`
+from the repository root. Every scaffold parameter, and the run, test, migrate and publish commands:
+[Template usage](docs/template-usage.md).
 
-The criterion is stated once, in
-[Manual vs. Automated — At a glance](docs/samples/manual-vs-automated.md#at-a-glance-which-one-should-i-copy),
-and this README does not carry a second version of it. Read it before you hand-write a handler: the
-list is shorter than most readers expect, and two of the cases that look like they belong on it do
-not.
+## ✅ Verify it works
 
-- **A rule that refuses an operation after reading stored data does not force a hand-written route.**
-  A FluentValidation validator written against the *generated* request runs on the generated route —
-  the group-level `AddFluentValidationAutoValidation()` filter applies to every route in the group.
-  `CreateProductRequestValidator` refuses a name already taken and `DeleteProductRequestValidator`
-  refuses a product still for sale, both with `409`, and neither operation has a hand-written route,
-  request or handler.
-- **A response value the generator's naming convention cannot produce does not force one either.**
-  `ProductDto.GrossMargin` (`Price` minus `SupplierCostPrice`) is derived from two columns, so the
-  convention cannot emit it — one property on the generated `partial record` plus a Mapster
-  `IRegister` puts it on the response, with no route, request or handler written for it. See
-  [a response value the convention cannot produce](docs/samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
+With the host from 🚀 Quick Start running:
 
-Both samples ship in full: [`docs/samples/automated-products/`](docs/samples/automated-products/)
-(generator-driven `Product`) and
-[`docs/samples/manual-purchase-orders/`](docs/samples/manual-purchase-orders/) (hand-written
-`PurchaseOrder`). The end-to-end steps for a feature of your own are in
-[`docs/ddd-implementation-guide.md`](docs/ddd-implementation-guide.md).
+```bash
+curl -s -i http://127.0.0.1:5000/healthz
+```
 
-## Architecture
+```text
+HTTP/1.1 200 OK
+...
+{"status":"Healthy"}
+```
 
-A generated solution is layered onion-style — each layer knows only about the layers inside it:
+The public probe reports status only. The per-check report is at `/healthz/detail`, behind
+authorization when `RequireAuthorization` is on.
 
-![Architecture diagram of a scaffolded solution: Minimal.AppHost orchestrates Redis and PostgreSQL and starts Minimal.Api, which dispatches through IMessageBus into Minimal.AppServices; AppServices calls Minimal.Domains aggregates, Minimal.Infra supplies the repository and event publisher to AppServices and the EF Core mapping and seeding to Domains, Minimal.Share is read by every layer, and the Minimal.App.Tests/Architecture project holds NetArchTest shape rules over the Api, AppServices, Infra and Domains projects.](docs/diagrams/templates-solution-layers.svg)
+## 🛠️ Common commands
 
-`Minimal.Domains` references nothing above it. `Minimal.AppServices` depends only on `Domains` (plus
-`Share`); `Minimal.Infra` and `Minimal.Api` depend on both, never the reverse. `Minimal.Share` is the
-one cross-cutting exception, and `Minimal.AppHost` is the Aspire orchestrator, carrying no business
-logic.
+From the repository root (`src/` holds the template solution):
 
-![Workflow diagram of the request pipeline: a request passes the edge middleware that applies forwarded headers, security response headers and CORS, then routing with the request bounds and the rate limiter, then authentication with its default-deny fallback, then the endpoint filters that populate FromClaim members and run FluentValidation, and finally the handler; opt-in routes take a detour through the idempotency filter, and each stage has its own short-circuit response — 413 for an oversized body, 429 or 504, 401 or 403, 400, and the 500 problem+json the library's error handler writes.](docs/diagrams/templates-request-pipeline.svg)
-
-A request reaches an `IEndpointConfig` route, is validated and has its `[FromClaim]` properties
-populated, then dispatches over the in-memory SlimMessageBus to a handler in `Minimal.AppServices`,
-which calls a method on a `Minimal.Domains` aggregate. `CoreDbContext.SaveChanges` persists it;
-around the save, `DataOwnerHook` stamps `CreatedBy`/`UpdatedBy` and queued domain events are
-dispatched — and forwarded to Azure Service Bus when one is configured. Stage by stage:
-[`docs/api-pipeline.md`](docs/api-pipeline.md).
-
-## Documentation
-
-**Start at [`docs/index.md`](docs/index.md)** — it indexes every page and carries the
-capability-to-attribute tables ("I want X; which attribute or call gives it to me").
-
-| First stop | For |
+| What | Command |
 |---|---|
-| [`docs/template-usage.md`](docs/template-usage.md) | Scaffold parameters, run/test/migrate/publish |
-| [`docs/ddd-implementation-guide.md`](docs/ddd-implementation-guide.md) | Adding a vertical slice, entity to endpoint |
-| [`docs/crud-attributes.md`](docs/crud-attributes.md) | The four attributes behind the generated slice |
-| [`docs/samples/manual-vs-automated.md`](docs/samples/manual-vs-automated.md) | Which sample to copy, and every trade-off behind that call |
-| [`docs/configuration-reference.md`](docs/configuration-reference.md) | Every `appsettings` key a generated solution reads |
-| [`docs/extension-points.md`](docs/extension-points.md) | Where your own code attaches, and the boundaries the tests hold |
+| Restore | `dotnet restore src/DKNet.Templates.sln` |
+| Build | `dotnet build src/DKNet.Templates.sln -c Release` |
+| Test, with coverage | `dotnet test src/DKNet.Templates.sln --settings src/coverage.runsettings --collect:"XPlat Code Coverage"` |
+| Template guards (packaging, scaffolding, repo hygiene) | `dotnet test DKNet.Templates.slnx` |
+| Run the full stack | `dotnet run --project src/ApiEndpoints/Minimal.AppHost` |
+| Run the API alone | `ConnectionStrings__AppDb="Host=localhost;Database=AppDb;Username=postgres;Password=<password>" dotnet run --project src/ApiEndpoints/Minimal.Api` |
+| Add or remove an EF Core migration | `./add-migration.sh <Name>` / `./remove-migration.sh <Name>`, from `src/ApiEndpoints/` |
+| Pack the template | `dotnet pack DKNet.Minimal.Template.csproj -c Release -o ./nupkgs`, from `src/` |
+| Validate the AI plugin | `./validate-plugin.sh` |
 
-[AGENTS.md](AGENTS.md) is the condensed architecture reference used by AI coding agents.
+## ⚠️ Known limitations
 
-> These guides are visible on GitHub but are **not** packaged into scaffolded solutions — the
-> nuspec's file list doesn't ship `docs/`. Copy what you need into the generated solution, or add it
-> to the nuspec.
+- **The API alone needs a database.** `dotnet run --project …/Minimal.Api` without the Aspire host
+  stops at start-up with `Startup database migration failed` (`The ConnectionString property has not
+  been initialized`): the `Development` overlay runs the migration on start and ships
+  `ConnectionStrings:AppDb` empty. Supply the connection string, as in 🛠️ Common commands.
+- **`--TenantId` and `--ApiAudience` ship as placeholders, not working values.** Left as shipped, the
+  OIDC metadata fetch runs against a tenant that does not exist and every token is rejected on audience
+  mismatch. Replace them before you turn on `FeatureManagement:RequireAuthorization` — see
+  [what you must change before shipping](docs/template-usage.md#what-you-must-change-before-shipping).
+- **A stock Development run enforces no scopes.** `RequireAuthorization` is off and the demonstration
+  identity is on, so every route answers without a token.
+- **The generated Products routes do not enforce DataAnnotations and are not idempotent.** A negative
+  price still creates a product, and a replayed create is a second create; see
+  [Products endpoints](docs/features/automated-products/endpoints.md).
+- **On macOS, port 5000 is also taken by the AirPlay Receiver.** If `http://localhost:5000` answers
+  `403 Forbidden`, call `http://127.0.0.1:5000`, as the examples above do.
 
-## AI Plugin — Claude Code, GitHub Copilot, and any agent that reads SKILL.md
+## 📚 Documentation
 
-The `dknet-minimal` plugin lives in [`plugin/`](plugin): `plugin/.claude-plugin/plugin.json` +
-`plugin/skills/` + `plugin/agents/` (Claude Code). The repository root keeps only the entry points
-that have to be found there — `.claude-plugin/marketplace.json` (pointing at `./plugin`),
-`plugin.json` (GitHub Copilot) and `package.json` (npm). One set of
-[Agent Skills](https://agentskills.io) teaches an AI coding agent how to build on this template: the
-layer boundaries, every endpoint shape (hand-mapped, generated `Map<Entity>Crud()`, or the generic
-route helpers), actions and queries, FluentValidation + Mapster DTOs, domain entities and static
-seeding, SlimMessageBus internal events and Azure Service Bus forwarding, auth/ownership and every
-`FeatureManagement` flag. Eight of the skills are slash workflows that scaffold a vertical slice end to
-end; three Claude Code subagents (`dknet-architect`, `dknet-implementer`, `dknet-bdd-engineer`) back
-`/dknet-feature`. Index of every skill: [`plugin/skills/README.md`](plugin/skills/README.md).
+| Page | What it answers |
+|---|---|
+| [Products](docs/features/automated-products/index.md) | The generator-driven sample: routes, stored data, events |
+| [Purchase Orders](docs/features/manual-purchase-orders/index.md) | The hand-written sample: routes, stored data, events, status lifecycle |
+| [Configuration](docs/configuration.md) | Every `appsettings` key a generated service reads, its default and when it takes effect |
+| [Documentation index](docs/README.md) | Every guide, the capability-to-attribute tables, and the architecture of a generated solution |
+| [Template usage](docs/template-usage.md) | Scaffold parameters; run, test, migrate and publish |
+| [DDD implementation guide](docs/ddd-implementation-guide.md) | Adding a vertical slice, entity to endpoint |
+| [The shape your endpoints should take](docs/endpoint-shape.md) | One endpoint class per aggregate, and when a route must be hand-written |
+| [CRUD attributes](docs/crud-attributes.md) | The four attributes behind the generated slice |
+| [Manual vs. Automated](docs/samples/manual-vs-automated.md) | Which sample to copy, and every trade-off behind that call |
+| [Extension points](docs/extension-points.md) | Where your own code attaches, and the boundaries the tests hold |
+| [Deleting the samples](docs/deleting-the-samples.md) | What to remove once you have copied what you need |
+| [AI plugin](docs/ai-plugin.md) | The `dknet-minimal` skills, workflows and subagents, and how the plugin is released |
+| [Release notes](docs/release-notes.md) | Behaviour changes a consumer must act on |
 
-`dotnet new dknet-minimal` does **not** copy the plugin into a generated solution (only `AGENTS.md`
-ships) — install it into the generated repo with one of the channels below.
+There is no deployment guide: this repository deploys nothing — publishing the template package is
+its release.
+
+## AI Plugin
+
+Install the `dknet-minimal` agent skills into a generated repository through one of these channels —
+what the plugin holds and how it is released: [AI plugin](docs/ai-plugin.md).
 
 **Claude Code**
 
@@ -215,58 +194,12 @@ claude --plugin-dir node_modules/@drunkcoding/dknet-implementation-skills/plugin
 npx skills experimental_sync -a '*'                                  # any agent: node_modules -> .agents/skills/ etc.
 ```
 
-**Working on this repository**
+## ❓ Open questions
 
-```bash
-claude --plugin-dir plugin     # loads plugin/skills/ and plugin/agents/ from the checkout
-./validate-plugin.sh           # manifests, README install channels, skill portability
-```
-
-| Workflow | Purpose |
-|---|---|
-| `/dknet-feature <Feature> <Entity> [mode=manual\|auto] [props…]` | Full vertical slice: plan → entity → CRUD → endpoint → tests → BDD → docs |
-| `/dknet-feature-remove <Feature>` | Retire a slice, its touchpoints and its tables (drop migration) |
-| `/dknet-entity <Feature> <Entity> [mode=…] [props…]` | Domain entity + EF mapper + migration |
-| `/dknet-crud <Feature> <Entity> [mode=…]` | AppServices CRUD (DTO + Create/Update/Delete + spec + event), or the generator attributes |
-| `/dknet-endpoint <Feature> <Entity> [mode=…]` | Minimal API `IEndpointConfig` — hand-mapped with idempotency, or `Map<Entity>Crud()` |
-| `/dknet-unit-tests <Feature> <Entity> [mode=…]` | xUnit + Shouldly tests through `ApiFixture` + `IMessageBus` |
-| `/dknet-bdd-tests <Feature>` | Reqnroll + NUnit BDD scenarios |
-| `/dknet-docs <Feature>` | Feature documentation under `docs/features/<feature>/` |
-
-| Reference skill | Teaches |
-|---|---|
-| `dknet-project-structure` | Layers, folder footprint, auto-discovery, which skill for what — read first |
-| `dknet-ddd-principles` | Aggregate boundaries, invariants, when an event is warranted |
-| `dknet-feature-lifecycle` | Manual vs automated flow decision, feature footprint, removal rules |
-| `dknet-scaffold` | `dotnet new dknet-minimal`, parameters, first run, deleting the samples, installing this plugin |
-| `dknet-entity` | `AggregateRoot` entities, `[CrudCreate]`/`[CrudUpdate]`/`[CrudAction]`/`[RaisesEvent]`, `IOwnedBy`, `[SensitiveData]` |
-| `dknet-efcore-config` | Mappers, static data seeding (both wiring paths), `CoreDbContext`, migrations |
-| `dknet-crud` | Commands, FluentValidation (incl. 409 preconditions), handlers, generated requests |
-| `dknet-queries-specs` | `Specification<T>`, query handlers, paging, the generic filter/search/order list route |
-| `dknet-dto-mapping` | Hand-written vs `[GenerateDto]` DTOs, Mapster config and `IRegister` custom mapping, `ResultOf` |
-| `dknet-endpoint` | `IEndpointConfig`; raw routes, `Map<Entity>Crud()` + `CrudMapOptions`, generic helpers; idempotency; scopes |
-| `dknet-messaging-events` | SlimMessageBus in-memory bus, domain events (manual/declared), Azure Service Bus Produce/Consume |
-| `dknet-auth-and-ownership` | JWT + scopes, demo auth, `[FromClaim]`, `DataOwnerHook`, row-level isolation, sensitive data |
-| `dknet-platform-config` | Start-up order, every `FeatureManagement` flag and config section, Aspire, jobs, health, OpenAPI |
-| `dknet-unit-tests` / `dknet-bdd-tests` | What each suite owns, fixtures, worked examples, the business-tests-only rule |
-| `dknet-docs` | README + Mermaid architecture + API reference for a finished feature |
-| `dknet-package-adoption` | Using DKNet packages in a project not created from the template |
-
-**Release.** Versions stay `0.0.0` in git. `publish-nuget-github.yml` computes the release version from
-tags on `main`, packs and publishes the NuGet template, creates the GitHub release, then stamps the same
-version into `package.json` / `plugin.json` / `plugin/.claude-plugin/plugin.json` (`npm version` →
-`scripts/sync-version.mjs`), validates the skills (`agentskills validate`, `claude plugin validate`,
-`npx skills add --list`, `./validate-plugin.sh`) and publishes `@drunkcoding/dknet-implementation-skills` to npm
-with OIDC trusted publishing. A version already on npm is skipped.
-
-## Release notes
-
-**Breaking change — status-counts default window (DRK-521).** Status-counts endpoints (the `GET`
-route `MapGetStatusCounts<TEntity>` maps, at the `status` segment by default) no longer default to
-the last 30 days when no `from`/`to` bounds are supplied. An unbounded call now reports counts over
-the **entire history**. Explicit `from`/`to` bounds are unaffected — pass them to preserve a bounded
-window.
-
-## License
-
-MIT © [Steven Hoang](https://drunkcoding.net)
+| Question | Why it matters | Checked | Who can answer |
+|---|---|---|---|
+| Is the template meant to be on nuget.org? The NuGet badge points there, but the package is not published there. | The badge renders as "not found", and the Quick Start needs a GitHub token a reader may not have. | `https://api.nuget.org/v3-flatcontainer/dknet.minimal.template/index.json` returns 404; `publish-nuget-github.yml` publishes to GitHub Packages. | Template maintainer |
+| What does a request get when Redis is configured but unreachable — does the idempotency filter fail the create, or let it through? | Decides whether a Redis outage blocks purchase-order creation. | `AppConfig` registers `AddIdempotencyWithRedisStore` with no fallback; the store's failure handling lives in `DKNet.AspCore.Idempotency.RedisStore`, outside this repository. | DKNet.AspCore.Idempotency maintainer |
+| What does a caller get when the OIDC metadata endpoint is unreachable while `RequireAuthorization` is on? | Decides whether an identity-provider outage is a `401` for every caller or a `500`. | `AuthConfig` calls `AddJwtBearer()` with no inline options; metadata refresh and failure handling are ASP.NET Core's. Not exercised: the shipped tenant is a placeholder. | Template maintainer |
+| Does the host start when `EnableAzureAppConfig` is on and the store is unreachable? | Decides whether an App Configuration outage stops a deployment. | `AzureAppConfigSetup` adds the source without an `optional` flag or a startup timeout; not exercised. | Template maintainer |
+| What does the service do when the OTLP collector or Azure Monitor is unreachable? | Decides whether telemetry loss can affect requests. | `LogConfigs` adds the exporters with SDK defaults; not exercised. | Template maintainer |
