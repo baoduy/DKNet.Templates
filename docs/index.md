@@ -26,19 +26,21 @@ The API is called over HTTP by front-ends and other services, directly or throug
 ![A caller's HTTPS request crosses the Minimal.Api edge (security headers, CORS, authentication against your identity provider), reaches an IEndpointConfig route group, is sent over the in-memory IMessageBus to a Minimal.AppServices handler that calls a Minimal.Domains aggregate and saves through CoreDbContext to PostgreSQL, with idempotency keys in Redis and domain events forwarded to Azure Service Bus when it is configured.](diagrams/runtime.svg)
 
 Everything inside the trust boundary runs in the one `Minimal.Api` process. PostgreSQL is required:
-the start-up migration throws without `ConnectionStrings:AppDb`. Redis is optional: without
+with `FeatureManagement:RunDbMigrationWhenAppStart` on (the `Development` overlay) the start-up
+migration throws without `ConnectionStrings:AppDb`; with it off (the base file) the first database
+call fails instead. Redis is optional: without
 `ConnectionStrings:Redis` the cache and the idempotency store fall back to in-process stores, correct
 for a single instance only. Azure Service Bus is used only with `FeatureManagement:EnableServiceBus`
 and `ConnectionStrings:AzureBus` both set. With `FeatureManagement:RequireAuthorization` on, tokens are
-validated against your OIDC tenant; with it off, a built-in demonstration identity is attached to every
-request. On local runs `Minimal.AppHost` (.NET Aspire) provisions the Redis and PostgreSQL containers
+validated against your OIDC tenant; with it off and `FeatureManagement:EnableDemoAuthentication` on
+(the `Development` overlay), a built-in demonstration identity is attached to every request. On local runs `Minimal.AppHost` (.NET Aspire) provisions the Redis and PostgreSQL containers
 and injects both connection strings.
 
 ## 🌐 Downstream systems
 
 | System | Direction | How | What for | When it is down |
 |---|---|---|---|---|
-| PostgreSQL | we call it | Npgsql through `CoreDbContext` | every stored aggregate, the start-up migration, the static seed rows | Without a connection string the host does not start. At run time Npgsql's `EnableRetryOnFailure()` defaults retry a transient failure before the request fails; `/healthz` carries a `CoreDbContext` check. Locally, with the database container stopped, `/healthz` answered `504 Gateway Timeout`. |
+| PostgreSQL | we call it | Npgsql through `CoreDbContext` | every stored aggregate, the start-up migration, the static seed rows | Without a connection string the start-up migration throws when `RunDbMigrationWhenAppStart` is on, and the first database call fails when it is off. At run time Npgsql's `EnableRetryOnFailure()` defaults retry a transient failure before the request fails; `/healthz` carries a `CoreDbContext` check. Locally, with the database container stopped, `/healthz` answered `504 Gateway Timeout`. |
 | Redis | we call it | StackExchange.Redis | distributed cache and idempotency keys | Not set: in-process stores, single instance only. Set but unreachable: see ❓ Open questions. |
 | Identity provider (OIDC) | we call it | JWT bearer metadata fetch, only with `RequireAuthorization` on | signing keys, issuer and audience for token validation | See ❓ Open questions. |
 | Azure Service Bus | it consumes our events | SlimMessageBus `AzureBus` child bus, topic `product-tp`, subscription `product-sub` | forwards `ProductCreatedEvent` | Off unless `EnableServiceBus` and `ConnectionStrings:AzureBus` are both set; the in-memory bus keeps working either way. |
@@ -129,10 +131,11 @@ From the repository root (`src/` holds the template solution):
   OIDC metadata fetch runs against a tenant that does not exist and every token is rejected on audience
   mismatch. Replace them before you turn on `FeatureManagement:RequireAuthorization` — see
   [what you must change before shipping](template-usage.md#what-you-must-change-before-shipping).
-- **A stock Development run enforces no scopes.** `RequireAuthorization` is off and the demonstration
-  identity is on, so every route answers without a token.
-- **The generated Products routes do not enforce DataAnnotations and are not idempotent.** A negative
-  price still creates a product, and a replayed create is a second create; see
+- **A stock Development run enforces no scopes.** The `Development` overlay turns `RequireAuthorization`
+  off and the demonstration identity on, so every route answers without a token.
+- **The generated Products routes do not enforce DataAnnotations and take no idempotency key.** A
+  negative price still creates a product, and a retried create is refused `409` by the duplicate-name
+  check instead of returning the original response; see
   [Products endpoints](features/automated-products/endpoints.md).
 - **On macOS, port 5000 is also taken by the AirPlay Receiver.** If `http://localhost:5000` answers
   `403 Forbidden`, call `http://127.0.0.1:5000`, as the examples above do.

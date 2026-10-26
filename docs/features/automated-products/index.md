@@ -74,6 +74,9 @@ This diagram cannot show that discontinuing also inserts a second, independent `
 
 ## 🔗 Related features
 
+- `IProductsClient` — a typed Refit client for this feature's routes, registered by `AddApiClient` in
+  the scaffolded `Minimal.Client` package, for a downstream service that wants to call it without
+  hand-rolling HTTP.
 - [Manual Purchase Orders](../manual-purchase-orders/index.md) — the hand-written twin of this same vertical-slice shape; reach for it instead when a feature needs idempotent writes, enforced `DataAnnotations` validation, a multi-aggregate transaction expressed end to end by hand, or a filtered list query beyond the generic contract (see [Manual vs. Automated](../../samples/manual-vs-automated.md#at-a-glance-which-one-should-i-copy)).
 
 ## ❓ Open questions

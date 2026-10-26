@@ -85,7 +85,7 @@ one attribute or one call. Nothing here needs new infrastructure.
 | Raise a domain event on save without writing publish code | `[RaisesEvent(EventOperations.X, nameof(Prop))]` | [EF Core domain events](efcore-events.md) |
 | Raise a domain event from inside an aggregate method | `AddEvent(...)` in the entity | [EF Core domain events](efcore-events.md) |
 | Reject bad input before the handler runs | a FluentValidation `AbstractValidator<TRequest>` — auto-discovered | [API pipeline](api-pipeline.md#fluentvalidation-auto-validation), [Extension points](extension-points.md#requests-handlers-and-validators) |
-| Make a replayed `POST` return the first result instead of creating twice | `.RequiredIdempotentKey()` on the route; client sends `X-Idempotency-Key` | [API pipeline](api-pipeline.md#idempotency-on-post) |
+| Refuse a replayed `POST` (`409`) instead of creating twice | `.RequiredIdempotentKey()` on the route; client sends `X-Idempotency-Key` | [API pipeline](api-pipeline.md#idempotency-on-post) |
 | Fill the acting user into a request from the token | `[FromClaim(...)]` on a request property | [API pipeline](api-pipeline.md#fromclaim-population) |
 | Stamp the acting user onto every entity without touching requests | the `DKNet.EfCore.AuditLogs` hook — already wired; nothing per-feature | [Auditing and data ownership](auditing-and-data-ownership.md) |
 | Ship reference rows with the feature | a `DataSeedingConfiguration<T>` subclass — auto-discovered | [CRUD attributes](crud-attributes.md#data-seeding) |
