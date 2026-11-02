@@ -203,4 +203,52 @@ public class PackageArchitectureTests
             "PackageReference elements must not carry a Version attribute — versions are centrally " +
             "managed in Directory.Packages.props. Offenders: " + string.Join(", ", offenders));
     }
+
+    [Fact]
+    public void DeadTemplatePackages_ShouldBeAbsent()
+    {
+        // DRK-2490: these packages were referenced but never used, and shipped into every scaffolded service.
+        string[] deadPackages =
+        [
+            "ForEvolve.FluentValidation.AspNetCore.Http",
+            "SlimMessageBus.Host.FluentValidation",
+            "AutoBogus"
+        ];
+        var srcDir = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
+
+        var directoryPackagesPath = Path.Combine(srcDir, "Directory.Packages.props");
+        File.Exists(directoryPackagesPath).ShouldBeTrue();
+
+        var pinnedPackages = XDocument.Load(directoryPackagesPath).Descendants("PackageVersion")
+            .Select(e => e.Attribute("Include")?.Value ?? "")
+            .ToArray();
+        var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
+        var globalUsingsFiles = Directory.GetFiles(srcDir, "GlobalUsings.cs", SearchOption.AllDirectories);
+
+        // Each scan must read something, or an absence assertion over it passes vacuously.
+        pinnedPackages.ShouldNotBeEmpty();
+        csprojFiles.ShouldNotBeEmpty();
+        globalUsingsFiles.ShouldNotBeEmpty();
+
+        var pinOffenders = pinnedPackages
+            .Where(p => deadPackages.Contains(p, StringComparer.OrdinalIgnoreCase))
+            .Select(p => $"PackageVersion {p} in Directory.Packages.props");
+
+        var referenceOffenders = csprojFiles
+            .SelectMany(file => XDocument.Load(file).Descendants("PackageReference")
+                .Select(e => e.Attribute("Include")?.Value ?? "")
+                .Where(p => deadPackages.Contains(p, StringComparer.OrdinalIgnoreCase))
+                .Select(p => $"PackageReference {p} in {Path.GetRelativePath(srcDir, file)}"));
+
+        var usingOffenders = globalUsingsFiles
+            .Where(file => File.ReadLines(file).Any(line => line.Trim() == "global using AutoBogus;"))
+            .Select(file => $"global using AutoBogus; in {Path.GetRelativePath(srcDir, file)}");
+
+        var offenders = pinOffenders.Concat(referenceOffenders).Concat(usingOffenders).ToArray();
+
+        offenders.ShouldBeEmpty(
+            "Dead template packages must not be pinned, referenced or imported. Offenders: " +
+            string.Join(", ", offenders));
+    }
 }

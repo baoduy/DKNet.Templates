@@ -57,14 +57,13 @@ public abstract class DomainEntity : AuditedEntity<Guid>
 public abstract class AggregateRoot : DomainEntity
 {
     protected AggregateRoot(string createdBy, DateTimeOffset? createdOn = null)
-        : this(Guid.NewGuid(), createdBy, createdOn)
+        : this(Guid.CreateVersion7(), createdBy, createdOn)
     {
     }
 
     protected AggregateRoot(Guid id, string createdBy, DateTimeOffset? createdOn = null)
         : base(id, createdBy, createdOn)
     {
-        SetCreatedBy(createdBy, createdOn);
     }
 
     protected AggregateRoot()
@@ -82,8 +81,9 @@ and every property setter is `private` — don't redeclare any of them.
 **Two ways an aggregate ends up with an `Id`:**
 
 - Call the `AggregateRoot(string createdBy)` overload (or `(Guid id, string createdBy)`) — this
-  eagerly assigns `Id = Guid.NewGuid()` (or the given `id`) and stamps `CreatedBy` in memory, before
-  `SaveChanges`. `PurchaseOrder`'s public constructor does this via `: base(byUser)`.
+  eagerly assigns a time-ordered `Id = Guid.CreateVersion7()` (or the given `id`) and stamps
+  `CreatedBy` in memory, before `SaveChanges` — the same version-7 shape `GuidV7ValueGenerator`
+  assigns at insert. `PurchaseOrder`'s public constructor does this via `: base(byUser)`.
 - Call neither — the parameterless `protected AggregateRoot()` runs, `Id` stays `Guid.Empty` and
   `CreatedBy` stays unset until `SaveChanges`. EF Core's mapper base class
   (`DefaultEntityTypeConfiguration<T>`) configures `Id` with `ValueGeneratedOnAdd().HasValueGenerator<GuidV7ValueGenerator>()`,
