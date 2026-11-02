@@ -63,9 +63,8 @@ below, for what Scrutor actually is and isn't used for here). This call is wired
 
 - If an `Id` property exists: `HasKey("Id")`, plus a value generator — `ValueGeneratedOnAdd()` for a
   numeric key, or `ValueGeneratedOnAdd().HasValueGenerator<GuidV7ValueGenerator>()` for a `Guid` key
-  (a time-ordered GUID assigned at insert, distinct from the plain `Guid.NewGuid()` an
-  `AggregateRoot(string createdBy)` constructor assigns eagerly in memory — see
-  `dknet-entity`).
+  (a time-ordered GUID assigned at insert — the same `Guid.CreateVersion7()` shape an
+  `AggregateRoot(string createdBy)` constructor assigns eagerly in memory, see `dknet-entity`).
 - If the entity implements `IAuditedProperties`: `CreatedBy`/`CreatedOn` required, `CreatedBy`
   max length 255, both locked against change after insert (`SetAfterSaveBehavior`); `UpdatedBy` max
   length 255, nullable; `UpdatedOn` nullable.
