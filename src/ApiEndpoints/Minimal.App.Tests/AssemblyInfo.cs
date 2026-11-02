@@ -5,4 +5,4 @@
 // integration test building a host (ApiFixture-based classes included) inside that window would race and
 // intermittently inherit the wrong RequireAuthorization value. Disabling assembly-wide parallelization
 // removes the race without pinning every host-building class into a hand-maintained shared collection.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]
