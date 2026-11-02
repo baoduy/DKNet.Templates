@@ -220,18 +220,28 @@ public class PackageArchitectureTests
         var directoryPackagesPath = Path.Combine(srcDir, "Directory.Packages.props");
         File.Exists(directoryPackagesPath).ShouldBeTrue();
 
-        var pinOffenders = XDocument.Load(directoryPackagesPath).Descendants("PackageVersion")
+        var pinnedPackages = XDocument.Load(directoryPackagesPath).Descendants("PackageVersion")
             .Select(e => e.Attribute("Include")?.Value ?? "")
+            .ToArray();
+        var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
+        var globalUsingsFiles = Directory.GetFiles(srcDir, "GlobalUsings.cs", SearchOption.AllDirectories);
+
+        // Each scan must read something, or an absence assertion over it passes vacuously.
+        pinnedPackages.ShouldNotBeEmpty();
+        csprojFiles.ShouldNotBeEmpty();
+        globalUsingsFiles.ShouldNotBeEmpty();
+
+        var pinOffenders = pinnedPackages
             .Where(p => deadPackages.Contains(p, StringComparer.OrdinalIgnoreCase))
             .Select(p => $"PackageVersion {p} in Directory.Packages.props");
 
-        var referenceOffenders = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories)
+        var referenceOffenders = csprojFiles
             .SelectMany(file => XDocument.Load(file).Descendants("PackageReference")
                 .Select(e => e.Attribute("Include")?.Value ?? "")
                 .Where(p => deadPackages.Contains(p, StringComparer.OrdinalIgnoreCase))
                 .Select(p => $"PackageReference {p} in {Path.GetRelativePath(srcDir, file)}"));
 
-        var usingOffenders = Directory.GetFiles(srcDir, "GlobalUsings.cs", SearchOption.AllDirectories)
+        var usingOffenders = globalUsingsFiles
             .Where(file => File.ReadLines(file).Any(line => line.Trim() == "global using AutoBogus;"))
             .Select(file => $"global using AutoBogus; in {Path.GetRelativePath(srcDir, file)}");
 
