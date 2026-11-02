@@ -28,7 +28,7 @@ public class ClientDependencyTests
     [MemberData(nameof(ServiceAssemblies))]
     public void ServiceAssembly_DoesNotDependOnTheClient(string assemblyName)
     {
-        var assembly = AppDomain.CurrentDomain.GetAssemblies().Single(a => a.GetName().Name == assemblyName);
+        var assembly = System.Reflection.Assembly.Load(assemblyName);
 
         var result = Types.InAssembly(assembly)
             .ShouldNot().HaveDependencyOn(ClientNamespace)
