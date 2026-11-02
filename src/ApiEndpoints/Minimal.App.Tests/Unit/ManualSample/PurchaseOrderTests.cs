@@ -19,6 +19,18 @@ public class PurchaseOrderTests
     }
 
     [Fact]
+    public void Ctor_ShouldAssignVersion7Id()
+    {
+        var first = new PurchaseOrder("Acme Pte Ltd", 250.00m, "alice");
+        var second = new PurchaseOrder("Acme Pte Ltd", 250.00m, "alice");
+
+        first.Id.ShouldNotBe(Guid.Empty);
+        first.Id.Version.ShouldBe(7);
+        second.Id.Version.ShouldBe(7);
+        second.Id.ShouldNotBe(first.Id);
+    }
+
+    [Fact]
     public void Ctor_ShouldRaisePurchaseOrderCreatedEvent_WithMatchingPayload()
     {
         var order = new PurchaseOrder("Acme Pte Ltd", 250.00m, "alice");
