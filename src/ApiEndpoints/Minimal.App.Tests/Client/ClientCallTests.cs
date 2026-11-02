@@ -82,7 +82,7 @@ public sealed class ClientCallTests(ClientApiFixture fixture) : IClassFixture<Cl
         var thrown = await Record.ExceptionAsync(() =>
             products.ListProductsAsync(new ProductListQuery { Filter = ["colour:Equal:red"] }));
 
-        var refused = thrown.ShouldBeAssignableTo<ApiException>();
+        var refused = thrown.ShouldBeAssignableTo<ApiException>()!;
         refused.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var problem = await refused.GetContentAsAsync<ProblemDetailsResponse>();
         problem.ShouldNotBeNull();
@@ -100,7 +100,7 @@ public sealed class ClientCallTests(ClientApiFixture fixture) : IClassFixture<Cl
 
         var thrown = await Record.ExceptionAsync(() => products.GetProductAsync(Guid.NewGuid()));
 
-        var refused = thrown.ShouldBeAssignableTo<ApiException>();
+        var refused = thrown.ShouldBeAssignableTo<ApiException>()!;
         refused.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         // The API answers an unknown product with a bare 404 and no body (it maps no status-code
         // problem details), so the details the caller can read are exactly that empty body.

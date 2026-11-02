@@ -36,13 +36,11 @@ public sealed class ClientApiFixture : TestApiFactoryBase, IAsyncLifetime
         services.AddSingleton<IStartupFilter>(new RecordingStartupFilter(ReceivedRequests));
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _ = CreateClient();
         await ResetDatabaseAsync();
     }
-
-    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 
     protected override void Dispose(bool disposing)
     {

@@ -26,7 +26,7 @@ public sealed class InfraMigrationSeedingTests : IAsyncLifetime
 
     #region Methods
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
 
@@ -49,7 +49,7 @@ public sealed class InfraMigrationSeedingTests : IAsyncLifetime
         });
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _factory?.Dispose();
         await _postgres.DisposeAsync();

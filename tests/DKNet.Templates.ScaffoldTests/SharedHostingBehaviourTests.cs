@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Net;
 using System.Text;
 using Minimal.App.TestSupport;
-using Xunit.Abstractions;
 
 namespace DKNet.Templates.ScaffoldTests;
 

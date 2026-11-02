@@ -40,7 +40,7 @@ public sealed class PurchaseOrderSeededOwnershipTests : IAsyncLifetime
 
     #region Methods
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
 
@@ -61,7 +61,7 @@ public sealed class PurchaseOrderSeededOwnershipTests : IAsyncLifetime
         });
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _factory?.Dispose();
         Environment.SetEnvironmentVariable(RequireAuthorizationEnvKey, null);

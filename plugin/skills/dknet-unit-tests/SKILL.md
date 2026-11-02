@@ -67,13 +67,11 @@ extra overrides:
 ```csharp
 public sealed class ApiFixture : TestApiFactoryBase, IAsyncLifetime
 {
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _ = CreateClient();
         await ResetDatabaseAsync();
     }
-
-    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
 ```
 
