@@ -1,0 +1,290 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Create Product \u2014 end-to-end flow",
+    "output": "out/automated-products/create-flow.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/baoduy/DKNet.Templates.git",
+      "provider": "github",
+      "revision": "4796f354370da68e89fe3bcb06471e9dca4c9923"
+    }
+  },
+  "lanes": [
+    {
+      "id": "client",
+      "label": "Caller"
+    },
+    {
+      "id": "api",
+      "label": "ProductV1Endpoint (generated route)"
+    },
+    {
+      "id": "domain",
+      "label": "Handler + Product aggregate"
+    },
+    {
+      "id": "data",
+      "label": "PostgreSQL"
+    },
+    {
+      "id": "consumers",
+      "label": "Event consumers"
+    },
+    {
+      "id": "external",
+      "label": "Azure Service Bus"
+    }
+  ],
+  "mainPath": [
+    "caller",
+    "route",
+    "validate",
+    "handler",
+    "insert",
+    "raise"
+  ],
+  "nodes": [
+    {
+      "id": "caller",
+      "lane": "client",
+      "col": 0,
+      "type": "external",
+      "label": "Caller",
+      "sublabel": "POST /v1/products",
+      "width": 115
+    },
+    {
+      "id": "route",
+      "lane": "api",
+      "col": 1,
+      "type": "backend",
+      "label": "MapProductCrud \u2014 Create",
+      "sublabel": "generated POST / route",
+      "width": 158,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.Api/ApiEndpoints/AutomatedSample/ProductV1Endpoint.cs",
+          "line": 53,
+          "end_line": 64
+        }
+      ]
+    },
+    {
+      "id": "validate",
+      "lane": "api",
+      "col": 2,
+      "type": "security",
+      "label": "CreateProductRequestValidator",
+      "sublabel": "group's auto-validation filter",
+      "tag": "reads IRepositorySpec",
+      "width": 200,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.AppServices/AutomatedSample/V1/Validators/CreateProductRequestValidator.cs",
+          "line": 14,
+          "end_line": 25
+        }
+      ]
+    },
+    {
+      "id": "refuse",
+      "lane": "api",
+      "col": 3,
+      "type": "security",
+      "label": "409 Conflict",
+      "sublabel": "name-taken precondition",
+      "width": 135,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.AppServices/AutomatedSample/V1/Validators/CreateProductRequestValidator.cs",
+          "line": 20,
+          "end_line": 24
+        }
+      ]
+    },
+    {
+      "id": "handler",
+      "lane": "domain",
+      "col": 3,
+      "type": "backend",
+      "label": "CreateProductHandler",
+      "sublabel": "generated from [CrudCreate]",
+      "width": 145,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.Domains/Features/AutomatedSample/Entities/Product.cs",
+          "line": 41,
+          "end_line": 50
+        }
+      ]
+    },
+    {
+      "id": "insert",
+      "lane": "data",
+      "col": 4,
+      "type": "database",
+      "label": "INSERT sample.Products",
+      "sublabel": "unique index on Name",
+      "width": 145,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.Infra/Features/AutomatedSample/Mappers/ProductConfigs.cs",
+          "line": 13,
+          "end_line": 19
+        }
+      ]
+    },
+    {
+      "id": "raise",
+      "lane": "domain",
+      "col": 4,
+      "type": "backend",
+      "label": "EF save hook raises event",
+      "sublabel": "[RaisesEvent] declared on Product",
+      "width": 172,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.Domains/Features/AutomatedSample/Entities/Product.cs",
+          "line": 28,
+          "end_line": 28
+        }
+      ]
+    },
+    {
+      "id": "internal",
+      "lane": "consumers",
+      "col": 5,
+      "type": "messagebus",
+      "label": "ProductCreatedEventHandler",
+      "sublabel": "in-memory bus, logs only",
+      "width": 180,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.AppServices/AutomatedSample/V1/Events/ProductEventHandlers.cs",
+          "line": 10,
+          "end_line": 24
+        }
+      ]
+    },
+    {
+      "id": "external",
+      "lane": "external",
+      "col": 5,
+      "type": "cloud",
+      "label": "Azure product-tp topic",
+      "sublabel": "only when EnableServiceBus=true",
+      "width": 180,
+      "sources": [
+        {
+          "path": "src/ApiEndpoints/Minimal.Infra/Extensions/ServiceBusSetup.cs",
+          "line": 52,
+          "end_line": 55
+        }
+      ]
+    },
+    {
+      "id": "response",
+      "lane": "api",
+      "col": 5,
+      "type": "backend",
+      "label": "201 Created",
+      "sublabel": "ProductDto body",
+      "width": 115
+    }
+  ],
+  "edges": [
+    {
+      "id": "caller-route",
+      "from": "caller",
+      "to": "route",
+      "variant": "default"
+    },
+    {
+      "id": "route-validate",
+      "from": "route",
+      "to": "validate",
+      "label": "auto-validation filter",
+      "variant": "default"
+    },
+    {
+      "id": "validate-handler",
+      "from": "validate",
+      "to": "handler",
+      "label": "name available",
+      "variant": "emphasis"
+    },
+    {
+      "id": "validate-refuse",
+      "from": "validate",
+      "to": "refuse",
+      "label": "name already taken",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "handler-insert",
+      "from": "handler",
+      "to": "insert",
+      "label": "SaveChanges",
+      "variant": "default"
+    },
+    {
+      "id": "insert-raise",
+      "from": "insert",
+      "to": "raise",
+      "label": "save committed",
+      "variant": "default"
+    },
+    {
+      "id": "raise-internal",
+      "from": "raise",
+      "to": "internal",
+      "label": "in-memory bus",
+      "variant": "dashed",
+      "role": "async"
+    },
+    {
+      "id": "raise-external",
+      "from": "raise",
+      "to": "external",
+      "label": "Produce (if enabled)",
+      "variant": "dashed",
+      "role": "async"
+    },
+    {
+      "id": "handler-response",
+      "from": "handler",
+      "to": "response",
+      "label": "mapped ProductDto",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Happy path",
+      "items": [
+        "CreateProductHandler and the raised event are generated from [CrudCreate]/[RaisesEvent] \u2014 nothing here calls AddEvent by hand; ProductConfigs, which maps the insert, is still hand-written like every entity mapping in this template",
+        "The event is raised by the EF save hook after SaveChanges, not inside the handler"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Refusal",
+      "items": [
+        "CreateProductRequestValidator runs through the group's AddFluentValidationAutoValidation() filter before the generated handler",
+        "A taken name short-circuits here with 409 \u2014 no insert, no event"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "What this cannot show",
+      "items": [
+        "[Range(0.01, double.MaxValue)] on price is forwarded onto the generated request but never evaluated \u2014 a negative price still reaches the insert and returns 201",
+        "The Azure branch only fires when FeatureManagement:EnableServiceBus is true; Development ships it false, so only the in-memory handler runs"
+      ]
+    }
+  ]
+}

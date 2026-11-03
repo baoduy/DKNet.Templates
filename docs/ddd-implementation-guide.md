@@ -245,7 +245,7 @@ Mapster's global config in `AppServices/AppSetup.cs` (`TypeAdapterConfig.GlobalS
 to/from the entity by convention (matching property names); no per-feature mapping file to write. A
 field the convention cannot fill — one derived from more than one property — takes a hand-written
 Mapster rule instead; that case is documented on
-[the automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
+[the automated sample](features/automated-products/endpoints.md#a-response-value-the-convention-cannot-produce).
 
 **Automated alternative** (`Minimal.AppServices/AutomatedSample/V1/ProductDto.cs`):
 

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Create Purchase Order — idempotent write and replay",
+    "output": "out/manual-purchase-orders/create-flow.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/baoduy/DKNet.Templates.git",
+      "revision": "4796f354370da68e89fe3bcb06471e9dca4c9923"
+    }
+  },
+  "participants": [
+    { "id": "client", "type": "external", "label": "Caller" },
+    { "id": "filter", "type": "security", "label": "Idempotency", "sublabel": "Filter", "sources": [{ "path": "src/ApiEndpoints/Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs", "line": 36 }] },
+    { "id": "endpoint", "type": "backend", "label": "Create", "sublabel": "PurchaseOrderV1", "sources": [{ "path": "src/ApiEndpoints/Minimal.Api/ApiEndpoints/ManualSample/PurchaseOrderV1Endpoint.cs", "line": 28, "end_line": 40 }] },
+    { "id": "handler", "type": "backend", "label": "CreateHandler", "sublabel": "+ PurchaseOrder", "sources": [{ "path": "src/ApiEndpoints/Minimal.AppServices/ManualSample/V1/Actions/Create.cs", "line": 49, "end_line": 71 }, { "path": "src/ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs", "line": 28, "end_line": 36 }] },
+    { "id": "db", "type": "database", "label": "PurchaseOrders", "sublabel": "manual_sample", "sources": [{ "path": "src/ApiEndpoints/Minimal.Infra/Features/ManualSample/Mappers/PurchaseOrderConfigs.cs", "line": 9, "end_line": 19 }, { "path": "src/ApiEndpoints/Minimal.Infra/Services/EventPublisher.cs", "line": 10, "end_line": 17 }] },
+    { "id": "consumer", "type": "backend", "label": "CreatedHandler", "sublabel": "consumer", "sources": [{ "path": "src/ApiEndpoints/Minimal.AppServices/ManualSample/V1/Events/PurchaseOrderCreatedEventHandler.cs", "line": 9, "end_line": 27 }] }
+  ],
+  "segments": [
+    { "from": 150, "to": 456, "label": "Create (new X-Idempotency-Key)" },
+    { "from": 460, "to": 540, "label": "Replay (same key)" }
+  ],
+  "messages": [
+    { "id": "post", "from": "client", "to": "filter", "y": 160, "label": "POST + X-Idempotency-Key", "variant": "emphasis" },
+    { "id": "fwd", "from": "filter", "to": "endpoint", "y": 200, "label": "key unseen, validated", "variant": "default" },
+    { "id": "send", "from": "endpoint", "to": "handler", "y": 240, "label": "Send(request)", "variant": "default" },
+    { "id": "persist", "from": "handler", "to": "db", "y": 280, "label": "new PurchaseOrder(...); SaveChanges", "variant": "emphasis" },
+    { "id": "publish", "from": "db", "to": "consumer", "y": 320, "label": "EventPublisher.Publish → OnHandle", "variant": "dashed" },
+    { "id": "dto", "from": "handler", "to": "endpoint", "y": 360, "label": "ResultOf<Dto>", "variant": "return" },
+    { "id": "created", "from": "endpoint", "to": "filter", "y": 400, "label": "201 Created", "variant": "return" },
+    { "id": "cacheAndReturn", "from": "filter", "to": "client", "y": 440, "label": "cache + 201", "variant": "return" },
+    { "id": "replay", "from": "client", "to": "filter", "y": 480, "label": "replay same key", "variant": "dashed" },
+    { "id": "conflict", "from": "filter", "to": "client", "y": 520, "label": "409 Conflict", "variant": "dashed" }
+  ],
+  "activations": [
+    { "participant": "filter", "from": 160, "to": 440, "type": "security" },
+    { "participant": "filter", "from": 480, "to": 520, "type": "security" },
+    { "participant": "endpoint", "from": 200, "to": 400, "type": "backend" },
+    { "participant": "handler", "from": 240, "to": 360, "type": "backend" },
+    { "participant": "db", "from": 280, "to": 320, "type": "database" },
+    { "participant": "consumer", "from": 320, "to": 340, "type": "backend" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Idempotent create", "items": ["The create route is the only one in the sample calling RequiredIdempotentKey()", "A new key runs the full pipeline: FluentValidation, construct the aggregate, persist, then cache the response", "PurchaseOrder's constructor calls AddEvent(PurchaseOrderCreatedEvent) before SaveChanges; EventPublisher publishes it only after the row commits"] },
+    { "dot": "rose", "title": "Replay refusal", "items": ["This deployment sets ConflictHandling = ConflictResponse, so a replayed key answers 409 Conflict, not the cached 201 body", "The handler never runs on a replay — the filter answers before the pipeline starts", "A missing X-Idempotency-Key header is refused earlier still, with 400, before the filter checks the store"] },
+    { "dot": "slate", "title": "What this diagram cannot show", "items": ["The transaction boundary: the aggregate construction, AddAsync and SaveChanges run inside one DbContext save, not three steps", "What happens if the in-memory bus publish throws after the row already committed — untested by this sample", "The 400 (validation), 404 (unknown id) and 409 (already cancelled) refusals on the other routes, covered in Endpoints"] }
+  ]
+}

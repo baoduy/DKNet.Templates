@@ -6,7 +6,7 @@ full list of DKNet NuGet packages behind these features, see
 
 This page is the flag reference. Every **other** configuration key a generated solution reads —
 connection strings, the bearer scheme, CORS, rate limits, Azure App Configuration, telemetry — is
-documented key by key in [`configuration-reference.md`](configuration-reference.md), which also
+documented key by key in [`configuration.md`](configuration.md), which also
 lists the keys that ship in `appsettings*.json` but bind to nothing.
 
 Toggles live in `Minimal.Share/Options/FeatureOptions.cs`, bound from the `FeatureManagement`
@@ -29,15 +29,15 @@ you change a flag — never turn a security switch off in the base file.
 | **PostgreSQL (Npgsql)** | The only supported EF Core provider — connection, migrations table, retry-on-failure, split queries. | `ConnectionStrings:AppDb`; `Minimal.Infra/Extensions/InfraSetup.cs` |
 | **FluentValidation** | Automatic `400` responses for invalid requests — handlers never call `Validate()` themselves. | Add an `AbstractValidator<TRequest>` next to the action; wiring in `Minimal.Api/Configs/FluentValidationConfig.cs` |
 | **OpenTelemetry** | ASP.NET Core + HttpClient tracing/metrics; console exporter in a `Development` environment (whichever configuration the build was compiled as), OTLP or Azure Monitor otherwise. | `FeatureManagement:EnableOpenTelemetry`, `OTEL_EXPORTER_OTLP_ENDPOINT` / `AzureMonitor:ConnectionString`; `Minimal.Api/Configs/LogConfigs.cs` |
-| **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, plus a `ConnectionStrings:AzureAppConfig` entry; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs`. Every key: [`configuration-reference.md`](configuration-reference.md#azureappconfig) |
+| **Azure App Configuration** | Centralized config + feature flags, 30-min refresh. Disabled automatically in tests. | `FeatureManagement:EnableAzureAppConfig`, plus a `ConnectionStrings:AzureAppConfig` entry; `Minimal.Api/Configs/AzureAppConfig/AzureAppConfigSetup.cs`. Every key: [`configuration.md`](configuration.md#azureappconfiguration) |
 | **JWT bearer auth** | Standard bearer-token auth, plus a sample scope policy and an `IClaimsTransformation` to replace with your own. The shipped `Authentication:Schemes:Bearer` values are placeholders wired to the `--TenantId` and `--ApiAudience` template parameters — replace them before enabling authorization. `ValidAudiences` deliberately lists only the API's own audience, so tokens issued for any other resource are rejected. Authorization is **default-deny**: a fallback policy requires an authenticated user on every endpoint that does not declare itself anonymous, so a route published outside a configured group is not reachable by accident. | `FeatureManagement:RequireAuthorization`, `Authentication:Schemes:Bearer:*`; `Minimal.Api/Configs/Auth/AuthConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **Demonstration authentication provider** | Development/demonstration only: authenticates every caller under a fixed `"Demo"` scheme identity (`ClaimTypes.Name` = `SharedConsts.DemoAccount`, `"demo-user@not-a-real-identity.invalid"`), so local requests and the test suites carry a real authenticated claim instead of none. Registered only while `RequireAuthorization` is off; the two flags on together makes the host refuse to start (`InvalidOperationException`) rather than pick one silently. Never enable it alongside real authorization, and never in a deployed service. | `FeatureManagement:EnableDemoAuthentication`; `Minimal.Api/Configs/Auth/DemoAuthConfig.cs` |
 | **API versioning** | URL-segment versioning (`/v1/...`), default version `1.0`. | `FeatureManagement:EnableVersioning`; `Minimal.Api/Configs/VersioningConfig.cs`. Full pipeline order: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **CORS allow-list** | Browser front-ends can call the API only from origins you list; with the shipped empty list CORS is not wired at all and no `Access-Control-Allow-*` header is emitted. Origins are absolute — scheme included, no trailing slash. Methods and headers are enumerated, not `AllowAny*`: `GET, POST, PUT, PATCH` (no `DELETE`) and `Authorization, Content-Type, Accept, X-Idempotency-Key`. Never allows credentials. | `Cors:AllowedOrigins`, `Cors:AllowedMethods`, `Cors:AllowedHeaders` — plain configuration arrays in `appsettings*.json`, **not** `FeatureManagement` flags; `Minimal.Api/Configs/CrosConfig.cs`. Details: [`docs/api-pipeline.md`](api-pipeline.md) |
 | **Health checks** | EF Core connectivity check plus a custom check, mapped at `/healthz` and `/` — both anonymous and both reporting the overall status only. The full per-check report lives at `/healthz/detail` and requires an authenticated caller. [Details below](#hardened-by-default). | `FeatureManagement:EnableHealthCheck`; `Minimal.Api/Configs/Healthz/HealthzConfig.cs` |
 | **Security response headers** | OWASP-recommended headers (`X-Frame-Options`, `X-Content-Type-Options`, a default CSP, `Referrer-Policy`, `Cache-Control`, `X-Permitted-Cross-Domain-Policies`, `X-XSS-Protection`, `Cross-Origin-Resource-Policy`) on every response, including 404s and unhandled 500s. `Server` is not sent at all. | `FeatureManagement:EnableSecurityHeaders`; `Minimal.Api/Configs/SecurityHeadersConfig.cs` (package `OwaspHeaders.Core`) |
-| **Forwarded headers** | `X-Forwarded-For` / `X-Forwarded-Proto` honoured from the proxies (or CIDR ranges) you list — and from nobody else, so rate limiting sees the real caller behind your ingress. | `FeatureManagement:EnableForwardedHeaders`, `Security:TrustedProxies` and `Security:TrustedNetworks` (both empty by default); `Minimal.Api/Configs/ForwardedHeadersConfig.cs`. Keys: [`configuration-reference.md`](configuration-reference.md#security) |
-| **Stated request bounds** | Request lifetime, request-body size and header-read timeout are set by the template instead of inherited from Kestrel — 30 s → `504`, 1 MB → `413`, 10 s of headers. | `FeatureManagement:EnableRequestBounds`, `RequestBounds:*`; `Minimal.Api/Configs/RequestBoundsConfig.cs`. Keys: [`configuration-reference.md`](configuration-reference.md#requestbounds) |
+| **Forwarded headers** | `X-Forwarded-For` / `X-Forwarded-Proto` honoured from the proxies (or CIDR ranges) you list — and from nobody else, so rate limiting sees the real caller behind your ingress. | `FeatureManagement:EnableForwardedHeaders`, `Security:TrustedProxies` and `Security:TrustedNetworks` (both empty by default); `Minimal.Api/Configs/ForwardedHeadersConfig.cs`. Keys: [`configuration.md`](configuration.md#security) |
+| **Stated request bounds** | Request lifetime, request-body size and header-read timeout are set by the template instead of inherited from Kestrel — 30 s → `504`, 1 MB → `413`, 10 s of headers. | `FeatureManagement:EnableRequestBounds`, `RequestBounds:*`; `Minimal.Api/Configs/RequestBoundsConfig.cs`. Keys: [`configuration.md`](configuration.md#requestbounds) |
 | **Hybrid caching** | `AddHybridCache()` registered (Redis-backed when `ConnectionStrings:Redis` is set, otherwise in-memory). Not yet consumed by any shipped feature — wire it up where you need query caching. | `Minimal.Api/Configs/CacheConfig.cs` |
 | **SlimMessageBus** | In-memory child bus always wired for internal command/event dispatch — no flag gates it. The Azure Service Bus child bus is added only when `EnableServiceBus` is on **and** `ConnectionStrings:AzureBus` is non-empty. | `FeatureManagement:EnableServiceBus`, `ConnectionStrings:AzureBus`; `Minimal.Infra/Extensions/ServiceBusSetup.cs`. Deep dive: [`docs/slimbus-messaging.md`](slimbus-messaging.md) |
 | **Mapster** | Entity↔request/DTO mapping registered automatically from `[MapsFrom]`/`[GenerateDto]` attributes — no per-feature mapping config. | `Minimal.AppServices/AppSetup.cs`. Attribute mechanics: [`docs/crud-attributes.md`](crud-attributes.md) |
@@ -66,7 +66,7 @@ you change a flag — never turn a security switch off in the base file.
 A generated service is protected at its HTTP surface with **no security configuration supplied** —
 the base `appsettings.json` carries the secure value for every switch below, and a developer relaxes
 one for local work through configuration alone. Every key: the
-[configuration reference](configuration-reference.md). Where each control sits in the pipeline:
+[configuration reference](configuration.md). Where each control sits in the pipeline:
 [`docs/api-pipeline.md`](api-pipeline.md).
 
 | Control | What is enforced | Switch |
@@ -127,7 +127,7 @@ Once those resources are up, the host also populates the two sample entities —
 filtering have a realistic dataset with no manual step. The records are freshly randomised on every
 start, so consecutive runs do not present the same data, and they are synthetic throughout — no
 real personal data. Exactly one product is the deliberate exception: a fixed
-[demonstration row](samples/automated-products/README.md#platform-capabilities-it-carries) carrying
+[demonstration row](features/automated-products/data-model.md) carrying
 both role-gated `[SensitiveData]` properties, so response filtering is visible on a host you just
 started — it counts toward the 10 000 rather than adding to it. They are attributed to
 `SharedConsts.SystemAccount` (`"System"`), the same
@@ -138,7 +138,7 @@ generated rows to your own local (unauthenticated) requests. The three reference
 untouched — generated data is additive — and no domain event is published for a generated record,
 so the logs and the dashboard stay readable.
 
-Volume is the single setting [`SampleData:RecordsPerEntity`](configuration-reference.md#sampledata)
+Volume is the single setting [`SampleData:RecordsPerEntity`](configuration.md#sampledata)
 on the host, where `0` skips generation and leaves you an empty database. Generation needs the
 schema `RunDbMigrationWhenAppStart` creates; when it is absent, generation polls for up to 60
 seconds before giving up and skipping itself — the host process itself starts immediately and is

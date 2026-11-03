@@ -269,7 +269,7 @@ alongside the other unsupported-field errors listed above
 (`Minimal.App.Tests/Integration/AutomatedSample/V1/ProductGrossMarginTests.cs:181-210`). The rest of
 the query surface is unaffected: filtering and searching on the convention-mapped fields behaves as
 before, with the margin reported on each item that survives. How the property is put on the response:
-[the automated sample](samples/automated-products/README.md#a-response-value-the-convention-cannot-produce).
+[the automated sample](features/automated-products/endpoints.md#a-response-value-the-convention-cannot-produce).
 
 ### Trap: a DTO field must map to a real column
 

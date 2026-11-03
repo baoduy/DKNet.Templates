@@ -3,7 +3,6 @@ using NetArchTest.Rules;
 using Minimal.AppServices;
 using Minimal.Domains.Share;
 using SlimMessageBus;
-using Xunit.Abstractions;
 
 namespace Minimal.App.Tests.Architecture;
 

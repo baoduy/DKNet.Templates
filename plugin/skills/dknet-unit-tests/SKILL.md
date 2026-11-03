@@ -67,13 +67,11 @@ extra overrides:
 ```csharp
 public sealed class ApiFixture : TestApiFactoryBase, IAsyncLifetime
 {
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _ = CreateClient();
         await ResetDatabaseAsync();
     }
-
-    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
 ```
 
@@ -344,7 +342,8 @@ measured — move the logic into a measured class and test that.
   xUnit owns architecture/pure-functional/result-level assertions; BDD owns request→status→body.
 - **What you might expect**: a new fixture mutating `Environment.SetEnvironmentVariable` for its own flag
   works standalone. **What actually happens**: it races other tests intermittently. **Why**: only
-  `AssemblyInfo.cs`'s `DisableTestParallelization = true` makes that trick safe assembly-wide.
+  `AssemblyInfo.cs`'s `[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]` makes that trick
+  safe assembly-wide.
 
 ---
 

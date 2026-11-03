@@ -36,7 +36,7 @@ maps to a trade-off explained later in this document:
 `[GenerateDto(..., Exclude = [...])]`, and a value the convention cannot produce can be *added* to a
 generated response by hand — one property on the `partial record` plus a Mapster `IRegister`, with no
 route, request or handler leaving the generated set. The worked case is `ProductDto.GrossMargin`: see
-[the automated sample](automated-products/README.md#a-response-value-the-convention-cannot-produce)
+[the automated sample](../features/automated-products/endpoints.md#a-response-value-the-convention-cannot-produce)
 and §3 below for what it costs on the list route's query surface.
 
 A rule that conditionally refuses an operation is **not** on that list. A FluentValidation validator
@@ -255,7 +255,7 @@ The exclusion list only narrows. Widening works too: a value the convention cann
 derived from more than one column — can be *added* to a generated DTO by hand-writing the property on
 the `partial record` and a Mapster `IRegister` that maps it, with every other property still coming
 from the convention. `ProductDto.GrossMargin` is that case, worked end to end in
-[the automated sample](automated-products/README.md#a-response-value-the-convention-cannot-produce),
+[the automated sample](../features/automated-products/endpoints.md#a-response-value-the-convention-cannot-produce),
 including its one cost: a property with no entity column behind it cannot be filtered or ordered on
 over HTTP, so `?orderBy=grossMargin` answers `400`.
 

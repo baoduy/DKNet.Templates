@@ -1,0 +1,45 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Product lifecycle",
+    "output": "out/automated-products/lifecycle.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/baoduy/DKNet.Templates.git",
+      "provider": "github",
+      "revision": "4796f354370da68e89fe3bcb06471e9dca4c9923"
+    }
+  },
+  "mainPath": ["for_sale", "discontinued", "deleted"],
+  "states": [
+    { "id": "for_sale", "type": "start", "label": "For sale", "sublabel": "IsDiscontinued = false", "tag": "created",
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Domains/Features/AutomatedSample/Entities/Product.cs", "line": 42, "end_line": 50 }] },
+    { "id": "discontinued", "type": "active", "label": "Discontinued", "sublabel": "IsDiscontinued = true", "tag": "replacement created",
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.Domains/Features/AutomatedSample/Entities/Product.cs", "line": 119, "end_line": 120 }] },
+    { "id": "deleted", "type": "success", "label": "Deleted", "sublabel": "row removed from sample.Products", "tag": "terminal",
+      "sources": [{ "path": "src/ApiEndpoints/Minimal.AppServices/AutomatedSample/V1/Validators/DeleteProductRequestValidator.cs", "line": 13, "end_line": 27 }] }
+  ],
+  "transitions": [
+    { "id": "sell-discontinue", "from": "for_sale", "to": "discontinued", "label": "PUT /{id}/discontinue" },
+    { "id": "discontinue-delete", "from": "discontinued", "to": "deleted", "label": "DELETE /{id}" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Only two transitions",
+      "items": [
+        "Approve, price changes and supplier-reference assignment update fields but never move the product off 'For sale'",
+        "Discontinuing also creates a separate, independent replacement Product in the same transaction — that new row starts its own lifecycle at 'For sale'"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Refusals are not transitions",
+      "items": [
+        "DELETE while still for sale answers 409 and leaves the product on 'For sale'",
+        "A second PUT /{id}/discontinue on an already-discontinued product answers 400 and leaves it on 'Discontinued' — discontinuing is not idempotent"
+      ]
+    }
+  ]
+}

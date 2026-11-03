@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Purchase Order status lifecycle",
+    "output": "out/manual-purchase-orders/status-lifecycle.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/baoduy/DKNet.Templates.git",
+      "revision": "4796f354370da68e89fe3bcb06471e9dca4c9923"
+    }
+  },
+  "mainPath": ["placed", "cancelled"],
+  "states": [
+    { "id": "placed", "type": "start", "label": "Placed", "sublabel": "set by every constructor", "sources": [{ "path": "src/ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs", "line": 33 }] },
+    { "id": "cancelled", "type": "success", "label": "Cancelled", "sublabel": "terminal — no route reverses it", "sources": [{ "path": "src/ApiEndpoints/Minimal.Domains/Features/ManualSample/Entities/PurchaseOrder.cs", "line": 79, "end_line": 83 }] }
+  ],
+  "transitions": [
+    { "id": "cancel", "from": "placed", "to": "cancelled", "label": "POST /{id}/cancel — Cancel(userId)" },
+    { "id": "cancelAgain", "from": "cancelled", "to": "cancelled", "label": "cancel again → 409 Conflict", "variant": "security" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Two reachable states", "items": ["Both public constructors set Status = Placed directly — there is no create-as-draft path", "Cancel(userId) is the only method that changes Status, and it only ever sets Cancelled", "Update (ChangeAmount) and Get do not touch Status"] },
+    { "dot": "amber", "title": "Draft is declared but unused", "items": ["PurchaseOrderStatus also declares a Draft value", "No constructor, handler or migration in this sample ever assigns it", "Not drawn above: a state with no transition into it is not a lifecycle this sample exercises"] },
+    { "dot": "rose", "title": "Cancelled is terminal", "items": ["CancelPurchaseOrderCommandHandler refuses a second cancel with 409 Conflict (precondition.purchase-order-already-cancelled); it does not change Status again", "No route moves an order back to Placed", "Delete still works on a cancelled order — deletion is independent of status"] }
+  ]
+}

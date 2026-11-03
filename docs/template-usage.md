@@ -69,7 +69,7 @@ obtains its signing keys, and every presented token is rejected on audience mism
 > `AuthPlaceholderConfigTests.cs`, because that constant is a literal copy of the token. The test
 > keeps passing after scaffolding, but it now pins *your* tenant id rather than guarding a
 > placeholder. Full configuration surface, key by key:
-> [`configuration-reference.md`](./configuration-reference.md).
+> [`configuration.md`](configuration.md).
 
 Generated layout:
 
@@ -112,12 +112,12 @@ plus 10 000 generated products and 10 000 generated purchase orders, freshly ran
 start — with one deliberate exception. Exactly one of those products is fixed, not random:
 `Demo-Product-With-Supplier-Data` is the only row carrying both role-gated `[SensitiveData]`
 properties, so the response filtering is visible from a running host
-([`docs/samples/automated-products/README.md`](./samples/automated-products/README.md#platform-capabilities-it-carries)).
+([Products data model](features/automated-products/data-model.md)).
 It counts toward the requested total rather than adding to it.
 
 To start empty instead, set `"SampleData": { "RecordsPerEntity": 0 }` in
 `<Name>.ApiEndpoints/<Name>.AppHost/appsettings.json` — details in
-[`configuration-reference.md`](./configuration-reference.md#sampledata).
+[`configuration.md`](configuration.md#sampledata).
 
 ## Launch mode: serve, or run a job
 
@@ -237,7 +237,7 @@ or in `appsettings.json`:
 
 Find the real range for a cluster with `kubectl cluster-info dump | grep -m1 cluster-cidr`, or from
 the CNI/cloud provider's networking settings — it is not something the template can default, since
-it differs per cluster. Details: [`configuration-reference.md`](configuration-reference.md#security).
+it differs per cluster. Details: [`configuration.md`](configuration.md#security).
 
 ### `FeatureManagement:RunDbMigrationWhenAppStart`
 

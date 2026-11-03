@@ -36,7 +36,6 @@
         <PackageReference Include="DKNet.EfCore.Specifications" />
         <PackageReference Include="DKNet.EfCore.AuditLogs" />
         <PackageReference Include="FluentValidation" />
-        <PackageReference Include="ForEvolve.FluentValidation.AspNetCore.Http"/>
         <PackageReference Include="Mapster.DependencyInjection"/>
         <PackageReference Include="SlimMessageBus"/>
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
